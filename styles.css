@@ -306,10 +306,11 @@ input:focus, select:focus, textarea:focus {
 }
 .topbar-title:active { background: var(--gridline); }
 .topbar-back-arrow {
-  font-size: 18px;
+  font-size: 42px;
   font-weight: 700;
   color: var(--text-secondary);
   line-height: 1;
+  margin-right: 16px;
 }
 
 .sync-dot {
