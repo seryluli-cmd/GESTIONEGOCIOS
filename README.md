@@ -21,7 +21,12 @@ tiempo real, con soporte offline).
     subir, ver `compressImage` en [app.js](app.js)).
 - **Service worker** ([service-worker.js](service-worker.js)) — cachea el
   app shell (HTML/CSS/JS/íconos) para que abra offline; todo lo que es
-  Firebase pasa siempre directo a la red, nunca se cachea.
+  Firebase pasa siempre directo a la red, nunca se cachea. Estrategia
+  **red primero, caché como respaldo offline** (no al revés) — así cualquier
+  deploy nuevo se ve apenas hay internet, sin que el celular quede pegado a
+  una versión vieja. Si se cambia el shell y por algún motivo un celular
+  sigue viendo lo viejo, subir el número de `CACHE_NAME` fuerza un reset
+  limpio.
 - **manifest.json** — permite "Agregar a pantalla de inicio" como app nativa.
 
 ## Archivos

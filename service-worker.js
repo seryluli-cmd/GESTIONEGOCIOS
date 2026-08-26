@@ -1,4 +1,4 @@
-const CACHE_NAME = "gastos-negocio-v1";
+const CACHE_NAME = "gastos-negocio-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -35,18 +35,19 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Red primero: así cualquier actualización del sitio se ve apenas hay
+  // internet (no hace falta bumpear versiones a mano en cada deploy). Si no
+  // hay red, recién ahí se usa lo último guardado en caché — eso es lo que
+  // permite abrir la app sin conexión.
   event.respondWith(
-    caches.match(req).then((cached) => {
-      const network = fetch(req)
-        .then((res) => {
-          if (res && res.status === 200) {
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-          }
-          return res;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+    fetch(req)
+      .then((res) => {
+        if (res && res.status === 200) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+        }
+        return res;
+      })
+      .catch(() => caches.match(req))
   );
 });
