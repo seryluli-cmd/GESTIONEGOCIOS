@@ -53,6 +53,14 @@ seguridad que exigen autenticación anónima.
 - **`facturacion`** (colección) — un doc por cierre diario:
   `{ importe, registradoPor, negocio, fecha, creadoEn }`. Mismo patrón que
   `gastos`.
+- **`ideas`** (colección) — un doc por idea: `{ texto, estado, propuestoPor, creadoEn }`.
+  **A propósito NO tiene campo `negocio`** — son compartidas entre Pancho Recreo
+  y Heladería Pablo, porque los 3 socios son dueños de ambos. `estado` es
+  `"pendiente"` o `"concretada"`. Cualquiera puede crear una idea y tildarla
+  como concretada (toggle libre, sin admin); solo el admin puede borrarla
+  (`deleteIdea()`). Se ve en la pestaña **Ideas** dentro de `screen-app`,
+  junto a Gastos/Balance/Ajustes — no tiene pantalla ni selector propio
+  porque no depende de qué negocio estés mirando.
 - **Storage**: fotos de facturas en `recibos/{negocio}/{timestamp}_{random}.jpg`.
   Se borran solas a los 4 meses (`FOTO_RETENCION_DIAS`) vía
   `limpiarFotosVencidas()` — **el gasto nunca se borra, solo la foto**.

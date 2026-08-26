@@ -78,6 +78,7 @@ let admins = [];           // subconjunto de nombres (normalmente socios) con pe
 let pins = {};             // { "Sergio": "1234", ... } — PIN fijo de 4 dígitos por persona (ver README: no es seguridad real, solo identificación)
 let gastos = [];           // TODOS los gastos, de los 2 negocios — [{id, importe, descripcion, categoria, pagadoPor, fecha, negocio}]
 let facturaciones = [];    // TODOS los cierres diarios, de los 2 negocios — [{id, importe, registradoPor, fecha, negocio}]
+let ideas = [];            // Ideas de mejora, COMPARTIDAS entre los 2 negocios (no tienen campo "negocio") — [{id, texto, estado, propuestoPor, creadoEn}]
 let negocioActual = null;  // "pancho" | "heladeria"
 let seccionActual = null;  // "gastos" | "facturado" | "resumen"
 let selectedPagador = null;
@@ -269,6 +270,7 @@ function bootApp() {
   renderNegocioCards();
   listenGastos();
   listenFacturacion();
+  listenIdeas();
   listenSocios();
   listenConnectivity();
   setDefaultFecha();
@@ -299,6 +301,7 @@ function setUsuarioActual(nombre) {
   renderAjustesSocios();
   renderGastos();
   renderFacturado();
+  renderIdeas();
 }
 
 function cambiarUsuario() {
@@ -530,6 +533,7 @@ function listenSocios() {
       renderBalance();
       renderGastos();
       renderFacturado();
+      renderIdeas();
     }
   });
 }
@@ -558,6 +562,19 @@ function listenFacturacion() {
     facturaciones = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     renderFacturado();
     if (negocioActual) renderResumen();
+    setSyncOffline(false);
+  }, (err) => {
+    console.error(err);
+    setSyncOffline(true);
+  });
+}
+
+// Compartidas entre los 2 negocios a propósito — no se filtran por "negocio".
+function listenIdeas() {
+  const q = fbSdk.query(fbSdk.collection(db, "ideas"), fbSdk.orderBy("creadoEn", "desc"));
+  fbSdk.onSnapshot(q, (snapshot) => {
+    ideas = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderIdeas();
     setSyncOffline(false);
   }, (err) => {
     console.error(err);
@@ -679,6 +696,118 @@ function renderFacturado() {
   });
 
   $("#facturado-total-mes").textContent = money(totalMes);
+}
+
+// ---------- Render: Ideas (checklist compartido) ----------
+function renderIdeas() {
+  const total = ideas.length;
+  const concretadas = ideas.filter(i => i.estado === "concretada");
+  const pendientes = ideas.filter(i => i.estado !== "concretada");
+
+  $("#ideas-empty").classList.toggle("hidden", total > 0);
+
+  $("#ideas-progreso-valor").textContent = `${concretadas.length} de ${total}`;
+  const pct = total ? Math.round((concretadas.length / total) * 100) : 0;
+  $("#ideas-progreso-bar").style.width = pct + "%";
+
+  $("#ideas-pendientes-empty").classList.toggle("hidden", pendientes.length > 0 || total === 0);
+  $("#ideas-concretadas-wrap").classList.toggle("hidden", concretadas.length === 0);
+
+  const pendientesEl = $("#ideas-pendientes-list");
+  pendientesEl.innerHTML = "";
+  pendientes.forEach(i => pendientesEl.appendChild(ideaCard(i)));
+
+  const concretadasEl = $("#ideas-concretadas-list");
+  concretadasEl.innerHTML = "";
+  concretadas.forEach(i => concretadasEl.appendChild(ideaCard(i)));
+}
+
+function ideaCard(idea) {
+  const done = idea.estado === "concretada";
+  const fecha = fechaDeRegistro(idea);
+  const card = document.createElement("div");
+  card.className = "idea-card";
+  card.dataset.id = idea.id;
+  const deleteBtn = esAdmin
+    ? `<button type="button" class="icon-btn danger idea-delete-btn" data-id="${idea.id}" aria-label="Borrar idea">🗑️</button>`
+    : "";
+  card.innerHTML = `
+    <div class="idea-check ${done ? "checked" : ""}">${done ? "✓" : ""}</div>
+    <div class="idea-info">
+      <div class="idea-texto ${done ? "done" : ""}">${escapeHtml(idea.texto)}</div>
+      <div class="idea-meta">Propuesto por ${escapeHtml(idea.propuestoPor || "?")} · ${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })}</div>
+    </div>
+    ${deleteBtn}
+  `;
+  return card;
+}
+
+// Cualquiera puede marcar/desmarcar una idea como concretada — sin admin,
+// para que sea tan liviano como tildar un check en una lista de tareas.
+async function toggleIdeaEstado(id) {
+  const idea = ideas.find(i => i.id === id);
+  if (!idea) return;
+  const nuevoEstado = idea.estado === "concretada" ? "pendiente" : "concretada";
+  try {
+    await fbSdk.updateDoc(fbSdk.doc(db, "ideas", id), { estado: nuevoEstado });
+  } catch (e) {
+    console.error(e);
+    showToast("No se pudo actualizar. Revisá tu conexión.");
+  }
+}
+
+// Solo admin (esAdmin) — ver botón 🗑️ en ideaCard().
+async function deleteIdea(id) {
+  if (!confirm("¿Borrar esta idea?")) return;
+  try {
+    await fbSdk.deleteDoc(fbSdk.doc(db, "ideas", id));
+    showToast("Idea borrada");
+  } catch (e) {
+    console.error(e);
+    showToast("No se pudo borrar. Revisá tu conexión.");
+  }
+}
+
+function openModalIdea() {
+  $("#input-idea-texto").value = "";
+  $("#modal-idea-error").classList.add("hidden");
+  $("#modal-add-idea").classList.add("active");
+  setTimeout(() => $("#input-idea-texto").focus(), 150);
+}
+
+function closeModalIdea() {
+  $("#modal-add-idea").classList.remove("active");
+}
+
+async function saveIdea() {
+  const texto = $("#input-idea-texto").value.trim();
+  const errEl = $("#modal-idea-error");
+  if (!texto) {
+    errEl.textContent = "Escribí la idea antes de guardar.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  const btn = $("#btn-save-idea");
+  btn.disabled = true;
+  btn.textContent = "Guardando…";
+  try {
+    await fbSdk.addDoc(fbSdk.collection(db, "ideas"), {
+      texto,
+      estado: "pendiente",
+      propuestoPor: usuarioActual,
+      creadoEn: fbSdk.serverTimestamp()
+    });
+    closeModalIdea();
+    showToast("Idea guardada ✅");
+  } catch (e) {
+    errEl.textContent = "No se pudo guardar. Revisá tu conexión.";
+    errEl.classList.remove("hidden");
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Guardar idea";
+  }
 }
 
 // ---------- Render: Resumen mensual ----------
@@ -1268,6 +1397,8 @@ function switchTab(name) {
   $$(".tabbtn").forEach(b => b.classList.remove("active"));
   $("#tab-" + name).classList.add("active");
   $(`.tabbtn[data-tab="${name}"]`).classList.add("active");
+  $("#fab-add").classList.toggle("hidden", name !== "gastos");
+  $("#fab-add-idea").classList.toggle("hidden", name !== "ideas");
 }
 
 // ---------- Setup screen ----------
@@ -1452,6 +1583,22 @@ function wireEvents() {
   $("#modal-add-facturado").addEventListener("click", (e) => {
     if (e.target.id === "modal-add-facturado") closeModalFacturado();
   });
+
+  $("#fab-add-idea").addEventListener("click", () => openModalIdea());
+  $("#btn-cancel-add-idea").addEventListener("click", closeModalIdea);
+  $("#btn-save-idea").addEventListener("click", saveIdea);
+  $("#modal-add-idea").addEventListener("click", (e) => {
+    if (e.target.id === "modal-add-idea") closeModalIdea();
+  });
+  // Toggle pendiente/concretada tocando la tarjeta; borrar solo con el 🗑️ (admin)
+  const handleIdeaListClick = (e) => {
+    const delBtn = e.target.closest(".idea-delete-btn");
+    if (delBtn) { deleteIdea(delBtn.dataset.id); return; }
+    const card = e.target.closest(".idea-card");
+    if (card) toggleIdeaEstado(card.dataset.id);
+  };
+  $("#ideas-pendientes-list").addEventListener("click", handleIdeaListClick);
+  $("#ideas-concretadas-list").addEventListener("click", handleIdeaListClick);
   $$(".tabbtn").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
 
   // Foto de factura (modal Nuevo gasto)

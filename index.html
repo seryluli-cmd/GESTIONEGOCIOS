@@ -188,6 +188,33 @@
       </div>
     </section>
 
+    <!-- ---- TAB: IDEAS (compartidas entre los 2 negocios) ---- -->
+    <section id="tab-ideas" class="tab">
+      <div class="stat-hero">
+        <div class="stat-hero-label">Ideas concretadas</div>
+        <div class="stat-hero-value" id="ideas-progreso-valor">0 de 0</div>
+        <div class="bar-track" style="margin-top:10px;"><div class="bar-fill" id="ideas-progreso-bar" style="width:0%;background:var(--good)"></div></div>
+      </div>
+
+      <div id="ideas-empty" class="empty-state hidden">
+        <p>Todavía no hay ideas cargadas.</p>
+        <p class="muted small">Tocá el botón + para anotar la primera.</p>
+      </div>
+
+      <div id="ideas-pendientes-wrap">
+        <h3 class="section-title">Pendientes</h3>
+        <div id="ideas-pendientes-list" class="ideas-list"></div>
+        <p id="ideas-pendientes-empty" class="muted small hidden">No hay ideas pendientes — ¡todas concretadas! 🎉</p>
+      </div>
+
+      <div id="ideas-concretadas-wrap">
+        <h3 class="section-title">Concretadas</h3>
+        <div id="ideas-concretadas-list" class="ideas-list"></div>
+      </div>
+    </section>
+
+    <button id="fab-add-idea" class="fab hidden" aria-label="Agregar idea">+</button>
+
     <!-- ---- TAB: AJUSTES ---- -->
     <section id="tab-ajustes" class="tab">
       <div class="card">
@@ -237,6 +264,9 @@
       </button>
       <button class="tabbtn" data-tab="balance">
         <span class="tabicon">⚖️</span><span>Balance</span>
+      </button>
+      <button class="tabbtn" data-tab="ideas">
+        <span class="tabicon">💡</span><span>Ideas</span>
       </button>
       <button class="tabbtn" data-tab="ajustes">
         <span class="tabicon">⚙️</span><span>Ajustes</span>
@@ -419,6 +449,26 @@
       <div class="modal-actions">
         <button id="btn-cancel-add-facturado" class="btn-secondary">Cancelar</button>
         <button id="btn-save-facturado" class="btn-primary">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: NUEVA IDEA ===== -->
+  <div id="modal-add-idea" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2>Nueva idea</h2>
+
+      <div class="field">
+        <label for="input-idea-texto">¿Qué idea tenés?</label>
+        <textarea id="input-idea-texto" rows="3" maxlength="200" placeholder="Ej: Poner un cartel con promociones en la vidriera"></textarea>
+      </div>
+
+      <p id="modal-idea-error" class="error-text hidden"></p>
+
+      <div class="modal-actions">
+        <button id="btn-cancel-add-idea" class="btn-secondary">Cancelar</button>
+        <button id="btn-save-idea" class="btn-primary">Guardar idea</button>
       </div>
     </div>
   </div>
