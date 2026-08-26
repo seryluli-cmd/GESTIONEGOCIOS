@@ -375,8 +375,12 @@ async function confirmPinModal() {
       errEl.classList.remove("hidden");
       return;
     }
+    // Ojo: closePinModal() pone pinFlowNombre en null, por eso hay que
+    // guardarlo en una variable local ANTES de llamarla (mismo motivo por
+    // el que el branch "create" ya lo hacía con `const nombre`).
+    const nombre = pinFlowNombre;
     closePinModal();
-    setUsuarioActual(pinFlowNombre);
+    setUsuarioActual(nombre);
     showScreen("screen-negocio");
     return;
   }
