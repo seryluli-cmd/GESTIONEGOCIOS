@@ -127,8 +127,58 @@
       <div class="logo-badge">$</div>
       <h1>¿Qué negocio querés ver?</h1>
       <p class="muted">Los gastos y el balance se llevan por separado para cada uno.</p>
+
+      <!-- Ideas es compartida entre los 2 negocios, por eso vive acá arriba
+           y no adentro de la sección de un negocio puntual. -->
+      <button type="button" id="btn-ideas-main" class="negocio-card idea-negocio-card">
+        <div class="negocio-emoji">💡</div>
+        <div class="negocio-info">
+          <div class="negocio-nombre">Ideas</div>
+          <div class="negocio-sub">Para mejorar el negocio — entre los 3 socios</div>
+        </div>
+      </button>
+
+      <p class="muted small" style="margin:18px 0 10px;">O elegí un negocio:</p>
       <div id="negocio-cards" class="negocio-cards"></div>
     </div>
+  </div>
+
+  <!-- ===== PANTALLA: IDEAS (compartida entre los 2 negocios) ===== -->
+  <div id="screen-ideas" class="screen">
+
+    <header class="topbar">
+      <button id="btn-back-from-ideas" class="topbar-title" aria-label="Volver">
+        <span class="topbar-back-arrow">←</span>
+        <span class="logo-badge small">💡</span>
+        <span>Ideas</span>
+      </button>
+    </header>
+
+    <section class="tab active">
+      <div class="stat-hero">
+        <div class="stat-hero-label">Ideas concretadas</div>
+        <div class="stat-hero-value" id="ideas-progreso-valor">0 de 0</div>
+        <div class="bar-track" style="margin-top:10px;"><div class="bar-fill" id="ideas-progreso-bar" style="width:0%;background:var(--good)"></div></div>
+      </div>
+
+      <div id="ideas-empty" class="empty-state hidden">
+        <p>Todavía no hay ideas cargadas.</p>
+        <p class="muted small">Tocá el botón + para anotar la primera.</p>
+      </div>
+
+      <div id="ideas-pendientes-wrap">
+        <h3 class="section-title">Pendientes</h3>
+        <div id="ideas-pendientes-list" class="ideas-list"></div>
+        <p id="ideas-pendientes-empty" class="muted small hidden">No hay ideas pendientes — ¡todas concretadas! 🎉</p>
+      </div>
+
+      <div id="ideas-concretadas-wrap">
+        <h3 class="section-title">Concretadas</h3>
+        <div id="ideas-concretadas-list" class="ideas-list"></div>
+      </div>
+    </section>
+
+    <button id="fab-add-idea" class="fab" aria-label="Agregar idea">+</button>
   </div>
 
   <!-- ===== PANTALLA: ELEGIR SECCIÓN (Gastos / Facturado) ===== -->
@@ -188,33 +238,6 @@
       </div>
     </section>
 
-    <!-- ---- TAB: IDEAS (compartidas entre los 2 negocios) ---- -->
-    <section id="tab-ideas" class="tab">
-      <div class="stat-hero">
-        <div class="stat-hero-label">Ideas concretadas</div>
-        <div class="stat-hero-value" id="ideas-progreso-valor">0 de 0</div>
-        <div class="bar-track" style="margin-top:10px;"><div class="bar-fill" id="ideas-progreso-bar" style="width:0%;background:var(--good)"></div></div>
-      </div>
-
-      <div id="ideas-empty" class="empty-state hidden">
-        <p>Todavía no hay ideas cargadas.</p>
-        <p class="muted small">Tocá el botón + para anotar la primera.</p>
-      </div>
-
-      <div id="ideas-pendientes-wrap">
-        <h3 class="section-title">Pendientes</h3>
-        <div id="ideas-pendientes-list" class="ideas-list"></div>
-        <p id="ideas-pendientes-empty" class="muted small hidden">No hay ideas pendientes — ¡todas concretadas! 🎉</p>
-      </div>
-
-      <div id="ideas-concretadas-wrap">
-        <h3 class="section-title">Concretadas</h3>
-        <div id="ideas-concretadas-list" class="ideas-list"></div>
-      </div>
-    </section>
-
-    <button id="fab-add-idea" class="fab hidden" aria-label="Agregar idea">+</button>
-
     <!-- ---- TAB: AJUSTES ---- -->
     <section id="tab-ajustes" class="tab">
       <div class="card">
@@ -264,9 +287,6 @@
       </button>
       <button class="tabbtn" data-tab="balance">
         <span class="tabicon">⚖️</span><span>Balance</span>
-      </button>
-      <button class="tabbtn" data-tab="ideas">
-        <span class="tabicon">💡</span><span>Ideas</span>
       </button>
       <button class="tabbtn" data-tab="ajustes">
         <span class="tabicon">⚙️</span><span>Ajustes</span>

@@ -1398,7 +1398,6 @@ function switchTab(name) {
   $("#tab-" + name).classList.add("active");
   $(`.tabbtn[data-tab="${name}"]`).classList.add("active");
   $("#fab-add").classList.toggle("hidden", name !== "gastos");
-  $("#fab-add-idea").classList.toggle("hidden", name !== "ideas");
 }
 
 // ---------- Setup screen ----------
@@ -1584,6 +1583,11 @@ function wireEvents() {
     if (e.target.id === "modal-add-facturado") closeModalFacturado();
   });
 
+  $("#btn-ideas-main").addEventListener("click", () => {
+    renderIdeas();
+    showScreen("screen-ideas");
+  });
+  $("#btn-back-from-ideas").addEventListener("click", () => showScreen("screen-negocio"));
   $("#fab-add-idea").addEventListener("click", () => openModalIdea());
   $("#btn-cancel-add-idea").addEventListener("click", closeModalIdea);
   $("#btn-save-idea").addEventListener("click", saveIdea);

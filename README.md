@@ -63,9 +63,9 @@ seguridad que exigen autenticación anónima.
   y Heladería Pablo, porque los 3 socios son dueños de ambos. `estado` es
   `"pendiente"` o `"concretada"`. Cualquiera puede crear una idea y tildarla
   como concretada (toggle libre, sin admin); solo el admin puede borrarla
-  (`deleteIdea()`). Se ve en la pestaña **Ideas** dentro de `screen-app`,
-  junto a Gastos/Balance/Ajustes — no tiene pantalla ni selector propio
-  porque no depende de qué negocio estés mirando.
+  (`deleteIdea()`). Tiene su **propia pantalla** (`screen-ideas`), accesible
+  desde un botón arriba de todo en `screen-negocio` — justamente porque no
+  depende de qué negocio estés mirando, no vive adentro de `screen-app`.
 - **Storage**: fotos de facturas en `recibos/{negocio}/{timestamp}_{random}.jpg`.
   Se borran solas a los 4 meses (`FOTO_RETENCION_DIAS`) vía
   `limpiarFotosVencidas()` — **el gasto nunca se borra, solo la foto**.
