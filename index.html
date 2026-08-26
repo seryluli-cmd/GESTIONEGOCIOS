@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Gastos — Recreo &amp; Pablo</title>
+<meta name="description" content="Registro compartido de gastos entre socios">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2a78d6">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gastos RP">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ===== PANTALLA DE CARGA ===== -->
+  <div id="screen-loading" class="screen active">
+    <div class="loading-wrap">
+      <div class="logo-badge">$</div>
+      <p class="muted" id="loading-msg">Cargando…</p>
+      <button id="btn-retry-boot" class="btn-primary hidden" style="margin-top:16px;">Reintentar</button>
+      <button id="btn-reconfigure-boot" class="btn-secondary hidden" style="margin-top:10px;">Configurar de nuevo</button>
+    </div>
+  </div>
+
+  <!-- ===== PANTALLA DE CONFIGURACIÓN INICIAL ===== -->
+  <div id="screen-setup" class="screen">
+    <div class="setup-wrap">
+      <div class="logo-badge">$</div>
+      <h1>Gastos — Recreo &amp; Pablo</h1>
+      <p class="muted">Configuración inicial — se hace una sola vez por navegador.</p>
+
+      <!-- PASO 1: se pide siempre, sea la primera persona o la cuarta -->
+      <div id="setup-step-firebase">
+        <div class="card">
+          <h2>Conexión (Firebase)</h2>
+          <p class="muted small">Pegá acá el bloque de configuración que te dio Firebase (el que empieza con <code>const firebaseConfig = {'{'}</code>). Todos deben pegar exactamente el mismo.</p>
+          <div class="field">
+            <textarea id="firebase-config-input" rows="6" placeholder='const firebaseConfig = {
+  apiKey: "...",
+  authDomain: "...",
+  projectId: "...",
+  ...
+};'></textarea>
+          </div>
+          <p id="setup-error" class="error-text hidden"></p>
+          <details class="help-details">
+            <summary>¿No sabés dónde conseguir esto? Ver guía</summary>
+            <ol>
+              <li>Andá a <span class="code">console.firebase.google.com</span> y creá un proyecto gratis.</li>
+              <li>Dentro del proyecto, creá una app "Web" (ícono &lt;/&gt;).</li>
+              <li>Copiá el objeto <span class="code">firebaseConfig</span> que te muestra y pegalo arriba.</li>
+              <li>Activá <b>Firestore Database</b> (modo producción) y <b>Authentication → Anonymous</b>.</li>
+              <li>En Firestore → Reglas, pegá: <span class="code">allow read, write: if request.auth != null;</span></li>
+            </ol>
+            <p class="muted small">Te enviamos una guía completa en PDF/texto aparte con capturas de cada paso.</p>
+          </details>
+        </div>
+
+        <button id="btn-setup-connect" class="btn-primary">Conectar</button>
+      </div>
+
+      <!-- PASO 2: solo aparece si es la PRIMERA vez que se conecta este negocio
+           (todavía no hay socios guardados). Para el resto, se salta directo. -->
+      <div id="setup-step-socios" class="hidden">
+        <p class="muted small" style="margin-bottom:16px;">No encontramos socios cargados todavía — parece que sos la primera persona en conectar. Completá esto una sola vez, el resto de tu equipo no lo va a volver a ver.</p>
+
+        <div class="card">
+          <h2>Nombres de los 3 socios</h2>
+          <p class="muted small" style="margin-top:-6px;">Marcá "Admin" para quien pueda editar o borrar gastos y cierres cargados por error.</p>
+          <div class="field">
+            <label for="socio1">Socio 1</label>
+            <input type="text" id="socio1" placeholder="Ej: Sergio" maxlength="30">
+            <label class="checkbox-label"><input type="checkbox" id="socio1-admin"> Es admin</label>
+          </div>
+          <div class="field">
+            <label for="socio2">Socio 2</label>
+            <input type="text" id="socio2" placeholder="Ej: Ana" maxlength="30">
+            <label class="checkbox-label"><input type="checkbox" id="socio2-admin"> Es admin</label>
+          </div>
+          <div class="field">
+            <label for="socio3">Socio 3</label>
+            <input type="text" id="socio3" placeholder="Ej: Marcos" maxlength="30">
+            <label class="checkbox-label"><input type="checkbox" id="socio3-admin"> Es admin</label>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Otras personas que cargan gastos <span class="muted small">(opcional)</span></h2>
+          <p class="muted small">Por ejemplo tu encargada. Van a poder cargar gastos y aparecer como "quién pagó", pero no entran en el reparto de cuentas entre los 3 socios.</p>
+          <div id="colaboradores-list"></div>
+          <button type="button" id="btn-add-colaborador" class="btn-secondary" style="margin-top:4px;">+ Agregar persona</button>
+        </div>
+
+        <p id="setup-socios-error" class="error-text hidden"></p>
+        <button id="btn-setup-guardar" class="btn-primary">Guardar y continuar</button>
+      </div>
+
+      <p id="setup-status" class="muted small center"></p>
+    </div>
+  </div>
+
+  <!-- ===== PANTALLA: ¿QUIÉN SOS? (identificación por PIN) ===== -->
+  <!-- Se muestra una sola vez por celular, antes de elegir negocio, salvo
+       que se use "Cambiar de usuario" desde Ajustes. -->
+  <div id="screen-quien-sos" class="screen">
+    <div class="negocio-wrap">
+      <div class="logo-badge">$</div>
+      <h1>¿Quién sos?</h1>
+      <p class="muted">Elegí tu nombre para identificarte en este celular.</p>
+      <div id="quien-sos-cards" class="negocio-cards"></div>
+    </div>
+  </div>
+
+  <!-- ===== PANTALLA: ELEGIR NEGOCIO ===== -->
+  <div id="screen-negocio" class="screen">
+    <div class="negocio-wrap">
+      <div class="logo-badge">$</div>
+      <h1>¿Qué negocio querés ver?</h1>
+      <p class="muted">Los gastos y el balance se llevan por separado para cada uno.</p>
+      <div id="negocio-cards" class="negocio-cards"></div>
+    </div>
+  </div>
+
+  <!-- ===== PANTALLA: ELEGIR SECCIÓN (Gastos / Facturado) ===== -->
+  <div id="screen-seccion" class="screen">
+    <div class="negocio-wrap">
+      <button id="btn-back-to-negocio" class="back-link" aria-label="Volver">← Cambiar negocio</button>
+      <div class="logo-badge" id="seccion-icon-badge">$</div>
+      <h1 id="seccion-negocio-nombre">Negocio</h1>
+      <p class="muted">¿Qué querés ver?</p>
+      <div id="seccion-cards" class="negocio-cards"></div>
+    </div>
+  </div>
+
+  <!-- ===== APP PRINCIPAL (Gastos / Balance / Ajustes) ===== -->
+  <div id="screen-app" class="screen">
+
+    <header class="topbar">
+      <button id="btn-switch-negocio" class="topbar-title" aria-label="Volver a la sección">
+        <span class="topbar-back-arrow">←</span>
+        <span class="logo-badge small" id="negocio-icon-badge">$</span>
+        <span id="negocio-titulo">Gastos</span>
+      </button>
+      <div class="sync-dot" id="sync-dot" title="Sincronizado"></div>
+    </header>
+
+    <!-- ---- TAB: GASTOS ---- -->
+    <section id="tab-gastos" class="tab active">
+      <div class="stat-hero">
+        <div class="stat-hero-label">Total gastado (este mes)</div>
+        <div class="stat-hero-value" id="total-mes">$0</div>
+      </div>
+
+      <div id="expenses-empty" class="empty-state hidden">
+        <p>Todavía no hay gastos cargados.</p>
+        <p class="muted small">Tocá el botón + para agregar el primero.</p>
+      </div>
+
+      <ul id="expenses-list" class="expenses-list"></ul>
+    </section>
+
+    <!-- ---- TAB: BALANCE ---- -->
+    <section id="tab-balance" class="tab">
+      <div class="stat-hero">
+        <div class="stat-hero-label">Total gastado (histórico)</div>
+        <div class="stat-hero-value" id="total-historico">$0</div>
+      </div>
+
+      <h3 class="section-title">Cuánto puso cada socio</h3>
+      <div id="socios-totales" class="socios-totales"></div>
+
+      <h3 class="section-title">Para emparejar cuentas</h3>
+      <div id="settlements" class="settlements"></div>
+
+      <div id="colaboradores-section" class="hidden">
+        <h3 class="section-title">Pagado por el equipo <span class="muted small">(no se reparte)</span></h3>
+        <div id="colaboradores-totales" class="socios-totales"></div>
+      </div>
+    </section>
+
+    <!-- ---- TAB: AJUSTES ---- -->
+    <section id="tab-ajustes" class="tab">
+      <div class="card">
+        <h2>Tu usuario</h2>
+        <p id="ajustes-usuario-actual" class="muted small">—</p>
+        <button id="btn-cambiar-usuario" class="btn-secondary" style="margin-top:10px;">Cambiar de usuario</button>
+      </div>
+
+      <div class="card">
+        <h2>Socios</h2>
+        <div id="ajustes-socios-list" class="ajustes-socios-list"></div>
+      </div>
+
+      <div class="card">
+        <h2>Otras personas</h2>
+        <div id="ajustes-colaboradores-list" class="ajustes-socios-list"></div>
+        <p id="ajustes-colaboradores-empty" class="muted small hidden">No hay personas adicionales agregadas.</p>
+      </div>
+
+      <div class="card">
+        <h2>Estado de conexión</h2>
+        <p id="ajustes-conn-status" class="muted small"></p>
+      </div>
+
+      <div class="card">
+        <h2>Facturas guardadas</h2>
+        <p class="muted small">Las fotos de facturas se guardan 4 meses y después se borran solas (los gastos quedan siempre). Bajalas antes si querés conservarlas.</p>
+        <button id="btn-ver-fotos" class="btn-secondary">📷 Ver y descargar fotos</button>
+      </div>
+
+      <div class="card">
+        <h2>Instalar la app</h2>
+        <p class="muted small">Buscá la opción "Agregar a pantalla de inicio" o "Instalar app" en el menú de tu navegador para tenerla como una app normal.</p>
+        <button id="btn-install" class="btn-secondary hidden">Instalar ahora</button>
+      </div>
+
+      <div class="card">
+        <h2>Zona de riesgo</h2>
+        <button id="btn-reset" class="btn-danger">Desconectar este celular</button>
+        <p class="muted small">Esto no borra los gastos, solo la configuración guardada en este celular.</p>
+      </div>
+    </section>
+
+    <nav class="tabbar">
+      <button class="tabbtn active" data-tab="gastos">
+        <span class="tabicon">🧾</span><span>Gastos</span>
+      </button>
+      <button class="tabbtn" data-tab="balance">
+        <span class="tabicon">⚖️</span><span>Balance</span>
+      </button>
+      <button class="tabbtn" data-tab="ajustes">
+        <span class="tabicon">⚙️</span><span>Ajustes</span>
+      </button>
+    </nav>
+
+    <button id="fab-add" class="fab" aria-label="Agregar gasto">+</button>
+  </div>
+
+  <!-- ===== PANTALLA: FACTURADO ===== -->
+  <div id="screen-facturado" class="screen">
+
+    <header class="topbar">
+      <button id="btn-back-to-seccion-fact" class="topbar-title" aria-label="Volver a la sección">
+        <span class="topbar-back-arrow">←</span>
+        <span class="logo-badge small" id="facturado-icon-badge">$</span>
+        <span id="facturado-titulo">Facturado</span>
+      </button>
+      <div class="sync-dot" id="sync-dot-fact" title="Sincronizado"></div>
+    </header>
+
+    <section class="tab active">
+      <div class="stat-hero">
+        <div class="stat-hero-label">Facturado este mes</div>
+        <div class="stat-hero-value" id="facturado-total-mes">$0</div>
+      </div>
+
+      <div id="facturado-empty" class="empty-state hidden">
+        <p>Todavía no hay cierres cargados.</p>
+        <p class="muted small">Tocá el botón + para agregar el cierre de hoy.</p>
+      </div>
+
+      <ul id="facturado-list" class="expenses-list"></ul>
+    </section>
+
+    <button id="fab-add-facturado" class="fab" aria-label="Agregar cierre">+</button>
+  </div>
+
+  <!-- ===== PANTALLA: RESUMEN MENSUAL ===== -->
+  <div id="screen-resumen" class="screen">
+
+    <header class="topbar">
+      <button id="btn-back-to-seccion-resumen" class="topbar-title" aria-label="Volver a la sección">
+        <span class="topbar-back-arrow">←</span>
+        <span class="logo-badge small" id="resumen-icon-badge">$</span>
+        <span id="resumen-titulo">Resumen</span>
+      </button>
+    </header>
+
+    <section class="tab active">
+      <div class="month-nav">
+        <button id="btn-mes-anterior" class="month-nav-btn" aria-label="Mes anterior">‹</button>
+        <div class="month-nav-label" id="resumen-mes-label">Mes</div>
+        <button id="btn-mes-siguiente" class="month-nav-btn" aria-label="Mes siguiente">›</button>
+      </div>
+
+      <div class="stat-hero">
+        <div class="stat-hero-label">💰 Facturado</div>
+        <div class="stat-hero-value" id="resumen-total-facturado">$0</div>
+        <div class="stat-hero-sub" id="resumen-cant-facturado">0 cierres cargados</div>
+      </div>
+
+      <div class="stat-hero">
+        <div class="stat-hero-label">🧾 Gastos</div>
+        <div class="stat-hero-value" id="resumen-total-gastos">$0</div>
+        <div class="stat-hero-sub" id="resumen-cant-gastos">0 gastos cargados</div>
+      </div>
+
+      <h3 class="section-title">Gastos por categoría</h3>
+      <div id="resumen-categorias" class="socios-totales"></div>
+      <p id="resumen-categorias-empty" class="muted small hidden">No hay gastos cargados este mes.</p>
+    </section>
+
+  </div>
+
+  <!-- ===== PANTALLA: FOTOS GUARDADAS ===== -->
+  <div id="screen-fotos" class="screen">
+
+    <header class="topbar">
+      <button id="btn-back-to-ajustes" class="topbar-title" aria-label="Volver a Ajustes">
+        <span class="topbar-back-arrow">←</span>
+        <span id="fotos-titulo">Fotos guardadas</span>
+      </button>
+    </header>
+
+    <section class="tab active">
+      <p class="muted small" style="margin-bottom:16px;">Tocá una foto para abrirla en grande. Desde ahí, mantené el dedo presionado (o clic derecho en la compu) y elegí "Guardar imagen" para bajarla. Pasados los 4 meses se borran solas.</p>
+
+      <div id="fotos-empty" class="empty-state hidden">
+        <p>No hay fotos guardadas todavía.</p>
+      </div>
+
+      <div id="fotos-grupos"></div>
+    </section>
+
+  </div>
+
+  <!-- ===== MODAL: AGREGAR GASTO ===== -->
+  <div id="modal-add" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 id="modal-add-title">Nuevo gasto</h2>
+
+      <div class="field">
+        <label for="input-importe">Importe</label>
+        <input type="number" id="input-importe" inputmode="decimal" placeholder="0" min="0" step="0.01">
+      </div>
+
+      <div class="field">
+        <label for="input-descripcion">¿En qué se gastó?</label>
+        <input type="text" id="input-descripcion" placeholder="Ej: Compra de insumos" maxlength="80">
+      </div>
+
+      <div class="field">
+        <label for="input-categoria">Categoría</label>
+        <select id="input-categoria">
+          <option value="Insumos">Insumos</option>
+          <option value="Alquiler">Alquiler</option>
+          <option value="Servicios">Servicios</option>
+          <option value="Sueldos">Sueldos</option>
+          <option value="Marketing">Marketing</option>
+          <option value="Impuestos">Impuestos</option>
+          <option value="Otros">Otros</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>¿Quién pagó?</label>
+        <div id="pagador-options" class="pagador-options"></div>
+      </div>
+
+      <div class="field">
+        <label for="input-fecha">Fecha</label>
+        <input type="date" id="input-fecha">
+      </div>
+
+      <div class="field">
+        <label>Foto de la factura <span class="muted small">(opcional)</span></label>
+        <input type="file" id="input-foto" accept="image/*" capture="environment" class="hidden">
+        <button type="button" id="btn-elegir-foto" class="btn-secondary">📷 Agregar foto</button>
+        <div id="foto-preview-wrap" class="foto-preview-wrap hidden">
+          <img id="foto-preview-img" class="foto-preview-img" alt="Vista previa de la factura">
+          <button type="button" id="btn-quitar-foto" class="foto-remove-btn" aria-label="Quitar foto">×</button>
+        </div>
+        <p class="muted small" style="margin-top:6px;">Las fotos se guardan durante 4 meses y después se borran solas para no ocupar espacio (el gasto en sí queda para siempre).</p>
+      </div>
+
+      <p id="modal-error" class="error-text hidden"></p>
+
+      <div class="modal-actions">
+        <button id="btn-cancel-add" class="btn-secondary">Cancelar</button>
+        <button id="btn-save-add" class="btn-primary">Guardar gasto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: AGREGAR CIERRE DE FACTURADO ===== -->
+  <div id="modal-add-facturado" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 id="modal-fact-title">Nuevo cierre</h2>
+
+      <div class="field">
+        <label for="input-importe-fact">¿Cuánto se facturó?</label>
+        <input type="number" id="input-importe-fact" inputmode="decimal" placeholder="0" min="0" step="0.01">
+      </div>
+
+      <div class="field">
+        <label for="input-fecha-fact">Fecha del cierre</label>
+        <input type="date" id="input-fecha-fact">
+      </div>
+
+      <div class="field">
+        <label>¿Quién lo cargó?</label>
+        <div id="pagador-options-fact" class="pagador-options"></div>
+      </div>
+
+      <p id="modal-fact-error" class="error-text hidden"></p>
+
+      <div class="modal-actions">
+        <button id="btn-cancel-add-facturado" class="btn-secondary">Cancelar</button>
+        <button id="btn-save-facturado" class="btn-primary">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: PIN (identificación / creación de PIN) ===== -->
+  <div id="modal-pin" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 id="pin-modal-title">Ingresá tu PIN</h2>
+      <p id="pin-modal-sub" class="muted small" style="margin-top:-10px; margin-bottom:16px;"></p>
+
+      <div class="field">
+        <label for="pin-input-1" id="pin-label-1">PIN</label>
+        <input type="password" id="pin-input-1" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••">
+      </div>
+      <div class="field hidden" id="pin-field-2">
+        <label for="pin-input-2">Repetí el PIN</label>
+        <input type="password" id="pin-input-2" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••">
+      </div>
+
+      <p id="pin-error" class="error-text hidden"></p>
+
+      <div class="modal-actions">
+        <button id="btn-pin-cancel" class="btn-secondary">Cancelar</button>
+        <button id="btn-pin-confirm" class="btn-primary">Entrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
