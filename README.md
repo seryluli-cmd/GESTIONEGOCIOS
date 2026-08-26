@@ -58,14 +58,17 @@ seguridad que exigen autenticación anónima.
 - **`facturacion`** (colección) — un doc por cierre diario:
   `{ importe, registradoPor, negocio, fecha, creadoEn }`. Mismo patrón que
   `gastos`.
-- **`ideas`** (colección) — un doc por idea: `{ texto, estado, propuestoPor, creadoEn }`.
+- **`ideas`** (colección) — un doc por idea: `{ texto, estado, votos, propuestoPor, creadoEn }`.
   **A propósito NO tiene campo `negocio`** — son compartidas entre Pancho Recreo
   y Heladería Pablo, porque los 3 socios son dueños de ambos. `estado` es
-  `"pendiente"` o `"concretada"`. Cualquiera puede crear una idea y tildarla
-  como concretada (toggle libre, sin admin); solo el admin puede borrarla
-  (`deleteIdea()`). Tiene su **propia pantalla** (`screen-ideas`), accesible
-  desde un botón arriba de todo en `screen-negocio` — justamente porque no
-  depende de qué negocio estés mirando, no vive adentro de `screen-app`.
+  `"pendiente"` o `"concretada"`. `votos` es un array de nombres (como un
+  "me interesa" — `toggleVoto()` usa `arrayUnion`/`arrayRemove`); las
+  pendientes se ordenan por cantidad de votos, así se ve qué le importa más
+  al equipo sin que nadie decida solo. Cualquiera puede crear una idea,
+  votarla y tildarla como concretada (todo libre, sin admin); solo el admin
+  puede borrarla (`deleteIdea()`). Tiene su **propia pantalla** (`screen-ideas`),
+  accesible desde un botón arriba de todo en `screen-negocio` — justamente
+  porque no depende de qué negocio estés mirando, no vive adentro de `screen-app`.
 - **Storage**: fotos de facturas en `recibos/{negocio}/{timestamp}_{random}.jpg`.
   Se borran solas a los 4 meses (`FOTO_RETENCION_DIAS`) vía
   `limpiarFotosVencidas()` — **el gasto nunca se borra, solo la foto**.
@@ -156,6 +159,15 @@ comentario en el código). No tocar ese scoping sin entender por qué.
   previas (`getApps()` / `deleteApp()`) antes de reinicializar, porque el SDK
   tira `app/duplicate-app` si se llama `initializeApp` dos veces en la misma
   carga de página (pasa si el usuario reintenta conectar tras un error).
+
+## Exportar datos (CSV)
+
+En Ajustes → "Exportar datos", dos botones bajan los gastos y la
+facturación del negocio actualmente seleccionado como `.csv`
+(`exportGastosCSV()` / `exportFacturacionCSV()` en app.js) — se arma en el
+navegador con un `Blob` y se dispara la descarga con un `<a download>`
+temporal, sin ninguna librería. Lleva un BOM UTF-8 al principio para que
+Excel no rompa los acentos.
 
 ## Cómo probarlo en local
 

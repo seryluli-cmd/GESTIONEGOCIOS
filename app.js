@@ -41,6 +41,8 @@ async function loadFirebaseSdk() {
     setDoc: fsMod.setDoc,
     updateDoc: fsMod.updateDoc,
     deleteField: fsMod.deleteField,
+    arrayUnion: fsMod.arrayUnion,
+    arrayRemove: fsMod.arrayRemove,
     serverTimestamp: fsMod.serverTimestamp,
     enableIndexedDbPersistence: fsMod.enableIndexedDbPersistence,
     getStorage: stMod.getStorage,
@@ -447,6 +449,9 @@ function selectNegocio(id) {
   $("#resumen-icon-badge").textContent = biz.emoji;
   $("#resumen-icon-badge").style.background = biz.color;
 
+  // Ajustes → tarjeta "Exportar datos"
+  $("#export-negocio-nombre").textContent = biz.nombre;
+
   renderSeccionCards(biz);
   showScreen("screen-seccion");
 }
@@ -702,7 +707,12 @@ function renderFacturado() {
 function renderIdeas() {
   const total = ideas.length;
   const concretadas = ideas.filter(i => i.estado === "concretada");
-  const pendientes = ideas.filter(i => i.estado !== "concretada");
+  // Pendientes ordenadas por votos — así se ve de un vistazo qué le
+  // interesa más al equipo, sin que nadie tenga que decidir solo.
+  const pendientes = ideas
+    .filter(i => i.estado !== "concretada")
+    .slice()
+    .sort((a, b) => votosDe(b).length - votosDe(a).length);
 
   $("#ideas-empty").classList.toggle("hidden", total > 0);
 
@@ -722,9 +732,15 @@ function renderIdeas() {
   concretadas.forEach(i => concretadasEl.appendChild(ideaCard(i)));
 }
 
+function votosDe(idea) {
+  return Array.isArray(idea.votos) ? idea.votos : [];
+}
+
 function ideaCard(idea) {
   const done = idea.estado === "concretada";
   const fecha = fechaDeRegistro(idea);
+  const votos = votosDe(idea);
+  const voteado = usuarioActual && votos.includes(usuarioActual);
   const card = document.createElement("div");
   card.className = "idea-card";
   card.dataset.id = idea.id;
@@ -737,9 +753,26 @@ function ideaCard(idea) {
       <div class="idea-texto ${done ? "done" : ""}">${escapeHtml(idea.texto)}</div>
       <div class="idea-meta">Propuesto por ${escapeHtml(idea.propuestoPor || "?")} · ${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })}</div>
     </div>
+    <button type="button" class="idea-vote-btn ${voteado ? "voted" : ""}" data-id="${idea.id}" aria-label="Me interesa esta idea">🔥 ${votos.length}</button>
     ${deleteBtn}
   `;
   return card;
+}
+
+// Cualquiera puede votar/desvotar una idea pendiente (no admin) — así se ve
+// qué le importa más al equipo sin que nadie tenga que decidir por otro.
+async function toggleVoto(id) {
+  const idea = ideas.find(i => i.id === id);
+  if (!idea || !usuarioActual) return;
+  const yaVoto = votosDe(idea).includes(usuarioActual);
+  try {
+    await fbSdk.updateDoc(fbSdk.doc(db, "ideas", id), {
+      votos: yaVoto ? fbSdk.arrayRemove(usuarioActual) : fbSdk.arrayUnion(usuarioActual)
+    });
+  } catch (e) {
+    console.error(e);
+    showToast("No se pudo actualizar. Revisá tu conexión.");
+  }
 }
 
 // Cualquiera puede marcar/desmarcar una idea como concretada — sin admin,
@@ -795,6 +828,7 @@ async function saveIdea() {
     await fbSdk.addDoc(fbSdk.collection(db, "ideas"), {
       texto,
       estado: "pendiente",
+      votos: [],
       propuestoPor: usuarioActual,
       creadoEn: fbSdk.serverTimestamp()
     });
@@ -1152,6 +1186,59 @@ function renderAjustesSocios() {
   $("#ajustes-conn-status").textContent = auth && auth.currentUser
     ? "✅ Conectado — los gastos se sincronizan entre todos los celulares."
     : "⚠️ No conectado.";
+}
+
+// ---------- Exportar datos (CSV) ----------
+function csvEscape(value) {
+  const str = String(value ?? "");
+  return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+}
+
+function downloadCSV(filename, rows) {
+  const csv = rows.map(row => row.map(csvEscape).join(",")).join("\r\n");
+  // BOM al principio para que Excel detecte UTF-8 y no rompa los acentos.
+  const BOM = String.fromCharCode(0xFEFF);
+  const blob = new Blob([BOM + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportGastosCSV() {
+  const rows = [["Fecha", "Categoría", "Descripción", "Importe", "Pagado por"]];
+  gastosDelNegocio()
+    .slice()
+    .sort((a, b) => fechaDeRegistro(a) - fechaDeRegistro(b))
+    .forEach(g => {
+      rows.push([
+        fechaDeRegistro(g).toLocaleDateString("es-AR"),
+        g.categoria || "Otros",
+        g.descripcion || "",
+        Number(g.importe) || 0,
+        g.pagadoPor || ""
+      ]);
+    });
+  downloadCSV(`gastos-${negocioActual}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+}
+
+function exportFacturacionCSV() {
+  const rows = [["Fecha", "Importe", "Registrado por"]];
+  facturacionesDelNegocio()
+    .slice()
+    .sort((a, b) => fechaDeRegistro(a) - fechaDeRegistro(b))
+    .forEach(f => {
+      rows.push([
+        fechaDeRegistro(f).toLocaleDateString("es-AR"),
+        Number(f.importe) || 0,
+        f.registradoPor || ""
+      ]);
+    });
+  downloadCSV(`facturacion-${negocioActual}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
 }
 
 function setDefaultFecha() {
@@ -1562,6 +1649,8 @@ function wireEvents() {
   $("#modal-add").addEventListener("click", (e) => {
     if (e.target.id === "modal-add") closeModal();
   });
+  $("#btn-export-gastos").addEventListener("click", exportGastosCSV);
+  $("#btn-export-facturacion").addEventListener("click", exportFacturacionCSV);
   $("#btn-reset").addEventListener("click", resetLocalConfig);
   $("#btn-switch-negocio").addEventListener("click", volverASeccion);
   $("#btn-back-to-seccion-fact").addEventListener("click", volverASeccion);
@@ -1598,6 +1687,8 @@ function wireEvents() {
   const handleIdeaListClick = (e) => {
     const delBtn = e.target.closest(".idea-delete-btn");
     if (delBtn) { deleteIdea(delBtn.dataset.id); return; }
+    const voteBtn = e.target.closest(".idea-vote-btn");
+    if (voteBtn) { toggleVoto(voteBtn.dataset.id); return; }
     const card = e.target.closest(".idea-card");
     if (card) toggleIdeaEstado(card.dataset.id);
   };
