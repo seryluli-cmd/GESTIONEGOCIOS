@@ -70,6 +70,18 @@ const NEGOCIOS = [
   { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)" }
 ];
 
+// Reparto de gastos entre los 3 socios: NO es igualitario (1/3 cada uno)
+// — cada uno "debería" poner este % del total de lo gastado, según lo
+// acordado entre ellos. Si el nombre de algún socio en Firestore no
+// coincide exactamente con los de acá (typo, socio nuevo, etc.),
+// renderBalance() se cae a reparto igualitario como antes, en vez de
+// calcular un porcentaje a medias con el resto sin cubrir.
+const PORCENTAJE_SOCIO = {
+  "Sergio": 0.10,
+  "Pola": 0.10,
+  "Leonel": 0.80,
+};
+
 let fbApp = null, auth = null, db = null, storage = null;
 let selectedFotoBlob = null; // foto comprimida, lista para subir (modal Nuevo gasto)
 const FOTO_RETENCION_DIAS = 120; // ~4 meses — pasado esto, se borra sola la foto (no el gasto)
@@ -1020,10 +1032,16 @@ function renderBalance() {
     totalesEl.appendChild(card);
   });
 
-  // Deudas: cada socio "debería" haber puesto total/n
-  const fairShare = total / socios.length;
+  // Deudas: cada socio "debería" haber puesto su % de PORCENTAJE_SOCIO
+  // sobre el total (ver esa constante) — si por algún motivo los nombres
+  // actuales de Firestore no calzan exactamente con ese mapa, se cae a
+  // reparto igualitario (total/n) en vez de calcular un porcentaje mal.
+  const usaPorcentajes = socios.every(nombre => nombre in PORCENTAJE_SOCIO);
+  const fairShares = usaPorcentajes
+    ? socios.map(nombre => total * PORCENTAJE_SOCIO[nombre])
+    : socios.map(() => total / socios.length);
   const balances = socios.map((nombre, idx) => ({
-    nombre, idx, balance: porSocio[idx] - fairShare
+    nombre, idx, balance: porSocio[idx] - fairShares[idx]
   }));
 
   const settlements = computeSettlements(balances);
