@@ -174,12 +174,19 @@ input:focus, select:focus, textarea:focus {
 
 .colaborador-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 10px;
   align-items: center;
 }
 .colaborador-row input { flex: 1; }
+/* order empuja el selector después del botón "×" en el orden visual, y
+   flex: 1 1 100% lo fuerza a su propia línea de abajo — así el nombre y
+   el "×" quedan juntos arriba (como antes de agregar el selector) y el
+   selector no compite por ancho en la misma fila en un celular angosto. */
+.colaborador-row select { order: 3; flex: 1 1 100%; font-size: 12.5px; }
 .colaborador-remove {
+  order: 2;
   width: 40px; height: 40px;
   flex-shrink: 0;
   border-radius: 10px;
@@ -419,7 +426,9 @@ input:focus, select:focus, textarea:focus {
 .settlements-empty { color: var(--text-secondary); font-size: 14px; padding: 8px 2px; }
 
 .ajustes-socios-list { display: flex; flex-direction: column; gap: 10px; }
-.ajustes-socio-row { display: flex; align-items: center; gap: 10px; font-size: 14.5px; }
+.ajustes-socio-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 14.5px; }
+.colaborador-negocio-tag { margin-left: auto; font-size: 12.5px; }
+select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
 
 .tabbar {
   position: fixed; bottom: 0; left: 0; right: 0;

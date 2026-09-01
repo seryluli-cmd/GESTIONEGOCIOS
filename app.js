@@ -100,6 +100,9 @@ const FOTO_RETENCION_DIAS = 120; // ~4 meses — pasado esto, se borra sola la f
 let fotosLimpiezaHecha = false;
 let socios = [];           // ["Sergio", "Ana", "Marcos"] — los 3 socios, entran en el reparto
 let colaboradores = [];    // ["Encargada"] — pueden pagar/cargar, NO entran en el reparto
+let colaboradorNegocio = {}; // { "Encargada": "pancho" | "heladeria" } — si un colaborador no
+                              // aparece acá, ve los 2 negocios (ver negociosPermitidos()). Los
+                              // 3 socios siempre ven los 2, nunca están en este mapa.
 let admins = [];           // subconjunto de nombres (normalmente socios) con permiso para editar/borrar
 let pins = {};             // { "Sergio": "1234", ... } — PIN fijo de 4 dígitos por persona (ver README: no es seguridad real, solo identificación)
 let gastos = [];           // TODOS los gastos, de los 2 negocios — [{id, importe, descripcion, categoria, pagadoPor, fecha, negocio}]
@@ -268,6 +271,7 @@ async function connectAndBoot(config, namesFromInput, colabFromInput) {
     const data = snap.data();
     socios = data.socios;
     colaboradores = Array.isArray(data.colaboradores) ? data.colaboradores : [];
+    colaboradorNegocio = data.colaboradorNegocio && typeof data.colaboradorNegocio === "object" ? data.colaboradorNegocio : {};
     admins = Array.isArray(data.admins) ? data.admins : [];
     pins = data.pins && typeof data.pins === "object" ? data.pins : {};
   } else {
@@ -276,9 +280,10 @@ async function connectAndBoot(config, namesFromInput, colabFromInput) {
     }
     socios = namesFromInput.map(n => n.trim());
     colaboradores = (colabFromInput || []).map(n => n.trim()).filter(Boolean);
+    colaboradorNegocio = {};
     admins = [];
     pins = {};
-    await sdk.setDoc(socioDocRef, { socios, colaboradores, admins, pins });
+    await sdk.setDoc(socioDocRef, { socios, colaboradores, colaboradorNegocio, admins, pins });
   }
 
   localStorage.setItem(LS_CONFIG_KEY, JSON.stringify(config));
@@ -313,7 +318,7 @@ function resumeSession() {
   const savedUser = localStorage.getItem(LS_USER_KEY);
   if (savedUser && allPagadores().includes(savedUser)) {
     setUsuarioActual(savedUser);
-    showScreen("screen-negocio");
+    irANegocioOSeleccion();
   } else {
     renderQuienSosCards();
     showScreen("screen-quien-sos");
@@ -325,9 +330,33 @@ function setUsuarioActual(nombre) {
   esAdmin = admins.includes(nombre);
   localStorage.setItem(LS_USER_KEY, nombre);
   renderAjustesSocios();
+  renderNegocioCards();
   renderGastos();
   renderFacturado();
   renderIdeas();
+}
+
+// Negocios que puede ver una persona: los 3 socios siempre ven los 2
+// (reparten gastos entre ambos negocios); un colaborador ve solo el que
+// tiene asignado en colaboradorNegocio — si no tiene nada asignado
+// todavía, también ve los 2 (para no dejarlo sin acceso por default).
+function negociosPermitidos(nombre) {
+  if (socios.includes(nombre)) return NEGOCIOS.map(b => b.id);
+  const asignado = colaboradorNegocio[nombre];
+  return NEGOCIOS.some(b => b.id === asignado) ? [asignado] : NEGOCIOS.map(b => b.id);
+}
+
+// Se llama después de identificarse (PIN nuevo, PIN verificado, o sesión
+// recordada). Si la persona solo puede ver un negocio, se saltea
+// directo la pantalla "¿Qué negocio querés ver?" y entra a ese — no
+// tiene sentido mostrarle un selector con una sola opción.
+function irANegocioOSeleccion() {
+  const permitidos = negociosPermitidos(usuarioActual);
+  if (permitidos.length === 1) {
+    selectNegocio(permitidos[0]);
+  } else {
+    showScreen("screen-negocio");
+  }
 }
 
 function cambiarUsuario() {
@@ -405,7 +434,7 @@ async function confirmPinModal() {
     const nombre = pinFlowNombre;
     closePinModal();
     setUsuarioActual(nombre);
-    showScreen("screen-negocio");
+    irANegocioOSeleccion();
     return;
   }
 
@@ -427,7 +456,7 @@ async function confirmPinModal() {
     const nombre = pinFlowNombre;
     closePinModal();
     setUsuarioActual(nombre);
-    showScreen("screen-negocio");
+    irANegocioOSeleccion();
   } catch (e) {
     console.error(e);
     errEl.textContent = "No se pudo guardar el PIN. Revisá tu conexión.";
@@ -441,7 +470,11 @@ async function confirmPinModal() {
 function renderNegocioCards() {
   const wrap = $("#negocio-cards");
   wrap.innerHTML = "";
-  NEGOCIOS.forEach(biz => {
+  // Antes de identificarse todavía no hay a quién filtrarle la lista —
+  // se muestran los 2 (este primer render se pisa apenas alguien se
+  // identifica, ver setUsuarioActual()).
+  const permitidos = usuarioActual ? negociosPermitidos(usuarioActual) : NEGOCIOS.map(b => b.id);
+  NEGOCIOS.filter(biz => permitidos.includes(biz.id)).forEach(biz => {
     const card = document.createElement("div");
     card.className = "negocio-card";
     card.style.setProperty("--biz-color", biz.color);
@@ -489,6 +522,10 @@ function renderSeccionCards(biz) {
   $("#seccion-negocio-nombre").textContent = biz.nombre;
   $("#seccion-icon-badge").textContent = biz.emoji;
   $("#seccion-icon-badge").style.background = biz.color;
+  // Si la persona solo puede ver este negocio, "← Cambiar negocio" no
+  // tiene a dónde llevarla — se oculta en vez de mostrar un selector
+  // con una sola opción sin sentido.
+  $("#btn-back-to-negocio").classList.toggle("hidden", negociosPermitidos(usuarioActual).length <= 1);
 
   const SECCIONES = [
     { id: "gastos", emoji: "🧾", nombre: "Gastos", sub: "Cargar gastos y ver el balance entre socios" },
@@ -569,6 +606,7 @@ function listenSocios() {
       const data = snap.data();
       socios = data.socios;
       colaboradores = Array.isArray(data.colaboradores) ? data.colaboradores : [];
+      colaboradorNegocio = data.colaboradorNegocio && typeof data.colaboradorNegocio === "object" ? data.colaboradorNegocio : {};
       admins = Array.isArray(data.admins) ? data.admins : [];
       pins = data.pins && typeof data.pins === "object" ? data.pins : {};
       localStorage.setItem(LS_SOCIOS_CACHE, JSON.stringify(socios));
@@ -577,6 +615,7 @@ function listenSocios() {
       renderPagadorChips();
       renderPagadorChipsFacturado();
       renderAjustesSocios();
+      renderNegocioCards();
       renderBalance();
       renderGastos();
       renderFacturado();
@@ -1231,7 +1270,18 @@ function renderAjustesSocios() {
     colaboradores.forEach((nombre) => {
       const row = document.createElement("div");
       row.className = "ajustes-socio-row";
+      const asignado = colaboradorNegocio[nombre];
+      // Solo el admin puede reasignar a qué negocio ve cada colaborador
+      // (mismo criterio que editar/borrar gastos y cierres). El resto
+      // solo ve el negocio asignado como texto, informativo.
+      const negocioControl = esAdmin
+        ? `<select class="colaborador-negocio-select colaborador-negocio-tag" data-nombre="${escapeHtml(nombre)}" title="¿Qué negocio puede ver ${escapeHtml(nombre)}?">
+             <option value="">Ambos negocios</option>
+             ${NEGOCIOS.map(biz => `<option value="${biz.id}" ${asignado === biz.id ? "selected" : ""}>${escapeHtml(biz.nombre)}</option>`).join("")}
+           </select>`
+        : `<span class="muted small colaborador-negocio-tag">${asignado ? escapeHtml(NEGOCIOS.find(b => b.id === asignado)?.nombre || asignado) : "Ambos negocios"}</span>`;
       row.innerHTML = `<span class="socio-dot" style="background:${NEUTRAL_VAR}"></span> ${escapeHtml(nombre)}`;
+      row.insertAdjacentHTML("beforeend", negocioControl);
       colabWrap.appendChild(row);
     });
   } else {
@@ -1561,22 +1611,32 @@ function switchTab(name) {
 }
 
 // ---------- Setup screen ----------
-function addColaboradorRow(value) {
+function addColaboradorRow(value, negocioAsignado) {
   const list = $("#colaboradores-list");
   const row = document.createElement("div");
   row.className = "colaborador-row";
+  const opciones = `<option value="">Ambos negocios</option>` + NEGOCIOS.map(biz =>
+    `<option value="${biz.id}" ${negocioAsignado === biz.id ? "selected" : ""}>${escapeHtml(biz.nombre)}</option>`
+  ).join("");
   row.innerHTML = `
     <input type="text" class="colaborador-input" placeholder="Ej: Encargada" maxlength="30" value="${escapeHtml(value || "")}">
+    <select class="colaborador-negocio-input" title="¿Qué negocio puede ver esta persona?">${opciones}</select>
     <button type="button" class="colaborador-remove" aria-label="Quitar">×</button>
   `;
   row.querySelector(".colaborador-remove").addEventListener("click", () => row.remove());
   list.appendChild(row);
 }
 
+// Nombres + el negocio asignado a cada uno (o "" si eligieron "Ambos
+// negocios") — se arma acá el mapa colaboradorNegocio que se guarda en
+// Firestore (ver handleSetupGuardar).
 function getColaboradorInputs() {
-  return Array.from($$(".colaborador-input"))
-    .map(el => el.value.trim())
-    .filter(Boolean);
+  return Array.from($$(".colaborador-row"))
+    .map(row => ({
+      nombre: row.querySelector(".colaborador-input").value.trim(),
+      negocio: row.querySelector(".colaborador-negocio-input").value
+    }))
+    .filter(c => c.nombre);
 }
 
 // Guarda config + socios en este navegador y entra a la app.
@@ -1610,6 +1670,7 @@ async function handleSetupConnect() {
       const data = snap.data();
       socios = data.socios;
       colaboradores = Array.isArray(data.colaboradores) ? data.colaboradores : [];
+      colaboradorNegocio = data.colaboradorNegocio && typeof data.colaboradorNegocio === "object" ? data.colaboradorNegocio : {};
       admins = Array.isArray(data.admins) ? data.admins : [];
       pins = data.pins && typeof data.pins === "object" ? data.pins : {};
       statusEl.textContent = "";
@@ -1644,17 +1705,19 @@ async function handleSetupGuardar() {
     errEl.classList.remove("hidden");
     return;
   }
-  const colabNames = getColaboradorInputs();
+  const colabInputs = getColaboradorInputs();
   const adminFlags = [$("#socio1-admin").checked, $("#socio2-admin").checked, $("#socio3-admin").checked];
 
   btn.disabled = true;
   try {
     const socioDocRef = fbSdk.doc(db, "config", "socios");
     socios = names.map(n => n.trim());
-    colaboradores = colabNames;
+    colaboradores = colabInputs.map(c => c.nombre);
+    colaboradorNegocio = {};
+    colabInputs.forEach(c => { if (c.negocio) colaboradorNegocio[c.nombre] = c.negocio; });
     admins = socios.filter((_, idx) => adminFlags[idx]);
     pins = {};
-    await fbSdk.setDoc(socioDocRef, { socios, colaboradores, admins, pins });
+    await fbSdk.setDoc(socioDocRef, { socios, colaboradores, colaboradorNegocio, admins, pins });
     await finalizeSetup(pendingFirebaseConfig);
   } catch (e) {
     console.error(e);
@@ -1816,6 +1879,26 @@ function wireEvents() {
   $("#btn-back-to-ajustes").addEventListener("click", () => {
     switchTab("ajustes");
     showScreen("screen-app");
+  });
+
+  // Reasignar a qué negocio ve un colaborador, desde Ajustes (solo se
+  // renderiza el <select> para el admin — ver renderAjustesSocios()).
+  $("#ajustes-colaboradores-list").addEventListener("change", async (e) => {
+    const select = e.target.closest(".colaborador-negocio-select");
+    if (!select) return;
+    const nombre = select.dataset.nombre;
+    const valor = select.value;
+    try {
+      await fbSdk.updateDoc(fbSdk.doc(db, "config", "socios"), {
+        [`colaboradorNegocio.${nombre}`]: valor
+      });
+      colaboradorNegocio[nombre] = valor;
+      showToast(`${nombre} → ${valor ? NEGOCIOS.find(b => b.id === valor).nombre : "Ambos negocios"}`);
+    } catch (err) {
+      console.error(err);
+      showToast("No se pudo guardar. Revisá tu conexión.");
+      renderAjustesSocios(); // vuelve a dejar el <select> como estaba en la base
+    }
   });
 }
 

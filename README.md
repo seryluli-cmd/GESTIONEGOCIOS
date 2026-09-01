@@ -46,10 +46,12 @@ credenciales públicas del proyecto (`firebaseConfig`), protegido por reglas de
 seguridad que exigen autenticación anónima.
 
 - **`config/socios`** (un solo documento) —
-  `{ socios: [string, string, string], colaboradores: string[], admins: string[], pins: { [nombre]: "1234" } }`.
+  `{ socios: [string, string, string], colaboradores: string[], colaboradorNegocio: { [nombre]: "pancho"|"heladeria" }, admins: string[], pins: { [nombre]: "1234" } }`.
   Se crea una única vez, la primera vez que alguien conecta el negocio (ver
   `handleSetupGuardar`). El resto de los dispositivos lo leen y ya no lo
   vuelven a pedir. `admins` y `pins` se explican en la sección de abajo.
+  `colaboradorNegocio` se explica en "Acceso restringido por negocio" más
+  abajo — un colaborador que no aparece ahí ve los 2 negocios.
 - **`gastos`** (colección) — un doc por gasto:
   `{ importe, descripcion, categoria, pagadoPor, negocio, fecha, creadoEn, fotoUrl?, fotoPath? }`.
   `negocio` es `"pancho"` o `"heladeria"` (ver `NEGOCIOS` en app.js) — **ambos
@@ -122,6 +124,32 @@ usa cada celular y decidir qué botones mostrar — no para proteger los datos
 de alguien mal intencionado con acceso a la config. Si eso llega a hacer
 falta, hay que migrar a Firebase Auth con cuentas reales + reglas de
 Firestore por rol.
+
+## Acceso restringido por negocio (solo colaboradores)
+
+Los 3 **socios** siempre ven los 2 negocios — reparten gastos entre ambos
+(ver "Reparto de deudas" más abajo), así que nunca se les restringe nada.
+
+Un **colaborador** (ej. la encargada de un local puntual) puede quedar
+atado a un solo negocio: `colaboradorNegocio[nombre]` guarda `"pancho"` o
+`"heladeria"`. Si no aparece ahí (o el valor no matchea un id de
+`NEGOCIOS`), ve los 2 — es el default seguro para no dejar a nadie sin
+acceso por accidente (ej. colaboradores creados antes de que existiera
+este campo).
+
+- **`negociosPermitidos(nombre)`** — decide qué negocios puede ver esa
+  persona; lo usan `renderNegocioCards()` (filtra las tarjetas de
+  "¿Qué negocio querés ver?"), `renderSeccionCards()` (oculta "← Cambiar
+  negocio" si solo tiene uno permitido) e `irANegocioOSeleccion()`
+  (saltea directo a `selectNegocio()` sin mostrar el selector si la
+  persona solo tiene un negocio permitido — se llama después de
+  identificarse, en vez del `showScreen("screen-negocio")` de antes).
+- **Se asigna en dos lugares**: al agregar colaboradores en el setup
+  inicial (`addColaboradorRow()`, un `<select>` por fila) o después,
+  desde **Ajustes → "Otras personas"** — ahí el admin ve un `<select>`
+  editable por colaborador (el resto de las personas solo ve el nombre
+  del negocio como texto). Cambiar el `<select>` de Ajustes guarda al
+  toque con `updateDoc` sobre `colaboradorNegocio.${nombre}`.
 
 ## Navegación de pantallas
 
