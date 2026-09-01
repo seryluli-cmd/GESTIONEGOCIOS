@@ -123,6 +123,8 @@ let pendingFirebaseConfig = null; // config guardada entre el paso 1 y 2 del set
 let usuarioActual = null;  // nombre con el que se identificó este celular (ver resumeSession)
 let esAdmin = false;       // usuarioActual ∈ admins
 let editingGastoId = null;      // id del gasto que se está editando en el modal, o null si es uno nuevo
+let selectedFormaPago = "efectivo"; // "efectivo" | "digital" | "mixto" — elegido en el modal de gasto
+let mixtoUltimoEditado = null;  // "efectivo" | "digital" | null — cuál de los 2 campos del desglose se tipeó a mano por última vez (el otro se recalcula solo)
 let editingCierreId = null;     // id del cierre que se está editando en el modal, o null si es uno nuevo
 let pinFlowNombre = null;  // nombre para el que está abierto el modal de PIN
 let pinFlowMode = null;    // "create" (todavía no tiene PIN) | "verify" (ya tiene uno)
@@ -780,13 +782,16 @@ function renderGastos() {
     // fila queda en rojo hasta que se destilde desde "Editar".
     const metaFaltaAbonar = g.faltaAbonar ? ` · <span class="meta-falta-abonar">⚠️ Falta abonar</span>` : "";
 
+    const notaHtml = g.nota ? `<div class="meta gasto-nota">📝 ${escapeHtml(g.nota)}</div>` : "";
+
     const li = document.createElement("li");
     li.className = "expense-item" + (g.faltaAbonar ? " falta-abonar" : "");
     li.innerHTML = `
       <div class="avatar" style="background:${payerColorVar(g.pagadoPor)}">${socioInitial(g.pagadoPor)}</div>
       <div class="info">
         <div class="desc">${escapeHtml(g.descripcion || "Sin descripción")}</div>
-        <div class="meta">${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · ${escapeHtml(g.categoria || "Otros")} · Pagó ${escapeHtml(g.pagadoPor || "?")}${metaFaltaAbonar}</div>
+        <div class="meta">${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · ${escapeHtml(g.categoria || "Otros")} · Pagó ${escapeHtml(g.pagadoPor || "?")} · ${formaPagoLabel(g)}${metaFaltaAbonar}</div>
+        ${notaHtml}
       </div>
       <div class="amount">${money(g.importe)}</div>
       ${fotoBtn}
@@ -796,6 +801,14 @@ function renderGastos() {
   });
 
   $("#total-mes").textContent = money(totalMes);
+}
+
+// Gastos cargados antes de que existiera "forma de pago" no tienen el
+// campo — se muestran como Efectivo por default.
+function formaPagoLabel(g) {
+  if (g.formaPago === "digital") return "💳 Digital";
+  if (g.formaPago === "mixto") return `🔀 ${money(g.montoDigital)} digital · ${money(g.montoEfectivo)} efectivo`;
+  return "💵 Efectivo";
 }
 
 // Todo texto que viene de Firestore (descripción, nombres) pasa por acá antes
@@ -1500,7 +1513,7 @@ function downloadCSV(filename, rows) {
 }
 
 function exportGastosCSV() {
-  const rows = [["Fecha", "Categoría", "Descripción", "Importe", "Pagado por"]];
+  const rows = [["Fecha", "Categoría", "Descripción", "Importe", "Pagado por", "Forma de pago", "Efectivo", "Digital", "Nota"]];
   gastosDelNegocio()
     .slice()
     .sort((a, b) => fechaDeRegistro(a) - fechaDeRegistro(b))
@@ -1510,7 +1523,11 @@ function exportGastosCSV() {
         g.categoria || "Otros",
         g.descripcion || "",
         Number(g.importe) || 0,
-        g.pagadoPor || ""
+        g.pagadoPor || "",
+        g.formaPago || "efectivo",
+        g.formaPago === "mixto" ? Number(g.montoEfectivo) || 0 : "",
+        g.formaPago === "mixto" ? Number(g.montoDigital) || 0 : "",
+        g.nota || ""
       ]);
     });
   downloadCSV(`gastos-${negocioActual}-${fechaLocalISO()}.csv`, rows);
@@ -1566,6 +1583,39 @@ function renderCategoriaOptions() {
 
 // Sin argumento: alta de un gasto nuevo. Con un gasto existente: edición
 // (solo accesible para el admin, ver botón ✏️ en renderGastos).
+// Forma de pago del gasto: Efectivo, Digital, o Mixto. Solo Mixto muestra
+// el desglose Efectivo/Digital, que debe sumar el Importe total.
+function selectFormaPago(forma) {
+  selectedFormaPago = forma;
+  $$("#forma-pago-options .pagador-chip").forEach(c => c.classList.toggle("selected", c.dataset.forma === forma));
+  $("#campo-mixto").classList.toggle("hidden", forma !== "mixto");
+  if (forma !== "mixto") mixtoUltimoEditado = null;
+}
+
+// Cálculo cruzado del desglose Mixto: al tipear en Efectivo o Digital, el
+// otro se completa solo para que sume el Importe (mismo criterio que el
+// desglose Total/Efectivo/Digital de Facturado más abajo, pero acá el
+// "total" ya es el campo Importe que está siempre visible arriba).
+function registrarEdicionMixto(campo) {
+  mixtoUltimoEditado = campo;
+  calcularCampoMixtoFaltante();
+}
+
+function calcularCampoMixtoFaltante() {
+  if (!mixtoUltimoEditado) return;
+  const importe = parseFloat($("#input-importe").value);
+  if (!Number.isFinite(importe)) return;
+  if (mixtoUltimoEditado === "efectivo") {
+    const efectivo = parseFloat($("#input-mixto-efectivo").value);
+    if (!Number.isFinite(efectivo)) return;
+    $("#input-mixto-digital").value = Math.round((importe - efectivo) * 100) / 100;
+  } else {
+    const digital = parseFloat($("#input-mixto-digital").value);
+    if (!Number.isFinite(digital)) return;
+    $("#input-mixto-efectivo").value = Math.round((importe - digital) * 100) / 100;
+  }
+}
+
 function openModal(gasto) {
   editingGastoId = gasto ? gasto.id : null;
   // Gasto nuevo: se registra directo a nombre de quien está logueado en
@@ -1582,6 +1632,16 @@ function openModal(gasto) {
   $("#input-descripcion").value = gasto ? (gasto.descripcion || "") : "";
   $("#input-categoria").value = gasto ? (gasto.categoria || categoriaPorDefecto) : categoriaPorDefecto;
   $("#input-falta-abonar").checked = gasto ? !!gasto.faltaAbonar : false;
+  $("#input-nota").value = gasto ? (gasto.nota || "") : "";
+
+  // Gastos cargados antes de que existiera "forma de pago" no tienen el
+  // campo guardado — se muestran como Efectivo por default (no se puede
+  // inventar cómo se pagaron los viejos).
+  mixtoUltimoEditado = null;
+  $("#input-mixto-efectivo").value = gasto && gasto.montoEfectivo != null ? gasto.montoEfectivo : "";
+  $("#input-mixto-digital").value = gasto && gasto.montoDigital != null ? gasto.montoDigital : "";
+  selectFormaPago(gasto ? (gasto.formaPago || "efectivo") : "efectivo");
+
   if (gasto) {
     $("#input-fecha").value = fechaLocalISO(fechaDeRegistro(gasto));
   } else {
@@ -1591,7 +1651,7 @@ function openModal(gasto) {
 
   $("#modal-add-title").textContent = gasto ? "Editar gasto" : "Nuevo gasto";
   $("#btn-save-add").textContent = gasto ? "Guardar cambios" : "Guardar gasto";
-  $$(".pagador-chip").forEach(c => c.classList.toggle("selected", c.textContent === selectedPagador));
+  $$("#pagador-options .pagador-chip").forEach(c => c.classList.toggle("selected", c.textContent === selectedPagador));
   $("#modal-error").classList.add("hidden");
   $("#modal-add").classList.add("active");
   setTimeout(() => $("#input-importe").focus(), 150);
@@ -1606,6 +1666,7 @@ async function saveGasto() {
   const importe = parseFloat($("#input-importe").value);
   const descripcion = $("#input-descripcion").value.trim();
   const categoria = $("#input-categoria").value;
+  const nota = $("#input-nota").value.trim();
   const fechaStr = $("#input-fecha").value;
   const errEl = $("#modal-error");
 
@@ -1623,6 +1684,22 @@ async function saveGasto() {
     errEl.textContent = "Elegí quién pagó.";
     errEl.classList.remove("hidden");
     return;
+  }
+
+  let montoEfectivo = null, montoDigital = null;
+  if (selectedFormaPago === "mixto") {
+    montoEfectivo = parseFloat($("#input-mixto-efectivo").value);
+    montoDigital = parseFloat($("#input-mixto-digital").value);
+    if (!Number.isFinite(montoEfectivo) || !Number.isFinite(montoDigital) || montoEfectivo < 0 || montoDigital < 0) {
+      errEl.textContent = "Completá el desglose Efectivo y Digital.";
+      errEl.classList.remove("hidden");
+      return;
+    }
+    if (Math.abs((montoEfectivo + montoDigital) - importe) > 0.01) {
+      errEl.textContent = "Efectivo + Digital debe sumar el Importe total.";
+      errEl.classList.remove("hidden");
+      return;
+    }
   }
 
   const btn = $("#btn-save-add");
@@ -1658,11 +1735,24 @@ async function saveGasto() {
       importe,
       descripcion,
       categoria,
+      nota,
       pagadoPor: selectedPagador,
       negocio: negocioActual,
       faltaAbonar: $("#input-falta-abonar").checked,
-      fecha: fechaStr ? new Date(fechaStr + "T12:00:00") : fbSdk.serverTimestamp()
+      fecha: fechaStr ? new Date(fechaStr + "T12:00:00") : fbSdk.serverTimestamp(),
+      formaPago: selectedFormaPago
     };
+    // montoEfectivo/montoDigital solo existen si es Mixto — si se edita un
+    // gasto y se cambia a Efectivo/Digital "puro", hay que borrar el
+    // desglose viejo explícitamente (updateDoc no toca campos que no se
+    // le pasan, así que quedaría un desglose stale sin esto).
+    if (selectedFormaPago === "mixto") {
+      gastoData.montoEfectivo = montoEfectivo;
+      gastoData.montoDigital = montoDigital;
+    } else if (isEdit) {
+      gastoData.montoEfectivo = fbSdk.deleteField();
+      gastoData.montoDigital = fbSdk.deleteField();
+    }
     // Solo se tocan fotoUrl/fotoPath si se eligió una foto nueva — al editar,
     // updateDoc no toca los campos que no se le pasan, así que la foto
     // existente queda intacta si no se cambia.
@@ -2068,6 +2158,12 @@ function wireEvents() {
   $("#modal-add").addEventListener("click", (e) => {
     if (e.target.id === "modal-add") closeModal();
   });
+  $$("#forma-pago-options .pagador-chip").forEach(chip => {
+    chip.addEventListener("click", () => selectFormaPago(chip.dataset.forma));
+  });
+  $("#input-mixto-efectivo").addEventListener("input", () => registrarEdicionMixto("efectivo"));
+  $("#input-mixto-digital").addEventListener("input", () => registrarEdicionMixto("digital"));
+  $("#input-importe").addEventListener("input", calcularCampoMixtoFaltante);
   $("#btn-gastos-mes-anterior").addEventListener("click", () => {
     gastosMesOffset--;
     renderGastos();

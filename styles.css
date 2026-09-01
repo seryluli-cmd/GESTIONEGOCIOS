@@ -393,6 +393,7 @@ input:focus, select:focus, textarea:focus {
 .expense-item .info { flex: 1; min-width: 0; }
 .expense-item .desc { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .expense-item .meta { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
+.expense-item .gasto-nota { font-style: italic; }
 .expense-item .amount { font-weight: 700; font-size: 15.5px; font-variant-numeric: proportional-nums; white-space: nowrap; }
 
 /* Gasto con "Falta abonar" tildado — se destaca en rojo hasta que se
@@ -525,6 +526,14 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
 }
 .pagador-chip.selected::before {
   content: "✓ ";
+}
+
+.mixto-row {
+  display: flex;
+  gap: 10px;
+}
+.mixto-row > div {
+  flex: 1;
 }
 
 /* ===== Foto de factura (modal Nuevo gasto) ===== */
