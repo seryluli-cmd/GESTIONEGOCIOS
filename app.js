@@ -1691,9 +1691,12 @@ function calcularCampoFaltanteFacturado() {
 // (solo admin, ver botón ✏️ en renderFacturado).
 function openModalFacturado(cierre) {
   editingCierreId = cierre ? cierre.id : null;
-  selectedRegistrador = cierre
-    ? cierre.registradoPor
-    : (allPagadores().includes(usuarioActual) ? usuarioActual : null);
+  // Cierre nuevo: se registra directo a nombre de quien está logueado
+  // (mismo criterio que "Nuevo gasto" — ver openModal()) — el selector
+  // de chips solo se muestra al EDITAR un cierre ya cargado (admin-only),
+  // por si hace falta corregir quién lo cargó en realidad.
+  selectedRegistrador = cierre ? cierre.registradoPor : usuarioActual;
+  $("#campo-registrador").classList.toggle("hidden", !cierre);
 
   $("#input-importe-fact").value = cierre ? cierre.importe : "";
   // Cierres cargados ANTES de que existiera el desglose Efectivo/Digital
