@@ -128,22 +128,11 @@
       <h1>¿Qué negocio querés ver?</h1>
       <p class="muted">Los gastos y el balance se llevan por separado para cada uno.</p>
 
-      <!-- Ideas es compartida entre los 2 negocios, por eso vive acá arriba
-           y no adentro de la sección de un negocio puntual. -->
-      <button type="button" id="btn-ideas-main" class="negocio-card idea-negocio-card">
-        <div class="negocio-emoji">💡</div>
-        <div class="negocio-info">
-          <div class="negocio-nombre">Ideas/Metas</div>
-          <div class="negocio-sub">Para mejorar el negocio — entre los 3 socios</div>
-        </div>
-      </button>
-
-      <p class="muted small" style="margin:18px 0 10px;">O elegí un negocio:</p>
       <div id="negocio-cards" class="negocio-cards"></div>
     </div>
   </div>
 
-  <!-- ===== PANTALLA: IDEAS (compartida entre los 2 negocios) ===== -->
+  <!-- ===== PANTALLA: IDEAS (propias de cada negocio) ===== -->
   <div id="screen-ideas" class="screen">
 
     <header class="topbar">
@@ -420,9 +409,13 @@
         </select>
       </div>
 
-      <div class="field">
+      <div class="field" id="campo-pagador">
         <label>¿Quién pagó?</label>
         <div id="pagador-options" class="pagador-options"></div>
+      </div>
+
+      <div class="field">
+        <label class="checkbox-label"><input type="checkbox" id="input-falta-abonar"> ⚠️ Falta abonar</label>
       </div>
 
       <div class="field">

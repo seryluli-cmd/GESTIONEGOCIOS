@@ -70,6 +70,18 @@ const NEGOCIOS = [
   { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)" }
 ];
 
+// Categorías de gastos: distintas por negocio, porque Pancho Recreo y
+// Heladería Pablo venden cosas totalmente distintas. El <select> de
+// categoría del modal "Nuevo gasto" (index.html) trae por defecto las
+// de Pancho, cargadas en el HTML — renderCategoriaOptions() las
+// reemplaza dinámicamente por las que correspondan según negocioActual
+// cada vez que se abre el modal (ver openModal()).
+const CATEGORIAS_GASTO = {
+  pancho: ["Insumos", "Alquiler", "Servicios", "Sueldos", "Marketing", "Impuestos", "Otros"],
+  heladeria: ["Helado", "Tortas de repostería", "Café", "Medialunas", "Fiambres",
+              "Art Limpieza", "Gastos Fijos", "Gastos varios"],
+};
+
 // Reparto de gastos entre los 3 socios: NO es igualitario (1/3 cada uno)
 // — cada uno "debería" poner este % del total de lo gastado, según lo
 // acordado entre ellos. Si el nombre de algún socio en Firestore no
@@ -92,7 +104,7 @@ let admins = [];           // subconjunto de nombres (normalmente socios) con pe
 let pins = {};             // { "Sergio": "1234", ... } — PIN fijo de 4 dígitos por persona (ver README: no es seguridad real, solo identificación)
 let gastos = [];           // TODOS los gastos, de los 2 negocios — [{id, importe, descripcion, categoria, pagadoPor, fecha, negocio}]
 let facturaciones = [];    // TODOS los cierres diarios, de los 2 negocios — [{id, importe, registradoPor, fecha, negocio}]
-let ideas = [];            // Ideas de mejora, COMPARTIDAS entre los 2 negocios (no tienen campo "negocio") — [{id, texto, estado, propuestoPor, creadoEn}]
+let ideas = [];            // TODAS las ideas de mejora, de los 2 negocios — [{id, texto, estado, propuestoPor, negocio, creadoEn}], filtradas por ideasDelNegocio()
 let negocioActual = null;  // "pancho" | "heladeria"
 let seccionActual = null;  // "gastos" | "facturado" | "resumen"
 let selectedPagador = null;
@@ -481,7 +493,8 @@ function renderSeccionCards(biz) {
   const SECCIONES = [
     { id: "gastos", emoji: "🧾", nombre: "Gastos", sub: "Cargar gastos y ver el balance entre socios" },
     { id: "facturado", emoji: "💰", nombre: "Facturado", sub: "Anotar lo que se facturó cada día" },
-    { id: "resumen", emoji: "📊", nombre: "Resumen mensual", sub: "Ver los totales de cada mes" }
+    { id: "resumen", emoji: "📊", nombre: "Resumen mensual", sub: "Ver los totales de cada mes" },
+    { id: "ideas", emoji: "💡", nombre: "Ideas/Metas", sub: "Para mejorar este negocio" }
   ];
 
   const wrap = $("#seccion-cards");
@@ -516,6 +529,9 @@ function selectSeccion(id) {
     resumenMesOffset = 0;
     renderResumen();
     showScreen("screen-resumen");
+  } else if (id === "ideas") {
+    renderIdeas();
+    showScreen("screen-ideas");
   }
 }
 
@@ -534,6 +550,16 @@ function gastosDelNegocio() {
 // Cierres de facturación del negocio actualmente seleccionado.
 function facturacionesDelNegocio() {
   return facturaciones.filter(f => f.negocio === negocioActual);
+}
+
+// Ideas/Metas del negocio actualmente seleccionado. Antes eran
+// compartidas entre los 2 negocios (sin campo "negocio"); ahora cada
+// negocio tiene las suyas, igual que gastos y facturación. Las ideas
+// viejas, creadas antes de este cambio, no tienen "negocio" guardado —
+// se siguen mostrando en los dos negocios (en vez de desaparecer) hasta
+// que alguien las recargue como nuevas, ya con negocio asignado.
+function ideasDelNegocio() {
+  return ideas.filter(i => i.negocio === negocioActual || !i.negocio);
 }
 
 function listenSocios() {
@@ -647,13 +673,18 @@ function renderGastos() {
          <button type="button" class="icon-btn danger gasto-delete-btn" data-id="${g.id}" aria-label="Borrar gasto">🗑️</button>`
       : "";
 
+    // Falta abonar: se tildó porque todavía no se le pagó a quien
+    // trajo la mercadería (ej. te dejan pagar unos días después) — la
+    // fila queda en rojo hasta que se destilde desde "Editar".
+    const metaFaltaAbonar = g.faltaAbonar ? ` · <span class="meta-falta-abonar">⚠️ Falta abonar</span>` : "";
+
     const li = document.createElement("li");
-    li.className = "expense-item";
+    li.className = "expense-item" + (g.faltaAbonar ? " falta-abonar" : "");
     li.innerHTML = `
       <div class="avatar" style="background:${payerColorVar(g.pagadoPor)}">${socioInitial(g.pagadoPor)}</div>
       <div class="info">
         <div class="desc">${escapeHtml(g.descripcion || "Sin descripción")}</div>
-        <div class="meta">${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · ${escapeHtml(g.categoria || "Otros")} · Pagó ${escapeHtml(g.pagadoPor || "?")}</div>
+        <div class="meta">${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · ${escapeHtml(g.categoria || "Otros")} · Pagó ${escapeHtml(g.pagadoPor || "?")}${metaFaltaAbonar}</div>
       </div>
       <div class="amount">${money(g.importe)}</div>
       ${fotoBtn}
@@ -721,11 +752,12 @@ function renderFacturado() {
 
 // ---------- Render: Ideas (checklist compartido) ----------
 function renderIdeas() {
-  const total = ideas.length;
-  const concretadas = ideas.filter(i => i.estado === "concretada");
+  const ideasNegocio = ideasDelNegocio();
+  const total = ideasNegocio.length;
+  const concretadas = ideasNegocio.filter(i => i.estado === "concretada");
   // Pendientes ordenadas por votos — así se ve de un vistazo qué le
   // interesa más al equipo, sin que nadie tenga que decidir solo.
-  const pendientes = ideas
+  const pendientes = ideasNegocio
     .filter(i => i.estado !== "concretada")
     .slice()
     .sort((a, b) => votosDe(b).length - votosDe(a).length);
@@ -846,6 +878,7 @@ async function saveIdea() {
       estado: "pendiente",
       votos: [],
       propuestoPor: usuarioActual,
+      negocio: negocioActual,
       creadoEn: fbSdk.serverTimestamp()
     });
     closeModalIdea();
@@ -1277,17 +1310,34 @@ function resetFotoField() {
   $("#btn-elegir-foto").classList.remove("hidden");
 }
 
+// Llena el <select> de categoría con las que correspondan al negocio
+// activo (ver CATEGORIAS_GASTO) — se llama cada vez que se abre el modal,
+// así siempre refleja el negocio en el que se está parado.
+function renderCategoriaOptions() {
+  const categorias = CATEGORIAS_GASTO[negocioActual] || CATEGORIAS_GASTO.pancho;
+  $("#input-categoria").innerHTML = categorias
+    .map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`)
+    .join("");
+}
+
 // Sin argumento: alta de un gasto nuevo. Con un gasto existente: edición
 // (solo accesible para el admin, ver botón ✏️ en renderGastos).
 function openModal(gasto) {
   editingGastoId = gasto ? gasto.id : null;
-  selectedPagador = gasto
-    ? gasto.pagadoPor
-    : (allPagadores().includes(usuarioActual) ? usuarioActual : null);
+  // Gasto nuevo: se registra directo a nombre de quien está logueado en
+  // este celular — no tiene sentido preguntarle "¿quién pagó?" si la app
+  // ya sabe quién es. El selector de chips solo se muestra al EDITAR un
+  // gasto ya cargado (solo accesible para el admin), por si hace falta
+  // corregir un error de a quién se le atribuyó.
+  selectedPagador = gasto ? gasto.pagadoPor : usuarioActual;
+  $("#campo-pagador").classList.toggle("hidden", !gasto);
 
+  renderCategoriaOptions();
+  const categoriaPorDefecto = (CATEGORIAS_GASTO[negocioActual] || CATEGORIAS_GASTO.pancho)[0];
   $("#input-importe").value = gasto ? gasto.importe : "";
   $("#input-descripcion").value = gasto ? (gasto.descripcion || "") : "";
-  $("#input-categoria").value = gasto ? (gasto.categoria || "Insumos") : "Insumos";
+  $("#input-categoria").value = gasto ? (gasto.categoria || categoriaPorDefecto) : categoriaPorDefecto;
+  $("#input-falta-abonar").checked = gasto ? !!gasto.faltaAbonar : false;
   if (gasto) {
     $("#input-fecha").value = fechaDeRegistro(gasto).toISOString().slice(0, 10);
   } else {
@@ -1352,6 +1402,7 @@ async function saveGasto() {
       categoria,
       pagadoPor: selectedPagador,
       negocio: negocioActual,
+      faltaAbonar: $("#input-falta-abonar").checked,
       fecha: fechaStr ? new Date(fechaStr + "T12:00:00") : fbSdk.serverTimestamp()
     };
     // Solo se tocan fotoUrl/fotoPath si se eligió una foto nueva — al editar,
@@ -1694,11 +1745,7 @@ function wireEvents() {
     if (e.target.id === "modal-add-facturado") closeModalFacturado();
   });
 
-  $("#btn-ideas-main").addEventListener("click", () => {
-    renderIdeas();
-    showScreen("screen-ideas");
-  });
-  $("#btn-back-from-ideas").addEventListener("click", () => showScreen("screen-negocio"));
+  $("#btn-back-from-ideas").addEventListener("click", volverASeccion);
   $("#fab-add-idea").addEventListener("click", () => openModalIdea());
   $("#btn-cancel-add-idea").addEventListener("click", closeModalIdea);
   $("#btn-save-idea").addEventListener("click", saveIdea);
