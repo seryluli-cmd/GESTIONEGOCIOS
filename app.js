@@ -1536,6 +1536,17 @@ function setDefaultFecha() {
 }
 
 // ---------- Modal: agregar gasto ----------
+// Si Storage no responde (bucket no activado, reglas, red que ni siquiera
+// llega a fallar), uploadBytes/getDownloadURL pueden quedar la promesa
+// colgada para siempre — el botón "Subiendo foto…" no volvía nunca y no
+// había forma de reintentar. Este timeout garantiza que siempre termine.
+function conTimeout(promise, ms, mensajeTimeout) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(mensajeTimeout)), ms))
+  ]);
+}
+
 function resetFotoField() {
   selectedFotoBlob = null;
   $("#input-foto").value = "";
@@ -1620,12 +1631,26 @@ async function saveGasto() {
   btn.textContent = selectedFotoBlob ? "Subiendo foto…" : "Guardando…";
 
   try {
-    let fotoUrl = null, fotoPath = null;
+    let fotoUrl = null, fotoPath = null, fotoFallo = false;
     if (selectedFotoBlob) {
-      fotoPath = `recibos/${negocioActual}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-      const storageRef = fbSdk.ref(storage, fotoPath);
-      await fbSdk.uploadBytes(storageRef, selectedFotoBlob, { contentType: "image/jpeg" });
-      fotoUrl = await fbSdk.getDownloadURL(storageRef);
+      // Si la subida falla o tarda demasiado, no bloqueamos el gasto entero
+      // por eso — se guarda igual sin la foto y se avisa con el toast de
+      // abajo. Mejor un gasto sin foto que un gasto perdido.
+      try {
+        fotoPath = `recibos/${negocioActual}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+        const storageRef = fbSdk.ref(storage, fotoPath);
+        const TIMEOUT_MSG = "La subida de la foto tardó demasiado.";
+        await conTimeout(
+          fbSdk.uploadBytes(storageRef, selectedFotoBlob, { contentType: "image/jpeg" }),
+          25000,
+          TIMEOUT_MSG
+        );
+        fotoUrl = await conTimeout(fbSdk.getDownloadURL(storageRef), 15000, TIMEOUT_MSG);
+      } catch (fotoErr) {
+        console.error("No se pudo subir la foto, se guarda el gasto sin ella:", fotoErr);
+        fotoFallo = true;
+        fotoPath = null;
+      }
       btn.textContent = "Guardando…";
     }
 
@@ -1653,11 +1678,13 @@ async function saveGasto() {
       await fbSdk.addDoc(fbSdk.collection(db, "gastos"), gastoData);
     }
     closeModal();
-    showToast(isEdit ? "Gasto actualizado ✅" : "Gasto guardado ✅");
+    if (fotoFallo) {
+      showToast(isEdit ? "Gasto actualizado, pero no se pudo subir la foto ⚠️" : "Gasto guardado sin la foto (no se pudo subir) ⚠️");
+    } else {
+      showToast(isEdit ? "Gasto actualizado ✅" : "Gasto guardado ✅");
+    }
   } catch (e) {
-    errEl.textContent = selectedFotoBlob
-      ? "No se pudo subir la foto. Revisá tu conexión (o que Cloud Storage esté activado en Firebase)."
-      : "No se pudo guardar. Revisá tu conexión.";
+    errEl.textContent = "No se pudo guardar. Revisá tu conexión.";
     errEl.classList.remove("hidden");
     console.error(e);
   } finally {
