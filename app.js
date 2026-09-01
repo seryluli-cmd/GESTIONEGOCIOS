@@ -105,6 +105,10 @@ let colaboradorNegocio = {}; // { "Encargada": "pancho" | "heladeria" } — si u
                               // 3 socios siempre ven los 2, nunca están en este mapa.
 let admins = [];           // subconjunto de nombres (normalmente socios) con permiso para editar/borrar
 let pins = {};             // { "Sergio": "1234", ... } — PIN fijo de 4 dígitos por persona (ver README: no es seguridad real, solo identificación)
+let claveMaestraAdmin = ""; // clave compartida entre los admins, solo para CREAR su PIN la primera vez
+                             // en un celular nuevo (ver openPinModal/confirmPinModal) — evita que cualquiera
+                             // tocando "Sergio" por primera vez se autoasigne el PIN de admin sin saberla.
+                             // Si no está configurada (vacía), no se pide — no es seguridad real, ver README.
 let gastos = [];           // TODOS los gastos, de los 2 negocios — [{id, importe, descripcion, categoria, pagadoPor, fecha, negocio}]
 let facturaciones = [];    // TODOS los cierres diarios, de los 2 negocios — [{id, importe, registradoPor, fecha, negocio}]
 let ideas = [];            // TODAS las ideas de mejora, de los 2 negocios — [{id, texto, estado, propuestoPor, negocio, creadoEn}], filtradas por ideasDelNegocio()
@@ -136,6 +140,19 @@ function mesLabel(date) {
 }
 function fechaDeRegistro(item) {
   return item.fecha && item.fecha.toDate ? item.fecha.toDate() : new Date(item.fecha || Date.now());
+}
+
+// Fecha de un Date en formato "AAAA-MM-DD", en hora LOCAL — a propósito
+// NO se usa .toISOString() para esto: esa función siempre da la fecha en
+// UTC, así que de noche en Argentina (UTC-3), pasadas las ~21:00 ya es
+// "mañana" en UTC — el campo de fecha quedaba pre-completado con el día
+// (a veces hasta el mes) siguiente al real, y esos gastos/cierres
+// terminaban sin sumar en el mes correcto en Gastos ni en Resumen mensual.
+function fechaLocalISO(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 // Redimensiona y comprime la foto en el navegador antes de subirla, para que
@@ -274,6 +291,7 @@ async function connectAndBoot(config, namesFromInput, colabFromInput) {
     colaboradorNegocio = data.colaboradorNegocio && typeof data.colaboradorNegocio === "object" ? data.colaboradorNegocio : {};
     admins = Array.isArray(data.admins) ? data.admins : [];
     pins = data.pins && typeof data.pins === "object" ? data.pins : {};
+    claveMaestraAdmin = typeof data.claveMaestraAdmin === "string" ? data.claveMaestraAdmin : "";
   } else {
     if (!namesFromInput || namesFromInput.some(n => !n.trim())) {
       throw new Error("Completá los nombres de los 3 socios.");
@@ -283,7 +301,8 @@ async function connectAndBoot(config, namesFromInput, colabFromInput) {
     colaboradorNegocio = {};
     admins = [];
     pins = {};
-    await sdk.setDoc(socioDocRef, { socios, colaboradores, colaboradorNegocio, admins, pins });
+    claveMaestraAdmin = "llavez";
+    await sdk.setDoc(socioDocRef, { socios, colaboradores, colaboradorNegocio, admins, pins, claveMaestraAdmin });
   }
 
   localStorage.setItem(LS_CONFIG_KEY, JSON.stringify(config));
@@ -390,7 +409,15 @@ function openPinModal(nombre) {
   pinFlowMode = pins[nombre] ? "verify" : "create";
   $("#pin-input-1").value = "";
   $("#pin-input-2").value = "";
+  $("#pin-input-clave-maestra").value = "";
   $("#pin-error").classList.add("hidden");
+
+  // La clave maestra solo se pide la primera vez que un ADMIN crea su
+  // PIN en un celular nuevo — no a colaboradores, y no de nuevo una vez
+  // que ya tiene PIN (ahí entra por "verify" con su PIN de siempre). Si
+  // no hay clave maestra configurada, no se pide (ver claveMaestraAdmin).
+  const requiereClaveMaestra = pinFlowMode === "create" && admins.includes(nombre) && !!claveMaestraAdmin;
+  $("#pin-field-clave-maestra").classList.toggle("hidden", !requiereClaveMaestra);
 
   if (pinFlowMode === "create") {
     $("#pin-modal-title").textContent = `Creá tu PIN, ${nombre}`;
@@ -403,7 +430,7 @@ function openPinModal(nombre) {
   }
 
   $("#modal-pin").classList.add("active");
-  setTimeout(() => $("#pin-input-1").focus(), 150);
+  setTimeout(() => $(requiereClaveMaestra ? "#pin-input-clave-maestra" : "#pin-input-1").focus(), 150);
 }
 
 function closePinModal() {
@@ -439,6 +466,13 @@ async function confirmPinModal() {
   }
 
   // pinFlowMode === "create"
+  const requiereClaveMaestra = admins.includes(pinFlowNombre) && !!claveMaestraAdmin;
+  if (requiereClaveMaestra && $("#pin-input-clave-maestra").value !== claveMaestraAdmin) {
+    errEl.textContent = "Clave maestra incorrecta. Pedísela a otro admin.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
   const pin2 = $("#pin-input-2").value.trim();
   if (pin1 !== pin2) {
     errEl.textContent = "Los PIN no coinciden.";
@@ -609,6 +643,7 @@ function listenSocios() {
       colaboradorNegocio = data.colaboradorNegocio && typeof data.colaboradorNegocio === "object" ? data.colaboradorNegocio : {};
       admins = Array.isArray(data.admins) ? data.admins : [];
       pins = data.pins && typeof data.pins === "object" ? data.pins : {};
+      claveMaestraAdmin = typeof data.claveMaestraAdmin === "string" ? data.claveMaestraAdmin : "";
       localStorage.setItem(LS_SOCIOS_CACHE, JSON.stringify(socios));
       localStorage.setItem(LS_COLAB_CACHE, JSON.stringify(colaboradores));
       esAdmin = usuarioActual ? admins.includes(usuarioActual) : false;
@@ -1297,10 +1332,102 @@ function renderAjustesSocios() {
   } else {
     colabEmpty.classList.remove("hidden");
   }
+  // Solo el admin puede sumar gente nueva (mismo criterio que reasignar
+  // negocio, arriba) — el resto de las personas ni ve el botón.
+  $("#btn-add-colaborador-ajustes").classList.toggle("hidden", !esAdmin);
+  $("#ajustes-clave-maestra-card").classList.toggle("hidden", !esAdmin);
 
   $("#ajustes-conn-status").textContent = auth && auth.currentUser
     ? "✅ Conectado — los gastos se sincronizan entre todos los celulares."
     : "⚠️ No conectado.";
+}
+
+// Agregar un colaborador nuevo DESPUÉS del setup inicial (a diferencia de
+// los que se cargan en la pantalla de configuración de la primera vez,
+// ver addColaboradorRow() más abajo) — para cuando se suma alguien
+// (ej. una empleada nueva) mientras el negocio ya está andando.
+function openModalColaborador() {
+  $("#input-colaborador-nombre").value = "";
+  $("#input-colaborador-negocio").innerHTML = `<option value="">Ambos negocios</option>` +
+    NEGOCIOS.map(biz => `<option value="${biz.id}">${escapeHtml(biz.nombre)}</option>`).join("");
+  $("#modal-colaborador-error").classList.add("hidden");
+  $("#modal-add-colaborador").classList.add("active");
+  setTimeout(() => $("#input-colaborador-nombre").focus(), 150);
+}
+
+function closeModalColaborador() {
+  $("#modal-add-colaborador").classList.remove("active");
+}
+
+async function saveColaborador() {
+  const nombre = $("#input-colaborador-nombre").value.trim();
+  const negocio = $("#input-colaborador-negocio").value;
+  const errEl = $("#modal-colaborador-error");
+
+  if (!nombre) {
+    errEl.textContent = "Ingresá un nombre.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  // arrayUnion no avisa si el nombre ya estaba — sin este chequeo, "agregar"
+  // a alguien que ya existe cerraría el modal como si hubiera funcionado
+  // sin haber cambiado nada.
+  if (allPagadores().includes(nombre)) {
+    errEl.textContent = `Ya existe una persona llamada "${nombre}".`;
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  const btn = $("#btn-save-colaborador");
+  btn.disabled = true;
+  btn.textContent = "Guardando…";
+  try {
+    const update = { colaboradores: fbSdk.arrayUnion(nombre) };
+    if (negocio) update[`colaboradorNegocio.${nombre}`] = negocio;
+    await fbSdk.updateDoc(fbSdk.doc(db, "config", "socios"), update);
+    closeModalColaborador();
+    showToast(`${nombre} agregado ✅`);
+  } catch (e) {
+    console.error(e);
+    errEl.textContent = "No se pudo guardar. Revisá tu conexión.";
+    errEl.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Guardar";
+  }
+}
+
+// Cambiar la clave maestra de administradores (ver claveMaestraAdmin) —
+// cualquiera de los 3 admins puede hacerlo desde acá. Solo afecta a
+// quien todavía no creó su PIN en algún celular; no toca los PIN que
+// los admins ya tienen guardados.
+async function guardarClaveMaestra() {
+  const nueva = $("#input-clave-maestra").value.trim();
+  const errEl = $("#clave-maestra-error");
+  errEl.classList.add("hidden");
+
+  if (!nueva) {
+    errEl.textContent = "Ingresá una clave.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  const btn = $("#btn-guardar-clave-maestra");
+  btn.disabled = true;
+  btn.textContent = "Guardando…";
+  try {
+    await fbSdk.updateDoc(fbSdk.doc(db, "config", "socios"), { claveMaestraAdmin: nueva });
+    claveMaestraAdmin = nueva;
+    $("#input-clave-maestra").value = "";
+    showToast("Clave maestra actualizada ✅");
+  } catch (e) {
+    console.error(e);
+    errEl.textContent = "No se pudo guardar. Revisá tu conexión.";
+    errEl.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Guardar";
+  }
 }
 
 // ---------- Exportar datos (CSV) ----------
@@ -1338,7 +1465,7 @@ function exportGastosCSV() {
         g.pagadoPor || ""
       ]);
     });
-  downloadCSV(`gastos-${negocioActual}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  downloadCSV(`gastos-${negocioActual}-${fechaLocalISO()}.csv`, rows);
 }
 
 function exportFacturacionCSV() {
@@ -1353,13 +1480,11 @@ function exportFacturacionCSV() {
         f.registradoPor || ""
       ]);
     });
-  downloadCSV(`facturacion-${negocioActual}-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  downloadCSV(`facturacion-${negocioActual}-${fechaLocalISO()}.csv`, rows);
 }
 
 function setDefaultFecha() {
-  const el = $("#input-fecha");
-  const today = new Date();
-  el.value = today.toISOString().slice(0, 10);
+  $("#input-fecha").value = fechaLocalISO();
 }
 
 // ---------- Modal: agregar gasto ----------
@@ -1399,7 +1524,7 @@ function openModal(gasto) {
   $("#input-categoria").value = gasto ? (gasto.categoria || categoriaPorDefecto) : categoriaPorDefecto;
   $("#input-falta-abonar").checked = gasto ? !!gasto.faltaAbonar : false;
   if (gasto) {
-    $("#input-fecha").value = fechaDeRegistro(gasto).toISOString().slice(0, 10);
+    $("#input-fecha").value = fechaLocalISO(fechaDeRegistro(gasto));
   } else {
     setDefaultFecha();
   }
@@ -1517,7 +1642,7 @@ async function deleteGasto(id) {
 
 // ---------- Modal: agregar cierre de Facturado ----------
 function setDefaultFechaFact() {
-  $("#input-fecha-fact").value = new Date().toISOString().slice(0, 10);
+  $("#input-fecha-fact").value = fechaLocalISO();
 }
 
 // Cálculo cruzado Total/Efectivo/Digital: se pueden completar 2
@@ -1578,7 +1703,7 @@ function openModalFacturado(cierre) {
   $("#input-digital-fact").value = cierre && cierre.digital != null ? cierre.digital : "";
   facturadoUltimosEditados = [];
   if (cierre) {
-    $("#input-fecha-fact").value = fechaDeRegistro(cierre).toISOString().slice(0, 10);
+    $("#input-fecha-fact").value = fechaLocalISO(fechaDeRegistro(cierre));
   } else {
     setDefaultFechaFact();
   }
@@ -1748,6 +1873,7 @@ async function handleSetupConnect() {
       colaboradorNegocio = data.colaboradorNegocio && typeof data.colaboradorNegocio === "object" ? data.colaboradorNegocio : {};
       admins = Array.isArray(data.admins) ? data.admins : [];
       pins = data.pins && typeof data.pins === "object" ? data.pins : {};
+      claveMaestraAdmin = typeof data.claveMaestraAdmin === "string" ? data.claveMaestraAdmin : "";
       statusEl.textContent = "";
       await finalizeSetup(config);
     } else {
@@ -1792,7 +1918,11 @@ async function handleSetupGuardar() {
     colabInputs.forEach(c => { if (c.negocio) colaboradorNegocio[c.nombre] = c.negocio; });
     admins = socios.filter((_, idx) => adminFlags[idx]);
     pins = {};
-    await fbSdk.setDoc(socioDocRef, { socios, colaboradores, colaboradorNegocio, admins, pins });
+    // Clave compartida para que los admins creen su PIN la primera vez
+    // (ver openPinModal/confirmPinModal) — cada uno la puede cambiar
+    // después desde Ajustes, sin afectar los PIN ya creados.
+    claveMaestraAdmin = "llavez";
+    await fbSdk.setDoc(socioDocRef, { socios, colaboradores, colaboradorNegocio, admins, pins, claveMaestraAdmin });
     await finalizeSetup(pendingFirebaseConfig);
   } catch (e) {
     console.error(e);
@@ -1957,6 +2087,16 @@ function wireEvents() {
   $("#btn-back-to-ajustes").addEventListener("click", () => {
     switchTab("ajustes");
     showScreen("screen-app");
+  });
+
+  $("#btn-guardar-clave-maestra").addEventListener("click", guardarClaveMaestra);
+
+  // Agregar colaborador nuevo desde Ajustes (botón oculto para no-admin).
+  $("#btn-add-colaborador-ajustes").addEventListener("click", () => openModalColaborador());
+  $("#btn-cancel-add-colaborador").addEventListener("click", closeModalColaborador);
+  $("#btn-save-colaborador").addEventListener("click", saveColaborador);
+  $("#modal-add-colaborador").addEventListener("click", (e) => {
+    if (e.target.id === "modal-add-colaborador") closeModalColaborador();
   });
 
   // Reasignar a qué negocio ve un colaborador, desde Ajustes (solo se

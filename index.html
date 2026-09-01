@@ -244,6 +244,18 @@
         <h2>Otras personas</h2>
         <div id="ajustes-colaboradores-list" class="ajustes-socios-list"></div>
         <p id="ajustes-colaboradores-empty" class="muted small hidden">No hay personas adicionales agregadas.</p>
+        <button type="button" id="btn-add-colaborador-ajustes" class="btn-secondary hidden" style="margin-top:10px;">+ Agregar persona</button>
+      </div>
+
+      <div class="card hidden" id="ajustes-clave-maestra-card">
+        <h2>Clave maestra de administradores</h2>
+        <p class="muted small">La usan Sergio, Pola y Leonel para crear su PIN la primera vez en un celular nuevo. Cambiarla acá no afecta los PIN que ya tiene cada uno.</p>
+        <div class="field">
+          <label for="input-clave-maestra">Nueva clave maestra</label>
+          <input type="text" id="input-clave-maestra" maxlength="30" placeholder="Ej: llavez">
+        </div>
+        <p id="clave-maestra-error" class="error-text hidden"></p>
+        <button type="button" id="btn-guardar-clave-maestra" class="btn-secondary">Guardar</button>
       </div>
 
       <div class="card">
@@ -522,12 +534,46 @@
     </div>
   </div>
 
+  <!-- ===== MODAL: AGREGAR COLABORADOR (desde Ajustes, solo admin) ===== -->
+  <div id="modal-add-colaborador" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2>Agregar persona</h2>
+      <p class="muted small">Va a poder cargar gastos y aparecer como "quién pagó", pero no entra en el reparto de cuentas entre los 3 socios.</p>
+
+      <div class="field">
+        <label for="input-colaborador-nombre">Nombre</label>
+        <input type="text" id="input-colaborador-nombre" maxlength="30" placeholder="Ej: Encargada">
+      </div>
+
+      <div class="field">
+        <label for="input-colaborador-negocio">¿Qué negocio puede ver?</label>
+        <select id="input-colaborador-negocio">
+          <option value="">Ambos negocios</option>
+        </select>
+      </div>
+
+      <p id="modal-colaborador-error" class="error-text hidden"></p>
+
+      <div class="modal-actions">
+        <button id="btn-cancel-add-colaborador" class="btn-secondary">Cancelar</button>
+        <button id="btn-save-colaborador" class="btn-primary">Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== MODAL: PIN (identificación / creación de PIN) ===== -->
   <div id="modal-pin" class="modal-overlay">
     <div class="modal-sheet">
       <div class="modal-handle"></div>
       <h2 id="pin-modal-title">Ingresá tu PIN</h2>
       <p id="pin-modal-sub" class="muted small" style="margin-top:-10px; margin-bottom:16px;"></p>
+
+      <div class="field hidden" id="pin-field-clave-maestra">
+        <label for="pin-input-clave-maestra">Clave maestra de administradores</label>
+        <input type="password" id="pin-input-clave-maestra" placeholder="Te la pasan los otros admins">
+        <p class="muted small">Solo hace falta esta vez, para crear tu PIN como admin. Después usás tu PIN de siempre.</p>
+      </div>
 
       <div class="field">
         <label for="pin-input-1" id="pin-label-1">PIN</label>
