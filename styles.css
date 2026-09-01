@@ -315,11 +315,12 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 34px;
-  height: 34px;
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
   background: var(--gridline);
   color: var(--text-primary);
+  margin-right: 10px;
 }
 /* Los SVG inline se tratan como texto por default, con espacio
    reservado abajo para el "descender" de una letra como la "g" —
