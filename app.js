@@ -1492,7 +1492,7 @@ function resetFotoField() {
   selectedFotoBlob = null;
   $("#input-foto").value = "";
   $("#foto-preview-wrap").classList.add("hidden");
-  $("#btn-elegir-foto").classList.remove("hidden");
+  $("#foto-btns-row").classList.remove("hidden");
 }
 
 // Llena el <select> de categoría con las que correspondan al negocio
@@ -2036,8 +2036,19 @@ function wireEvents() {
   $("#ideas-concretadas-list").addEventListener("click", handleIdeaListClick);
   $$(".tabbtn").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
 
-  // Foto de factura (modal Nuevo gasto)
-  $("#btn-elegir-foto").addEventListener("click", () => $("#input-foto").click());
+  // Foto de factura (modal Nuevo gasto): "Tomar foto" agrega el atributo
+  // capture antes de abrir el selector, para forzar la cámara trasera;
+  // "Elegir de galería" lo saca para que el navegador ofrezca el
+  // selector de archivos/fotos normal. Ambos disparan el mismo
+  // <input type="file">.
+  $("#btn-tomar-foto").addEventListener("click", () => {
+    $("#input-foto").setAttribute("capture", "environment");
+    $("#input-foto").click();
+  });
+  $("#btn-elegir-foto").addEventListener("click", () => {
+    $("#input-foto").removeAttribute("capture");
+    $("#input-foto").click();
+  });
   $("#input-foto").addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -2045,7 +2056,7 @@ function wireEvents() {
       selectedFotoBlob = await compressImage(file);
       $("#foto-preview-img").src = URL.createObjectURL(selectedFotoBlob);
       $("#foto-preview-wrap").classList.remove("hidden");
-      $("#btn-elegir-foto").classList.add("hidden");
+      $("#foto-btns-row").classList.add("hidden");
     } catch (err) {
       console.error(err);
       showToast("No se pudo procesar la foto.");

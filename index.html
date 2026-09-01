@@ -137,7 +137,7 @@
 
     <header class="topbar">
       <button id="btn-back-from-ideas" class="topbar-title" aria-label="Volver">
-        <span class="topbar-back-arrow">←</span>
+        <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
         <span class="logo-badge small">💡</span>
         <span>Ideas/Metas</span>
       </button>
@@ -172,8 +172,15 @@
 
   <!-- ===== PANTALLA: ELEGIR SECCIÓN (Gastos / Facturado) ===== -->
   <div id="screen-seccion" class="screen">
+
+    <header class="topbar">
+      <button id="btn-back-to-negocio" class="topbar-title" aria-label="Volver">
+        <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
+        <span>Cambiar negocio</span>
+      </button>
+    </header>
+
     <div class="negocio-wrap">
-      <button id="btn-back-to-negocio" class="back-link" aria-label="Volver">← Cambiar negocio</button>
       <div class="logo-badge" id="seccion-icon-badge">$</div>
       <h1 id="seccion-negocio-nombre">Negocio</h1>
       <p class="muted">¿Qué querés ver?</p>
@@ -186,7 +193,7 @@
 
     <header class="topbar">
       <button id="btn-switch-negocio" class="topbar-title" aria-label="Volver a la sección">
-        <span class="topbar-back-arrow">←</span>
+        <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
         <span class="logo-badge small" id="negocio-icon-badge">$</span>
         <span id="negocio-titulo">Gastos</span>
       </button>
@@ -309,7 +316,7 @@
 
     <header class="topbar">
       <button id="btn-back-to-seccion-fact" class="topbar-title" aria-label="Volver a la sección">
-        <span class="topbar-back-arrow">←</span>
+        <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
         <span class="logo-badge small" id="facturado-icon-badge">$</span>
         <span id="facturado-titulo">Facturado</span>
       </button>
@@ -338,7 +345,7 @@
 
     <header class="topbar">
       <button id="btn-back-to-seccion-resumen" class="topbar-title" aria-label="Volver a la sección">
-        <span class="topbar-back-arrow">←</span>
+        <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
         <span class="logo-badge small" id="resumen-icon-badge">$</span>
         <span id="resumen-titulo">Resumen</span>
       </button>
@@ -392,7 +399,7 @@
 
     <header class="topbar">
       <button id="btn-back-to-ajustes" class="topbar-title" aria-label="Volver a Ajustes">
-        <span class="topbar-back-arrow">←</span>
+        <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
         <span id="fotos-titulo">Fotos guardadas</span>
       </button>
     </header>
@@ -455,7 +462,10 @@
       <div class="field">
         <label>Foto de la factura <span class="muted small">(opcional)</span></label>
         <input type="file" id="input-foto" accept="image/*" class="hidden">
-        <button type="button" id="btn-elegir-foto" class="btn-secondary">📷 Agregar foto</button>
+        <div id="foto-btns-row" class="foto-btns-row">
+          <button type="button" id="btn-tomar-foto" class="btn-secondary">📷 Tomar foto</button>
+          <button type="button" id="btn-elegir-foto" class="btn-secondary">🖼️ Elegir de galería</button>
+        </div>
         <div id="foto-preview-wrap" class="foto-preview-wrap hidden">
           <img id="foto-preview-img" class="foto-preview-img" alt="Vista previa de la factura">
           <button type="button" id="btn-quitar-foto" class="foto-remove-btn" aria-label="Quitar foto">×</button>

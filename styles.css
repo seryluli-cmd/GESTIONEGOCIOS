@@ -238,21 +238,12 @@ input:focus, select:focus, textarea:focus {
   padding: 56px 20px 40px;
   text-align: center;
 }
+/* screen-seccion es la única pantalla con .negocio-wrap que además tiene
+   un topbar arriba (el resto abre directo, sin "volver") — con los dos
+   paddings sumados quedaba un hueco enorme antes de la primera tarjeta. */
+.topbar + .negocio-wrap { padding-top: 24px; }
 .negocio-wrap h1 { font-size: 21px; margin: 16px 0 4px; }
 .negocio-wrap > .muted { margin-bottom: 24px; }
-
-.back-link {
-  display: inline-block;
-  border: none;
-  background: none;
-  color: var(--series-1);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  padding: 4px 0;
-  margin-bottom: 8px;
-  cursor: pointer;
-}
 
 .negocio-cards { display: flex; flex-direction: column; gap: 14px; text-align: left; }
 .negocio-card {
@@ -314,12 +305,27 @@ input:focus, select:focus, textarea:focus {
   cursor: pointer;
 }
 .topbar-title:active { background: var(--gridline); }
+/* Insignia circular con flecha SVG — antes era un "←" de texto suelto
+   (font-size: 42px) que en la práctica se veía chico y desalineado
+   según la tipografía del dispositivo, y esta pantalla ("Cambiar
+   negocio") ni siquiera compartía el mismo estilo que el resto. Ahora
+   las 6 pantallas con "volver" usan esta misma insignia. */
 .topbar-back-arrow {
-  font-size: 42px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  line-height: 1;
-  margin-right: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--gridline);
+  color: var(--text-primary);
+}
+/* Los SVG inline se tratan como texto por default, con espacio
+   reservado abajo para el "descender" de una letra como la "g" —
+   display:block lo saca, así el ícono queda centrado de verdad. */
+.topbar-back-arrow svg {
+  display: block;
 }
 
 .sync-dot {
@@ -521,6 +527,8 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
 }
 
 /* ===== Foto de factura (modal Nuevo gasto) ===== */
+.foto-btns-row { display: flex; gap: 10px; }
+.foto-btns-row .btn-secondary { width: auto; flex: 1; }
 .foto-preview-wrap {
   position: relative;
   width: 90px;
