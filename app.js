@@ -118,6 +118,7 @@ let selectedPagador = null;
 let selectedRegistrador = null;
 let resumenMesOffset = 0;  // 0 = mes actual, -1 = mes anterior, etc. (Resumen mensual)
 let gastosMesOffset = 0;   // ídem, para la pantalla de Gastos — se reinicia a 0 cada vez que se entra
+let facturadoMesOffset = 0; // ídem, para la pantalla de Facturado/Cierre de turno
 let pendingFirebaseConfig = null; // config guardada entre el paso 1 y 2 del setup inicial
 let usuarioActual = null;  // nombre con el que se identificó este celular (ver resumeSession)
 let esAdmin = false;       // usuarioActual ∈ admins
@@ -596,6 +597,7 @@ function selectSeccion(id) {
     renderBalance();
     showScreen("screen-app");
   } else if (id === "facturado") {
+    facturadoMesOffset = 0; // siempre arranca en el mes actual al entrar
     renderFacturado();
     showScreen("screen-facturado");
   } else if (id === "resumen") {
@@ -806,12 +808,35 @@ function escapeHtml(str) {
 }
 
 // ---------- Render: Facturado ----------
+// Fecha base del mes elegido en la pantalla de Facturado (ver
+// facturadoMesOffset) — mismo patrón que gastosFechaBase().
+function facturadoFechaBase() {
+  const d = new Date();
+  d.setDate(1); // evita saltos raros de mes al sumar/restar meses
+  d.setMonth(d.getMonth() + facturadoMesOffset);
+  return d;
+}
+
+// Antes mostraba TODOS los cierres del negocio sin importar el mes —
+// mismo problema que tenía Gastos. Ahora se ve un mes a la vez, por
+// defecto el actual, con flechas para ir a meses anteriores.
 function renderFacturado() {
   const list = $("#facturado-list");
   const empty = $("#facturado-empty");
   list.innerHTML = "";
 
-  const items = facturacionesDelNegocio();
+  const base = facturadoFechaBase();
+  const targetMonth = base.getMonth();
+  const targetYear = base.getFullYear();
+  $("#facturado-mes-label").textContent = mesLabel(base);
+  const now = new Date();
+  const esMesActual = targetMonth === now.getMonth() && targetYear === now.getFullYear();
+  $("#btn-facturado-mes-siguiente").disabled = esMesActual;
+
+  const items = facturacionesDelNegocio().filter(f => {
+    const fecha = f.fecha && f.fecha.toDate ? f.fecha.toDate() : new Date(f.fecha || Date.now());
+    return fecha.getMonth() === targetMonth && fecha.getFullYear() === targetYear;
+  });
 
   if (!items.length) {
     empty.classList.remove("hidden");
@@ -819,14 +844,11 @@ function renderFacturado() {
     empty.classList.add("hidden");
   }
 
-  const now = new Date();
   let totalMes = 0;
 
   items.forEach(f => {
     const fecha = f.fecha && f.fecha.toDate ? f.fecha.toDate() : new Date(f.fecha || Date.now());
-    if (fecha.getMonth() === now.getMonth() && fecha.getFullYear() === now.getFullYear()) {
-      totalMes += Number(f.importe) || 0;
-    }
+    totalMes += Number(f.importe) || 0;
 
     const adminBtns = esAdmin
       ? `<button type="button" class="icon-btn cierre-edit-btn" data-id="${f.id}" aria-label="Editar cierre">✏️</button>
@@ -2027,6 +2049,15 @@ function wireEvents() {
     if (gastosMesOffset >= 0) return;
     gastosMesOffset++;
     renderGastos();
+  });
+  $("#btn-facturado-mes-anterior").addEventListener("click", () => {
+    facturadoMesOffset--;
+    renderFacturado();
+  });
+  $("#btn-facturado-mes-siguiente").addEventListener("click", () => {
+    if (facturadoMesOffset >= 0) return;
+    facturadoMesOffset++;
+    renderFacturado();
   });
   $("#btn-export-gastos").addEventListener("click", exportGastosCSV);
   $("#btn-export-facturacion").addEventListener("click", exportFacturacionCSV);
