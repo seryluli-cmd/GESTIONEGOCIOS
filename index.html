@@ -340,9 +340,26 @@
       </div>
 
       <div class="stat-hero">
-        <div class="stat-hero-label">💰 Facturado</div>
+        <div class="stat-hero-label">💰 Total Facturado</div>
         <div class="stat-hero-value" id="resumen-total-facturado">$0</div>
         <div class="stat-hero-sub" id="resumen-cant-facturado">0 cierres cargados</div>
+      </div>
+
+      <div class="socios-totales" style="margin-bottom:18px;">
+        <div class="socio-total-card">
+          <div class="socio-total-row">
+            <div class="socio-total-name"><span class="socio-dot" style="background:var(--good)"></span> Efectivo</div>
+            <div class="socio-total-amount" id="resumen-total-efectivo">$0</div>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="resumen-bar-efectivo" style="background:var(--good)"></div></div>
+        </div>
+        <div class="socio-total-card">
+          <div class="socio-total-row">
+            <div class="socio-total-name"><span class="socio-dot" style="background:var(--series-1)"></span> Digital</div>
+            <div class="socio-total-amount" id="resumen-total-digital">$0</div>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="resumen-bar-digital" style="background:var(--series-1)"></div></div>
+        </div>
       </div>
 
       <div class="stat-hero">
@@ -449,9 +466,21 @@
       <div class="modal-handle"></div>
       <h2 id="modal-fact-title">Nuevo cierre</h2>
 
+      <p class="muted small">Completá 2 de los 3 campos — el que falta se calcula solo.</p>
+
       <div class="field">
-        <label for="input-importe-fact">¿Cuánto se facturó?</label>
+        <label for="input-importe-fact">Total (Efectivo + Digital)</label>
         <input type="number" id="input-importe-fact" inputmode="decimal" placeholder="0" min="0" step="0.01">
+      </div>
+
+      <div class="field">
+        <label for="input-efectivo-fact">Efectivo</label>
+        <input type="number" id="input-efectivo-fact" inputmode="decimal" placeholder="Dinero en caja" min="0" step="0.01">
+      </div>
+
+      <div class="field">
+        <label for="input-digital-fact">Digital</label>
+        <input type="number" id="input-digital-fact" inputmode="decimal" placeholder="Mercado Pago / transferencia" min="0" step="0.01">
       </div>
 
       <div class="field">
