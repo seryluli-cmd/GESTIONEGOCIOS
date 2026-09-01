@@ -117,6 +117,7 @@ let seccionActual = null;  // "gastos" | "facturado" | "resumen"
 let selectedPagador = null;
 let selectedRegistrador = null;
 let resumenMesOffset = 0;  // 0 = mes actual, -1 = mes anterior, etc. (Resumen mensual)
+let gastosMesOffset = 0;   // ídem, para la pantalla de Gastos — se reinicia a 0 cada vez que se entra
 let pendingFirebaseConfig = null; // config guardada entre el paso 1 y 2 del setup inicial
 let usuarioActual = null;  // nombre con el que se identificó este celular (ver resumeSession)
 let esAdmin = false;       // usuarioActual ∈ admins
@@ -590,6 +591,7 @@ function selectSeccion(id) {
   seccionActual = id;
   if (id === "gastos") {
     switchTab("gastos");
+    gastosMesOffset = 0; // siempre arranca en el mes actual al entrar
     renderGastos();
     renderBalance();
     showScreen("screen-app");
@@ -715,27 +717,51 @@ function listenConnectivity() {
 }
 
 // ---------- Render: Gastos ----------
+// Fecha base del mes elegido en la pantalla de Gastos (ver
+// gastosMesOffset) — mismo patrón que resumenFechaBase() para Resumen
+// mensual, pero independiente: son dos navegadores de mes separados.
+function gastosFechaBase() {
+  const d = new Date();
+  d.setDate(1); // evita saltos raros de mes al sumar/restar meses
+  d.setMonth(d.getMonth() + gastosMesOffset);
+  return d;
+}
+
+// Antes mostraba TODOS los gastos del negocio sin importar el mes (solo
+// el total de arriba estaba filtrado por mes actual, lo cual era
+// inconsistente e iba acumulando meses viejos mezclados en la lista).
+// Ahora, igual que Resumen mensual, se ve un mes a la vez — por defecto
+// el actual (ver selectSeccion()) — con flechas para ir a uno anterior
+// si hace falta editar o borrar algo viejo.
 function renderGastos() {
   const list = $("#expenses-list");
   const empty = $("#expenses-empty");
   list.innerHTML = "";
 
-  const gastosNegocio = gastosDelNegocio();
+  const base = gastosFechaBase();
+  const targetMonth = base.getMonth();
+  const targetYear = base.getFullYear();
+  $("#gastos-mes-label").textContent = mesLabel(base);
+  const now = new Date();
+  const esMesActual = targetMonth === now.getMonth() && targetYear === now.getFullYear();
+  $("#btn-gastos-mes-siguiente").disabled = esMesActual;
 
-  if (!gastosNegocio.length) {
+  const gastosMes = gastosDelNegocio().filter(g => {
+    const f = fechaDeRegistro(g);
+    return f.getMonth() === targetMonth && f.getFullYear() === targetYear;
+  });
+
+  if (!gastosMes.length) {
     empty.classList.remove("hidden");
   } else {
     empty.classList.add("hidden");
   }
 
-  const now = new Date();
   let totalMes = 0;
 
-  gastosNegocio.forEach(g => {
-    const fecha = g.fecha && g.fecha.toDate ? g.fecha.toDate() : new Date(g.fecha || Date.now());
-    if (fecha.getMonth() === now.getMonth() && fecha.getFullYear() === now.getFullYear()) {
-      totalMes += Number(g.importe) || 0;
-    }
+  gastosMes.forEach(g => {
+    const fecha = fechaDeRegistro(g);
+    totalMes += Number(g.importe) || 0;
 
     const fotoBtn = g.fotoUrl
       ? `<button type="button" class="foto-link" data-url="${escapeHtml(g.fotoUrl)}" aria-label="Ver foto de la factura">📷</button>`
@@ -1992,6 +2018,15 @@ function wireEvents() {
   $("#btn-save-add").addEventListener("click", saveGasto);
   $("#modal-add").addEventListener("click", (e) => {
     if (e.target.id === "modal-add") closeModal();
+  });
+  $("#btn-gastos-mes-anterior").addEventListener("click", () => {
+    gastosMesOffset--;
+    renderGastos();
+  });
+  $("#btn-gastos-mes-siguiente").addEventListener("click", () => {
+    if (gastosMesOffset >= 0) return;
+    gastosMesOffset++;
+    renderGastos();
   });
   $("#btn-export-gastos").addEventListener("click", exportGastosCSV);
   $("#btn-export-facturacion").addEventListener("click", exportFacturacionCSV);

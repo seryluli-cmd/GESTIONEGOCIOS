@@ -202,8 +202,14 @@
 
     <!-- ---- TAB: GASTOS ---- -->
     <section id="tab-gastos" class="tab active">
+      <div class="month-nav">
+        <button id="btn-gastos-mes-anterior" class="month-nav-btn" aria-label="Mes anterior">‹</button>
+        <div class="month-nav-label" id="gastos-mes-label">Mes</div>
+        <button id="btn-gastos-mes-siguiente" class="month-nav-btn" aria-label="Mes siguiente">›</button>
+      </div>
+
       <div class="stat-hero">
-        <div class="stat-hero-label">Total gastado (este mes)</div>
+        <div class="stat-hero-label">Total gastado</div>
         <div class="stat-hero-value" id="total-mes">$0</div>
       </div>
 
