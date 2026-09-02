@@ -489,9 +489,11 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
   max-width: 520px;
   margin: 0 auto;
   border-radius: 20px 20px 0 0;
-  padding: 10px 20px calc(24px + var(--safe-bottom));
+  padding: 10px 20px 0;
   max-height: 88vh;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 .modal-handle {
   width: 40px; height: 4px;
@@ -500,7 +502,16 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
   margin: 6px auto 14px;
 }
 .modal-sheet h2 { margin: 0 0 16px; font-size: 18px; }
-.modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  position: sticky;
+  bottom: 0;
+  background: var(--surface-1);
+  padding: 12px 0 calc(24px + var(--safe-bottom));
+  border-top: 1px solid var(--gridline);
+}
 .modal-actions .btn-secondary, .modal-actions .btn-primary { width: auto; flex: 1; }
 
 .pagador-options { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -539,7 +539,7 @@ function selectNegocio(id) {
   $("#negocio-icon-badge").style.background = biz.color;
 
   // Pantalla "Facturado" — badge del topbar
-  $("#facturado-titulo").textContent = biz.nombre + " — Facturado";
+  $("#facturado-titulo").textContent = biz.nombre + " — Cierre de Turno";
   $("#facturado-icon-badge").textContent = biz.emoji;
   $("#facturado-icon-badge").style.background = biz.color;
 
@@ -567,7 +567,7 @@ function renderSeccionCards(biz) {
 
   const SECCIONES = [
     { id: "gastos", emoji: "🧾", nombre: "Gastos", sub: "Cargar gastos y ver el balance entre socios" },
-    { id: "facturado", emoji: "💰", nombre: "Facturado", sub: "Anotar lo que se facturó cada día" },
+    { id: "facturado", emoji: "💰", nombre: "Cierre de Turno", sub: "Anotar lo que se facturó cada día" },
     { id: "resumen", emoji: "📊", nombre: "Resumen mensual", sub: "Ver los totales de cada mes" },
     { id: "ideas", emoji: "💡", nombre: "Ideas/Metas", sub: "Para mejorar este negocio" }
   ];
@@ -1077,6 +1077,28 @@ function renderResumen() {
   $("#resumen-bar-digital").style.width = Math.round((totalDigital / maxEfectDigital) * 100) + "%";
   $("#resumen-total-gastos").textContent = money(totalGastos);
   $("#resumen-cant-gastos").textContent = gastosMes.length === 1 ? "1 gasto cargado" : `${gastosMes.length} gastos cargados`;
+
+  // Mismo desglose Efectivo/Digital que Facturado, pero para Gastos —
+  // usa el campo "formaPago" de cada gasto (ver openModal/saveGasto).
+  // Gastos sin ese campo (cargados antes de que existiera) cuentan como
+  // Efectivo, igual que en la lista de Gastos (ver formaPagoLabel()).
+  let totalGastosEfectivo = 0, totalGastosDigital = 0;
+  gastosMes.forEach(g => {
+    const importe = Number(g.importe) || 0;
+    if (g.formaPago === "digital") {
+      totalGastosDigital += importe;
+    } else if (g.formaPago === "mixto") {
+      totalGastosEfectivo += Number(g.montoEfectivo) || 0;
+      totalGastosDigital += Number(g.montoDigital) || 0;
+    } else {
+      totalGastosEfectivo += importe;
+    }
+  });
+  $("#resumen-gastos-efectivo").textContent = money(totalGastosEfectivo);
+  $("#resumen-gastos-digital").textContent = money(totalGastosDigital);
+  const maxGastosEfectDigital = Math.max(1, totalGastosEfectivo, totalGastosDigital);
+  $("#resumen-gastos-bar-efectivo").style.width = Math.round((totalGastosEfectivo / maxGastosEfectDigital) * 100) + "%";
+  $("#resumen-gastos-bar-digital").style.width = Math.round((totalGastosDigital / maxGastosEfectDigital) * 100) + "%";
 
   const porCategoria = {};
   gastosMes.forEach(g => {

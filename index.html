@@ -324,7 +324,7 @@
       <button id="btn-back-to-seccion-fact" class="topbar-title" aria-label="Volver a la sección">
         <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
         <span class="logo-badge small" id="facturado-icon-badge">$</span>
-        <span id="facturado-titulo">Facturado</span>
+        <span id="facturado-titulo">Cierre de Turno</span>
       </button>
       <div class="sync-dot" id="sync-dot-fact" title="Sincronizado"></div>
     </header>
@@ -397,6 +397,23 @@
         <div class="stat-hero-label">🧾 Gastos</div>
         <div class="stat-hero-value" id="resumen-total-gastos">$0</div>
         <div class="stat-hero-sub" id="resumen-cant-gastos">0 gastos cargados</div>
+      </div>
+
+      <div class="socios-totales" style="margin-bottom:18px;">
+        <div class="socio-total-card">
+          <div class="socio-total-row">
+            <div class="socio-total-name"><span class="socio-dot" style="background:var(--good)"></span> Efectivo</div>
+            <div class="socio-total-amount" id="resumen-gastos-efectivo">$0</div>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="resumen-gastos-bar-efectivo" style="background:var(--good)"></div></div>
+        </div>
+        <div class="socio-total-card">
+          <div class="socio-total-row">
+            <div class="socio-total-name"><span class="socio-dot" style="background:var(--series-1)"></span> Digital</div>
+            <div class="socio-total-amount" id="resumen-gastos-digital">$0</div>
+          </div>
+          <div class="bar-track"><div class="bar-fill" id="resumen-gastos-bar-digital" style="background:var(--series-1)"></div></div>
+        </div>
       </div>
 
       <h3 class="section-title">Gastos por categoría</h3>
