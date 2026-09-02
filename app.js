@@ -79,7 +79,7 @@ const NEGOCIOS = [
 const CATEGORIAS_GASTO = {
   pancho: ["Insumos", "Alquiler", "Servicios", "Sueldos", "Marketing", "Impuestos", "Otros"],
   heladeria: ["Helado", "Tortas de repostería", "Café", "Medialunas", "Fiambres",
-              "Art Limpieza", "Gastos Fijos", "Gastos varios"],
+              "Art Limpieza", "Sueldos", "Gastos Fijos", "Gastos varios"],
 };
 
 // Reparto de gastos entre los 3 socios: NO es igualitario (1/3 cada uno)
@@ -779,8 +779,11 @@ function renderGastos() {
 
     // Falta abonar: se tildó porque todavía no se le pagó a quien
     // trajo la mercadería (ej. te dejan pagar unos días después) — la
-    // fila queda en rojo hasta que se destilde desde "Editar".
-    const metaFaltaAbonar = g.faltaAbonar ? ` · <span class="meta-falta-abonar">⚠️ Falta abonar</span>` : "";
+    // fila queda en rojo. Tocar el aviso lo marca como pagado al toque
+    // (guarda directo, sin pasar por el modal de Editar).
+    const metaFaltaAbonar = g.faltaAbonar
+      ? ` · <button type="button" class="meta-falta-abonar" data-id="${g.id}">⚠️ Falta abonar</button>`
+      : "";
 
     const notaHtml = g.nota ? `<div class="meta gasto-nota">📝 ${escapeHtml(g.nota)}</div>` : "";
 
@@ -1827,6 +1830,18 @@ async function deleteGasto(id) {
   }
 }
 
+// Tocar el aviso "⚠️ Falta abonar" en la lista lo marca como pagado
+// directo, sin pasar por el modal de Editar.
+async function marcarAbonado(id) {
+  try {
+    await fbSdk.updateDoc(fbSdk.doc(db, "gastos", id), { faltaAbonar: false });
+    showToast("Gasto marcado como pagado ✅");
+  } catch (e) {
+    console.error(e);
+    showToast("No se pudo actualizar. Revisá tu conexión.");
+  }
+}
+
 // ---------- Modal: agregar cierre de Facturado ----------
 function setDefaultFechaFact() {
   $("#input-fecha-fact").value = fechaLocalISO();
@@ -2289,7 +2304,9 @@ function wireEvents() {
       return;
     }
     const delBtn = e.target.closest(".gasto-delete-btn");
-    if (delBtn) deleteGasto(delBtn.dataset.id);
+    if (delBtn) { deleteGasto(delBtn.dataset.id); return; }
+    const abonarBtn = e.target.closest(".meta-falta-abonar");
+    if (abonarBtn) marcarAbonado(abonarBtn.dataset.id);
   });
 
   // Editar y borrar de un cierre ya cargado (delegado, admin)
