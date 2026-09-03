@@ -71,9 +71,15 @@ seguridad que exigen autenticación anónima.
   puede borrarla (`deleteIdea()`). Tiene su **propia pantalla** (`screen-ideas`),
   accesible desde un botón arriba de todo en `screen-negocio` — justamente
   porque no depende de qué negocio estés mirando, no vive adentro de `screen-app`.
-- **Storage**: fotos de facturas en `recibos/{negocio}/{timestamp}_{random}.jpg`.
+- **Storage**: fotos de gastos en `recibos/{negocio}/{timestamp}_{random}.jpg`.
   Se borran solas a los 4 meses (`FOTO_RETENCION_DIAS`) vía
-  `limpiarFotosVencidas()` — **el gasto nunca se borra, solo la foto**.
+  `limpiarFotosVencidas()` — **el gasto nunca se borra, solo la foto**. Las
+  fotos de Cierre de Turno van en `cierres/{negocio}/{...}.jpg` (mismo
+  patrón — ver `saveCierre()`, separadas por Pancho/Heladería vía
+  `negocioActual`) pero **no** entran en esa limpieza automática de 4 meses
+  (`limpiarFotosVencidas()` solo mira `gastos`) ni en "Fotos guardadas"
+  (solo lista fotos de gastos) — quedan en Storage indefinidamente salvo
+  que se borre el cierre entero.
 
 Los 3 socios entran en el reparto de deudas; los `colaboradores` (ej. una
 encargada) pueden cargar gastos y aparecer como "quién pagó", pero quedan

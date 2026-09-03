@@ -38,8 +38,10 @@ async function loadFirebaseSdk() {
     orderBy: fsMod.orderBy,
     doc: fsMod.doc,
     getDoc: fsMod.getDoc,
+    getDocs: fsMod.getDocs,
     setDoc: fsMod.setDoc,
     updateDoc: fsMod.updateDoc,
+    increment: fsMod.increment,
     deleteField: fsMod.deleteField,
     arrayUnion: fsMod.arrayUnion,
     arrayRemove: fsMod.arrayRemove,
@@ -77,7 +79,7 @@ const NEGOCIOS = [
 // reemplaza dinámicamente por las que correspondan según negocioActual
 // cada vez que se abre el modal (ver openModal()).
 const CATEGORIAS_GASTO = {
-  pancho: ["Insumos", "Alquiler", "Servicios", "Sueldos", "Marketing", "Impuestos", "Otros"],
+  pancho: ["Panchos", "Bebidas", "Papelería", "Publicidad", "Topping", "Sueldos", "Otros"],
   heladeria: ["Helado", "Tortas de repostería", "Café", "Medialunas", "Fiambres",
               "Art Limpieza", "Sueldos", "Gastos Fijos", "Gastos varios"],
 };
@@ -96,6 +98,7 @@ const PORCENTAJE_SOCIO = {
 
 let fbApp = null, auth = null, db = null, storage = null;
 let selectedFotoBlob = null; // foto comprimida, lista para subir (modal Nuevo gasto)
+let selectedFotoFacturadoBlob = null; // ídem, para el modal de Cierre de Turno
 const FOTO_RETENCION_DIAS = 120; // ~4 meses — pasado esto, se borra sola la foto (no el gasto)
 let fotosLimpiezaHecha = false;
 let socios = [];           // ["Sergio", "Ana", "Marcos"] — los 3 socios, entran en el reparto
@@ -352,11 +355,52 @@ function setUsuarioActual(nombre) {
   usuarioActual = nombre;
   esAdmin = admins.includes(nombre);
   localStorage.setItem(LS_USER_KEY, nombre);
+  registrarLogin(nombre);
   renderAjustesSocios();
   renderNegocioCards();
   renderGastos();
   renderFacturado();
   renderIdeas();
+}
+
+// Historial de logeos: cuenta cuántas veces se identificó cada persona
+// (tanto al tipear el PIN de nuevo como cuando el celular ya la recordaba
+// — setUsuarioActual() es el único lugar por el que pasa cualquiera de
+// las dos formas). Solo Sergio puede VER el resultado (ver
+// renderAjustesSocios) pero se cuenta para todos por igual. Un doc por
+// persona con un contador atómico, en vez de un doc por logeo, para no
+// acumular una colección sin límite ni tener que leer miles de docs para
+// mostrar un simple conteo.
+async function registrarLogin(nombre) {
+  try {
+    await fbSdk.setDoc(fbSdk.doc(db, "logins", nombre), { veces: fbSdk.increment(1) }, { merge: true });
+  } catch (e) {
+    console.error("No se pudo registrar el logeo:", e);
+  }
+}
+
+async function cargarHistorialLogins() {
+  const wrap = $("#historial-logins-list");
+  const empty = $("#historial-logins-empty");
+  wrap.innerHTML = "";
+  try {
+    const snap = await fbSdk.getDocs(fbSdk.collection(db, "logins"));
+    const filas = [];
+    snap.forEach(d => filas.push({ nombre: d.id, veces: d.data().veces || 0 }));
+    filas.sort((a, b) => b.veces - a.veces);
+    empty.classList.toggle("hidden", filas.length > 0);
+    filas.forEach(f => {
+      const row = document.createElement("div");
+      row.className = "ajustes-socio-row";
+      row.innerHTML = `<span class="socio-dot" style="background:${NEUTRAL_VAR}"></span> ${escapeHtml(f.nombre)}
+        <span class="muted small" style="margin-left:auto;">${f.veces} ${f.veces === 1 ? "vez" : "veces"}</span>`;
+      wrap.appendChild(row);
+    });
+  } catch (e) {
+    console.error("No se pudo cargar el historial de logeos:", e);
+    empty.textContent = "No se pudo cargar. Revisá tu conexión.";
+    empty.classList.remove("hidden");
+  }
 }
 
 // Negocios que puede ver una persona: los 3 socios siempre ven los 2
@@ -866,6 +910,9 @@ function renderFacturado() {
     const fecha = f.fecha && f.fecha.toDate ? f.fecha.toDate() : new Date(f.fecha || Date.now());
     totalMes += Number(f.importe) || 0;
 
+    const fotoBtn = f.fotoUrl
+      ? `<button type="button" class="foto-link" data-url="${escapeHtml(f.fotoUrl)}" aria-label="Ver foto del cierre">📷</button>`
+      : "";
     const adminBtns = esAdmin
       ? `<button type="button" class="icon-btn cierre-edit-btn" data-id="${f.id}" aria-label="Editar cierre">✏️</button>
          <button type="button" class="icon-btn danger cierre-delete-btn" data-id="${f.id}" aria-label="Borrar cierre">🗑️</button>`
@@ -880,6 +927,7 @@ function renderFacturado() {
         <div class="meta">Cargado por ${escapeHtml(f.registradoPor || "?")}</div>
       </div>
       <div class="amount">${money(f.importe)}</div>
+      ${fotoBtn}
       ${adminBtns}
     `;
     list.appendChild(li);
@@ -1080,6 +1128,16 @@ function renderResumen() {
   $("#resumen-bar-digital").style.width = Math.round((totalDigital / maxEfectDigital) * 100) + "%";
   $("#resumen-total-gastos").textContent = money(totalGastos);
   $("#resumen-cant-gastos").textContent = gastosMes.length === 1 ? "1 gasto cargado" : `${gastosMes.length} gastos cargados`;
+
+  // Rentabilidad = Total Facturado - Gastos del mes. En rojo si da negativo
+  // (se gastó más de lo que entró), en verde si da positivo o cero. money()
+  // siempre recibe un valor positivo (mismo criterio que el resto de la
+  // app, ver computeSettlements) — el signo se antepone a mano para que
+  // quede "-$1.234" y no el "$-1.234" que da toLocaleString con negativos.
+  const rentabilidad = totalFact - totalGastos;
+  const rentabilidadEl = $("#resumen-rentabilidad");
+  rentabilidadEl.textContent = (rentabilidad < 0 ? "-" : "") + money(Math.abs(rentabilidad));
+  rentabilidadEl.style.color = rentabilidad < 0 ? "var(--critical)" : "var(--good)";
 
   // Mismo desglose Efectivo/Digital que Facturado, pero para Gastos —
   // usa el campo "formaPago" de cada gasto (ver openModal/saveGasto).
@@ -1423,6 +1481,12 @@ function renderAjustesSocios() {
   $("#btn-add-colaborador-ajustes").classList.toggle("hidden", !esAdmin);
   $("#ajustes-clave-maestra-card").classList.toggle("hidden", !esAdmin);
 
+  // Historial de logeos: escondido para todos salvo Sergio, aunque Pola y
+  // Leonel también sean admin (ver registrarLogin/cargarHistorialLogins).
+  const esSergio = usuarioActual === "Sergio";
+  $("#ajustes-historial-logins-card").classList.toggle("hidden", !esSergio);
+  if (esSergio) cargarHistorialLogins();
+
   $("#ajustes-conn-status").textContent = auth && auth.currentUser
     ? "✅ Conectado — los gastos se sincronizan entre todos los celulares."
     : "⚠️ No conectado.";
@@ -1594,6 +1658,13 @@ function resetFotoField() {
   $("#input-foto").value = "";
   $("#foto-preview-wrap").classList.add("hidden");
   $("#foto-btns-row").classList.remove("hidden");
+}
+
+function resetFotoFieldFact() {
+  selectedFotoFacturadoBlob = null;
+  $("#input-foto-fact").value = "";
+  $("#foto-preview-wrap-fact").classList.add("hidden");
+  $("#foto-btns-row-fact").classList.remove("hidden");
 }
 
 // Llena el <select> de categoría con las que correspondan al negocio
@@ -1916,6 +1987,7 @@ function openModalFacturado(cierre) {
   $("#modal-fact-title").textContent = cierre ? "Editar cierre" : "Nuevo cierre";
   $("#btn-save-facturado").textContent = cierre ? "Guardar cambios" : "Guardar";
   $$("#pagador-options-fact .pagador-chip").forEach(c => c.classList.toggle("selected", c.textContent === selectedRegistrador));
+  resetFotoFieldFact(); // editar un cierre no toca su foto salvo que se elija una nueva
   $("#modal-fact-error").classList.add("hidden");
   $("#modal-add-facturado").classList.add("active");
   setTimeout(() => $("#input-importe-fact").focus(), 150);
@@ -1927,19 +1999,40 @@ function closeModalFacturado() {
 }
 
 async function saveCierre() {
-  const importe = parseFloat($("#input-importe-fact").value);
-  const efectivo = parseFloat($("#input-efectivo-fact").value);
-  const digital = parseFloat($("#input-digital-fact").value);
+  const totalStr = $("#input-importe-fact").value.trim();
+  const efectivoStr = $("#input-efectivo-fact").value.trim();
+  const digitalStr = $("#input-digital-fact").value.trim();
+  const importe = parseFloat(totalStr);
+  const efectivo = parseFloat(efectivoStr);
+  const digital = parseFloat(digitalStr);
   const fechaStr = $("#input-fecha-fact").value;
   const errEl = $("#modal-fact-error");
 
+  // Los 3 campos se autocompletan entre sí (ver calcularCampoFaltanteFacturado)
+  // pero igual hay que exigir que terminen los 3 con un valor antes de
+  // guardar (ej. si se borra uno a mano después de que se completó solo).
+  if (totalStr === "") {
+    errEl.textContent = "Falta llenar el Total.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  if (efectivoStr === "") {
+    errEl.textContent = "Falta llenar el Efectivo.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+  if (digitalStr === "") {
+    errEl.textContent = "Falta llenar el Digital.";
+    errEl.classList.remove("hidden");
+    return;
+  }
   if (!importe || importe <= 0) {
     errEl.textContent = "Ingresá un importe válido.";
     errEl.classList.remove("hidden");
     return;
   }
   if (!Number.isFinite(efectivo) || !Number.isFinite(digital) || efectivo < 0 || digital < 0) {
-    errEl.textContent = "Completá Efectivo y Digital (el que falta se calcula solo con el otro y el Total).";
+    errEl.textContent = "Efectivo y Digital tienen que ser números válidos (0 o más).";
     errEl.classList.remove("hidden");
     return;
   }
@@ -1960,9 +2053,32 @@ async function saveCierre() {
   const btn = $("#btn-save-facturado");
   const isEdit = !!editingCierreId;
   btn.disabled = true;
-  btn.textContent = "Guardando…";
+  btn.textContent = selectedFotoFacturadoBlob ? "Subiendo foto…" : "Guardando…";
 
   try {
+    // Mismo criterio que el guardado de gastos: si la foto falla o tarda
+    // demasiado, el cierre se guarda igual sin ella — mejor un cierre sin
+    // foto que un cierre perdido.
+    let fotoUrl = null, fotoPath = null, fotoFallo = false;
+    if (selectedFotoFacturadoBlob) {
+      try {
+        fotoPath = `cierres/${negocioActual}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+        const storageRef = fbSdk.ref(storage, fotoPath);
+        const TIMEOUT_MSG = "La subida de la foto tardó demasiado.";
+        await conTimeout(
+          fbSdk.uploadBytes(storageRef, selectedFotoFacturadoBlob, { contentType: "image/jpeg" }),
+          25000,
+          TIMEOUT_MSG
+        );
+        fotoUrl = await conTimeout(fbSdk.getDownloadURL(storageRef), 15000, TIMEOUT_MSG);
+      } catch (fotoErr) {
+        console.error("No se pudo subir la foto, se guarda el cierre sin ella:", fotoErr);
+        fotoFallo = true;
+        fotoPath = null;
+      }
+      btn.textContent = "Guardando…";
+    }
+
     const data = {
       importe,
       efectivo,
@@ -1971,6 +2087,13 @@ async function saveCierre() {
       negocio: negocioActual,
       fecha: fechaStr ? new Date(fechaStr + "T12:00:00") : fbSdk.serverTimestamp()
     };
+    // Solo se tocan fotoUrl/fotoPath si se eligió una foto nueva — al
+    // editar, updateDoc no toca los campos que no se le pasan, así que la
+    // foto existente queda intacta si no se cambia.
+    if (fotoUrl) {
+      data.fotoUrl = fotoUrl;
+      data.fotoPath = fotoPath;
+    }
     if (isEdit) {
       await fbSdk.updateDoc(fbSdk.doc(db, "facturacion", editingCierreId), data);
     } else {
@@ -1978,7 +2101,11 @@ async function saveCierre() {
       await fbSdk.addDoc(fbSdk.collection(db, "facturacion"), data);
     }
     closeModalFacturado();
-    showToast(isEdit ? "Cierre actualizado ✅" : "Cierre guardado ✅");
+    if (fotoFallo) {
+      showToast(isEdit ? "Cierre actualizado, pero no se pudo subir la foto ⚠️" : "Cierre guardado sin la foto (no se pudo subir) ⚠️");
+    } else {
+      showToast(isEdit ? "Cierre actualizado ✅" : "Cierre guardado ✅");
+    }
   } catch (e) {
     errEl.textContent = "No se pudo guardar. Revisá tu conexión.";
     errEl.classList.remove("hidden");
@@ -1989,10 +2116,19 @@ async function saveCierre() {
   }
 }
 
-// Solo accesible desde el botón 🗑️ (esAdmin).
+// Solo accesible desde el botón 🗑️ (esAdmin). Borra también la foto en
+// Storage si tenía una (mismo criterio que deleteGasto).
 async function deleteCierre(id) {
   if (!confirm("¿Borrar este cierre? No se puede deshacer.")) return;
+  const cierre = facturaciones.find(x => x.id === id);
   try {
+    if (cierre && cierre.fotoPath) {
+      try {
+        await fbSdk.deleteObject(fbSdk.ref(storage, cierre.fotoPath));
+      } catch (e) {
+        console.warn("No se pudo borrar la foto del cierre:", e.message);
+      }
+    }
     await fbSdk.deleteDoc(fbSdk.doc(db, "facturacion", id));
     showToast("Cierre borrado");
   } catch (e) {
@@ -2221,6 +2357,7 @@ function wireEvents() {
   });
   $("#btn-export-gastos").addEventListener("click", exportGastosCSV);
   $("#btn-export-facturacion").addEventListener("click", exportFacturacionCSV);
+  $("#btn-refrescar-historial-logins").addEventListener("click", cargarHistorialLogins);
   $("#btn-reset").addEventListener("click", resetLocalConfig);
   $("#btn-switch-negocio").addEventListener("click", volverASeccion);
   $("#btn-back-to-seccion-fact").addEventListener("click", volverASeccion);
@@ -2293,6 +2430,31 @@ function wireEvents() {
   });
   $("#btn-quitar-foto").addEventListener("click", resetFotoField);
 
+  // Foto del cierre (modal Cierre de Turno) — mismo patrón que la de
+  // Nuevo gasto, arriba, pero con sus propios elementos e input.
+  $("#btn-tomar-foto-fact").addEventListener("click", () => {
+    $("#input-foto-fact").setAttribute("capture", "environment");
+    $("#input-foto-fact").click();
+  });
+  $("#btn-elegir-foto-fact").addEventListener("click", () => {
+    $("#input-foto-fact").removeAttribute("capture");
+    $("#input-foto-fact").click();
+  });
+  $("#input-foto-fact").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      selectedFotoFacturadoBlob = await compressImage(file);
+      $("#foto-preview-img-fact").src = URL.createObjectURL(selectedFotoFacturadoBlob);
+      $("#foto-preview-wrap-fact").classList.remove("hidden");
+      $("#foto-btns-row-fact").classList.add("hidden");
+    } catch (err) {
+      console.error(err);
+      showToast("No se pudo procesar la foto.");
+    }
+  });
+  $("#btn-quitar-foto-fact").addEventListener("click", resetFotoFieldFact);
+
   // Foto, editar y borrar de un gasto ya cargado (delegado, la lista se re-dibuja seguido)
   $("#expenses-list").addEventListener("click", (e) => {
     const fotoBtn = e.target.closest(".foto-link");
@@ -2311,6 +2473,8 @@ function wireEvents() {
 
   // Editar y borrar de un cierre ya cargado (delegado, admin)
   $("#facturado-list").addEventListener("click", (e) => {
+    const fotoBtn = e.target.closest(".foto-link");
+    if (fotoBtn) { window.open(fotoBtn.dataset.url, "_blank", "noopener"); return; }
     const editBtn = e.target.closest(".cierre-edit-btn");
     if (editBtn) {
       const c = facturaciones.find(x => x.id === editBtn.dataset.id);

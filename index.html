@@ -295,6 +295,14 @@
         <button id="btn-install" class="btn-secondary hidden">Instalar ahora</button>
       </div>
 
+      <div class="card hidden" id="ajustes-historial-logins-card">
+        <h2>Historial de logeos</h2>
+        <p class="muted small">Cuántas veces se identificó cada persona en este celular y en el resto (incluye cuando ya lo recordaba automáticamente).</p>
+        <div id="historial-logins-list" class="ajustes-socios-list"></div>
+        <p id="historial-logins-empty" class="muted small hidden">Todavía no hay datos.</p>
+        <button type="button" id="btn-refrescar-historial-logins" class="btn-secondary" style="margin-top:10px;">🔄 Actualizar</button>
+      </div>
+
       <div class="card">
         <h2>Zona de riesgo</h2>
         <button id="btn-reset" class="btn-danger">Desconectar este celular</button>
@@ -416,6 +424,12 @@
         </div>
       </div>
 
+      <div class="stat-hero">
+        <div class="stat-hero-label stat-hero-label-lg">📈 Rentabilidad actual</div>
+        <div class="stat-hero-value" id="resumen-rentabilidad">$0</div>
+        <div class="stat-hero-sub">Total Facturado menos Gastos de este mes</div>
+      </div>
+
       <h3 class="section-title">Gastos por categoría</h3>
       <div id="resumen-categorias" class="socios-totales"></div>
       <p id="resumen-categorias-empty" class="muted small hidden">No hay gastos cargados este mes.</p>
@@ -464,12 +478,12 @@
       <div class="field">
         <label for="input-categoria">Categoría</label>
         <select id="input-categoria">
-          <option value="Insumos">Insumos</option>
-          <option value="Alquiler">Alquiler</option>
-          <option value="Servicios">Servicios</option>
+          <option value="Panchos">Panchos</option>
+          <option value="Bebidas">Bebidas</option>
+          <option value="Papelería">Papelería</option>
+          <option value="Publicidad">Publicidad</option>
+          <option value="Topping">Topping</option>
           <option value="Sueldos">Sueldos</option>
-          <option value="Marketing">Marketing</option>
-          <option value="Impuestos">Impuestos</option>
           <option value="Otros">Otros</option>
         </select>
       </div>
@@ -570,6 +584,19 @@
       <div class="field" id="campo-registrador">
         <label>¿Quién lo cargó?</label>
         <div id="pagador-options-fact" class="pagador-options"></div>
+      </div>
+
+      <div class="field">
+        <label>Foto del cierre <span class="muted small">(opcional)</span></label>
+        <input type="file" id="input-foto-fact" accept="image/*" class="hidden">
+        <div id="foto-btns-row-fact" class="foto-btns-row">
+          <button type="button" id="btn-tomar-foto-fact" class="btn-secondary">📷 Tomar foto</button>
+          <button type="button" id="btn-elegir-foto-fact" class="btn-secondary">🖼️ Elegir de galería</button>
+        </div>
+        <div id="foto-preview-wrap-fact" class="foto-preview-wrap hidden">
+          <img id="foto-preview-img-fact" class="foto-preview-img" alt="Vista previa del cierre">
+          <button type="button" id="btn-quitar-foto-fact" class="foto-remove-btn" aria-label="Quitar foto">×</button>
+        </div>
       </div>
 
       <p id="modal-fact-error" class="error-text hidden"></p>
