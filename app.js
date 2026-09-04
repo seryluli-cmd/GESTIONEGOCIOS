@@ -68,9 +68,19 @@ const NEUTRAL_VAR = "var(--text-muted)";
 // y tanto la lista de gastos como el balance se calculan por separado
 // para cada negocio (mismos 3 socios, cuentas independientes).
 const NEGOCIOS = [
-  { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)" },
-  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)" }
+  { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)", tieneCajaLocal: true },
+  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false }
 ];
+
+// La Caja del local hoy es "solo de Pancho", pero en vez de repetir
+// comparaciones con el string "pancho" desparramadas en cada función que
+// la muestra/oculta (render, modal de gasto, etc.), se pregunta acá — si
+// el día de mañana Heladería también quiere una, alcanza con poner
+// tieneCajaLocal:true en su entrada de NEGOCIOS, sin tocar el resto.
+function negocioTieneCajaLocal(id) {
+  const biz = NEGOCIOS.find(b => b.id === id);
+  return !!(biz && biz.tieneCajaLocal);
+}
 
 // Categorías de gastos: distintas por negocio, porque Pancho Recreo y
 // Heladería Pablo venden cosas totalmente distintas. El <select> de
@@ -1184,7 +1194,7 @@ function renderResumen() {
   // vaciando, no un gasto mensual). Esos gastos igual ya están sumados
   // arriba en Total Gastos como cualquier otro, sin excepción.
   const cajaLocalWrap = $("#resumen-caja-local-wrap");
-  if (negocioActual === "pancho") {
+  if (negocioTieneCajaLocal(negocioActual)) {
     cajaLocalWrap.classList.remove("hidden");
     const gastadoCaja = gastosDelNegocio()
       .filter(g => g.formaPago === "caja")
@@ -1859,9 +1869,9 @@ function openModal(gasto) {
   mixtoUltimoEditado = null;
   $("#input-mixto-efectivo").value = gasto && gasto.montoEfectivo != null ? gasto.montoEfectivo : "";
   $("#input-mixto-digital").value = gasto && gasto.montoDigital != null ? gasto.montoDigital : "";
-  // "Caja del local" es una forma de pago exclusiva de Pancho (ver
-  // renderResumen/renderAjustesSocios) — se esconde el chip en Heladería.
-  $("#chip-forma-caja").classList.toggle("hidden", negocioActual !== "pancho");
+  // "Caja del local" es una forma de pago exclusiva de los negocios con
+  // tieneCajaLocal:true en NEGOCIOS (ver renderResumen/renderAjustesSocios).
+  $("#chip-forma-caja").classList.toggle("hidden", !negocioTieneCajaLocal(negocioActual));
   selectFormaPago(gasto ? (gasto.formaPago || "efectivo") : "efectivo");
 
   if (gasto) {

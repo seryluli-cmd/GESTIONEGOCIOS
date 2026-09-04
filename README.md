@@ -74,7 +74,8 @@ seguridad que exigen autenticación anónima.
   se prefirió simple. Lo que "queda" se calcula en `renderResumen()`:
   `cajaLocalMonto` menos la suma de TODOS los gastos con `formaPago: "caja"`
   (de siempre, no solo del mes elegido) — se muestra en Resumen mensual
-  solo cuando `negocioActual === "pancho"`. Si un gasto "caja" deja el
+  solo si `negocioTieneCajaLocal(negocioActual)` da `true` (hoy solo
+  Pancho, ver `tieneCajaLocal` en `NEGOCIOS`). Si un gasto "caja" deja el
   saldo en negativo, `saveGasto()` avisa con un `confirm()` (no bloquea,
   por si realmente se gastó de más y después se repone).
 - **`facturacion`** (colección) — un doc por cierre diario:
