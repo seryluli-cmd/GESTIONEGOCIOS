@@ -237,16 +237,28 @@ ajustaron varias veces seguidas en la misma sesión:
   el historial de commits de abajo.
 
 **Para revertir estos cambios puntuales sin tocar el resto** (por si se
-prueba y no convence): son 3 commits seguidos, cada uno independiente —
+prueba y no convence) — son 3 commits seguidos, cada uno independiente:
+- `8dfddb5` Simplificar el detalle del gasto a una lista gris
+- `cdb52e7` Rediseñar "Ver detalle completo" como modal propio
+- `fd6a640` Mover íconos de foto/editar/borrar debajo del texto
+
+Para deshacer los 3 (mantiene el historial, no reescribe nada — es la
+opción segura):
 ```
-git log --oneline   # ubicar los hashes actuales de estos 3 commits
-git revert <hash-simplificar> <hash-redisenar> <hash-mover-iconos>
+git revert 8dfddb5 cdb52e7 fd6a640
+git push origin master
 ```
-(en ese orden, del más nuevo al más viejo) o, más simple todavía,
-`git reset --hard <hash-del-commit-anterior-a-"Mover íconos...">` seguido
-de `git push --force` si ya se había pusheado — **esto último borra el
-historial de esos 3 commits**, usar solo si se está seguro de no
-querer ninguna parte de este cambio.
+Para deshacer solo el último ajuste de diseño (volver a la versión con
+avatar/pastillas de color, quedándose con el resto):
+```
+git revert 8dfddb5
+git push origin master
+```
+Si en cambio se quiere borrar directamente esos commits del historial
+(en vez de sumar commits que los deshacen), `git reset --hard a9c65e3`
+(el commit justo anterior a estos 3, "Agregar aviso Caja faltante...")
+seguido de `git push --force origin master` — esto sí reescribe el
+historial público, usarlo solo si nadie más bajó estos commits todavía.
 
 ## Reglas de negocio a tener en cuenta
 
