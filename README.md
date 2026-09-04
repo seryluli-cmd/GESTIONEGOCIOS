@@ -53,10 +53,25 @@ seguridad que exigen autenticación anónima.
   `colaboradorNegocio` se explica en "Acceso restringido por negocio" más
   abajo — un colaborador que no aparece ahí ve los 2 negocios.
 - **`gastos`** (colección) — un doc por gasto:
-  `{ importe, descripcion, categoria, pagadoPor, negocio, fecha, creadoEn, fotoUrl?, fotoPath? }`.
+  `{ importe, descripcion, categoria, pagadoPor, formaPago, negocio, fecha, creadoEn, fotoUrl?, fotoPath? }`.
   `negocio` es `"pancho"` o `"heladeria"` (ver `NEGOCIOS` en app.js) — **ambos
   negocios comparten la misma colección**, se filtran en memoria con
-  `gastosDelNegocio()`.
+  `gastosDelNegocio()`. `formaPago` es `"efectivo"`, `"digital"`, `"mixto"`
+  (con `montoEfectivo`/`montoDigital` propios) o `"caja"` — este último solo
+  existe en Pancho, ver **Caja del local** más abajo. Un gasto "caja" suma a
+  Total Gastos y Rentabilidad como cualquier otro — no tiene ningún trato
+  especial salvo restarse de `cajaLocalMonto` en el cálculo de "queda".
+- **Caja del local** (campo `cajaLocalMonto` en `config/socios`, no una
+  colección propia) — el efectivo físico que tiene la encargada de Pancho
+  para pagar cosas sin transferirle cada vez. Es **un solo número que
+  cualquier admin reescribe a mano desde Ajustes** (`guardarCajaLocal()`)
+  para "reponer" la caja — a propósito no hay historial de reposiciones,
+  se prefirió simple. Lo que "queda" se calcula en `renderResumen()`:
+  `cajaLocalMonto` menos la suma de TODOS los gastos con `formaPago: "caja"`
+  (de siempre, no solo del mes elegido) — se muestra en Resumen mensual
+  solo cuando `negocioActual === "pancho"`. Si un gasto "caja" deja el
+  saldo en negativo, `saveGasto()` avisa con un `confirm()` (no bloquea,
+  por si realmente se gastó de más y después se repone).
 - **`facturacion`** (colección) — un doc por cierre diario:
   `{ importe, registradoPor, negocio, fecha, creadoEn }`. Mismo patrón que
   `gastos`.

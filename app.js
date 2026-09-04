@@ -112,6 +112,11 @@ let claveMaestraAdmin = ""; // clave compartida entre los admins, solo para CREA
                              // en un celular nuevo (ver openPinModal/confirmPinModal) — evita que cualquiera
                              // tocando "Sergio" por primera vez se autoasigne el PIN de admin sin saberla.
                              // Si no está configurada (vacía), no se pide — no es seguridad real, ver README.
+let cajaLocalMonto = 0;     // Caja del local de Pancho Recreo: total repuesto en efectivo (ej. $600.000),
+                             // editable a mano por cualquier admin desde Ajustes (ver guardarCajaLocal()).
+                             // Lo que "queda" se calcula solo: este número menos los gastos con
+                             // formaPago "caja" (ver renderResumen()) — no es un historial, es un
+                             // total que se reescribe cada vez que se repone.
 let gastos = [];           // TODOS los gastos, de los 2 negocios — [{id, importe, descripcion, categoria, pagadoPor, fecha, negocio}]
 let facturaciones = [];    // TODOS los cierres diarios, de los 2 negocios — [{id, importe, registradoPor, fecha, negocio}]
 let ideas = [];            // TODAS las ideas de mejora, de los 2 negocios — [{id, texto, estado, propuestoPor, negocio, creadoEn}], filtradas por ideasDelNegocio()
@@ -299,6 +304,7 @@ async function connectAndBoot(config, namesFromInput, colabFromInput) {
     admins = Array.isArray(data.admins) ? data.admins : [];
     pins = data.pins && typeof data.pins === "object" ? data.pins : {};
     claveMaestraAdmin = typeof data.claveMaestraAdmin === "string" ? data.claveMaestraAdmin : "";
+    cajaLocalMonto = Number(data.cajaLocalMonto) || 0;
   } else {
     if (!namesFromInput || namesFromInput.some(n => !n.trim())) {
       throw new Error("Completá los nombres de los 3 socios.");
@@ -694,6 +700,7 @@ function listenSocios() {
       admins = Array.isArray(data.admins) ? data.admins : [];
       pins = data.pins && typeof data.pins === "object" ? data.pins : {};
       claveMaestraAdmin = typeof data.claveMaestraAdmin === "string" ? data.claveMaestraAdmin : "";
+      cajaLocalMonto = Number(data.cajaLocalMonto) || 0;
       localStorage.setItem(LS_SOCIOS_CACHE, JSON.stringify(socios));
       localStorage.setItem(LS_COLAB_CACHE, JSON.stringify(colaboradores));
       esAdmin = usuarioActual ? admins.includes(usuarioActual) : false;
@@ -705,6 +712,7 @@ function listenSocios() {
       renderGastos();
       renderFacturado();
       renderIdeas();
+      if (negocioActual) renderResumen();
     }
   });
 }
@@ -829,7 +837,16 @@ function renderGastos() {
       ? ` · <button type="button" class="meta-falta-abonar" data-id="${g.id}">⚠️ Falta abonar</button>`
       : "";
 
-    const notaHtml = g.nota ? `<div class="meta gasto-nota">📝 ${escapeHtml(g.nota)}</div>` : "";
+    // Notas largas hacían la fila del gasto muy alta en el celular — se
+    // recortan a las primeras 2 palabras y el resto se ve tocando "Ver
+    // detalle completo" (usa data-id, no el texto de la nota, para no
+    // tener que escaparla dentro de un atributo HTML — ver verDetalleGasto()).
+    const notaPalabras = g.nota ? g.nota.trim().split(/\s+/) : [];
+    const notaLarga = notaPalabras.length > 2;
+    const notaCorta = notaPalabras.slice(0, 2).join(" ");
+    const notaHtml = g.nota
+      ? `<div class="meta gasto-nota">📝 ${escapeHtml(notaCorta)}${notaLarga ? `… <button type="button" class="ver-detalle-btn" data-id="${g.id}">Ver detalle completo</button>` : ""}</div>`
+      : "";
 
     const li = document.createElement("li");
     li.className = "expense-item" + (g.faltaAbonar ? " falta-abonar" : "");
@@ -855,7 +872,28 @@ function renderGastos() {
 function formaPagoLabel(g) {
   if (g.formaPago === "digital") return "💳 Digital";
   if (g.formaPago === "mixto") return `🔀 ${money(g.montoDigital)} digital · ${money(g.montoEfectivo)} efectivo`;
+  if (g.formaPago === "caja") return "💰 Caja del local";
   return "💵 Efectivo";
+}
+
+// Detalle completo de un gasto (ver botón "Ver detalle completo" en
+// renderGastos, para notas largas) — un cartel simple en vez de otro
+// modal, ya que es solo para leer, no para editar.
+function verDetalleGasto(id) {
+  const g = gastos.find(x => x.id === id);
+  if (!g) return;
+  const fecha = fechaDeRegistro(g).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+  const lineas = [
+    `Importe: ${money(g.importe)}`,
+    `Descripción: ${g.descripcion || "-"}`,
+    `Categoría: ${g.categoria || "-"}`,
+    `Forma de pago: ${formaPagoLabel(g)}`,
+    `Pagado por: ${g.pagadoPor || "-"}`,
+    `Fecha: ${fecha}`
+  ];
+  if (g.faltaAbonar) lineas.push(`⚠️ Falta abonar`);
+  if (g.nota) lineas.push(`Nota: ${g.nota}`);
+  alert(lineas.join("\n"));
 }
 
 // Todo texto que viene de Firestore (descripción, nombres) pasa por acá antes
@@ -1138,6 +1176,26 @@ function renderResumen() {
   const rentabilidadEl = $("#resumen-rentabilidad");
   rentabilidadEl.textContent = (rentabilidad < 0 ? "-" : "") + money(Math.abs(rentabilidad));
   rentabilidadEl.style.color = rentabilidad < 0 ? "var(--critical)" : "var(--good)";
+
+  // Caja del local (hoy solo Pancho): "queda" = total repuesto a mano
+  // desde Ajustes (cajaLocalMonto) menos TODOS los gastos con formaPago
+  // "caja" (de siempre, no solo del mes elegido — es un pozo que se va
+  // vaciando, no un gasto mensual). Esos gastos igual ya están sumados
+  // arriba en Total Gastos como cualquier otro, sin excepción.
+  const cajaLocalWrap = $("#resumen-caja-local-wrap");
+  if (negocioActual === "pancho") {
+    cajaLocalWrap.classList.remove("hidden");
+    const gastadoCaja = gastosDelNegocio()
+      .filter(g => g.formaPago === "caja")
+      .reduce((sum, g) => sum + (Number(g.importe) || 0), 0);
+    const quedaCaja = cajaLocalMonto - gastadoCaja;
+    const quedaCajaEl = $("#resumen-caja-local-queda");
+    quedaCajaEl.textContent = (quedaCaja < 0 ? "-" : "") + money(Math.abs(quedaCaja));
+    quedaCajaEl.style.color = quedaCaja < 0 ? "var(--critical)" : "var(--text-primary)";
+    $("#resumen-caja-local-repuesto").textContent = money(cajaLocalMonto);
+  } else {
+    cajaLocalWrap.classList.add("hidden");
+  }
 
   // Mismo desglose Efectivo/Digital que Facturado, pero para Gastos —
   // usa el campo "formaPago" de cada gasto (ver openModal/saveGasto).
@@ -1441,8 +1499,15 @@ function renderAjustesSocios() {
   socios.forEach((nombre, idx) => {
     const row = document.createElement("div");
     row.className = "ajustes-socio-row";
-    const badge = admins.includes(nombre) ? `<span class="admin-badge">Admin</span>` : "";
-    row.innerHTML = `<span class="socio-dot" style="background:${socioColorVar(idx)}"></span> ${escapeHtml(nombre)} ${badge}`;
+    const esAdminSocio = admins.includes(nombre);
+    const badge = esAdminSocio ? `<span class="admin-badge">Admin</span>` : "";
+    // Solo un admin puede sumar/sacar admin a otro socio (ej. Leonel, que
+    // no lo era) — no a sí mismo, para que nadie se quede sin ningún
+    // admin activo por accidente.
+    const adminToggleBtn = esAdmin && nombre !== usuarioActual
+      ? `<button type="button" class="icon-btn admin-toggle-btn" data-nombre="${escapeHtml(nombre)}" aria-label="${esAdminSocio ? "Quitar admin" : "Hacer admin"}" title="${esAdminSocio ? "Quitar admin" : "Hacer admin"}" style="margin-left:auto;">${esAdminSocio ? "🛡️" : "🔓"}</button>`
+      : "";
+    row.innerHTML = `<span class="socio-dot" style="background:${socioColorVar(idx)}"></span> ${escapeHtml(nombre)} ${badge}${adminToggleBtn}`;
     wrap.appendChild(row);
   });
 
@@ -1480,6 +1545,13 @@ function renderAjustesSocios() {
   // negocio, arriba) — el resto de las personas ni ve el botón.
   $("#btn-add-colaborador-ajustes").classList.toggle("hidden", !esAdmin);
   $("#ajustes-clave-maestra-card").classList.toggle("hidden", !esAdmin);
+
+  // Caja del local: cualquier admin (Sergio, Pola o Leonel) puede
+  // editar el total repuesto — ver guardarCajaLocal(). Se precarga con
+  // el valor actual para que "incrementarla" sea directo: cambian el
+  // número y guardan.
+  $("#ajustes-caja-local-card").classList.toggle("hidden", !esAdmin);
+  if (esAdmin) $("#input-caja-local-monto").value = cajaLocalMonto || "";
 
   // Historial de logeos: escondido para todos salvo Sergio, aunque Pola y
   // Leonel también sean admin (ver registrarLogin/cargarHistorialLogins).
@@ -1537,6 +1609,56 @@ async function saveColaborador() {
     await fbSdk.updateDoc(fbSdk.doc(db, "config", "socios"), update);
     closeModalColaborador();
     showToast(`${nombre} agregado ✅`);
+  } catch (e) {
+    console.error(e);
+    errEl.textContent = "No se pudo guardar. Revisá tu conexión.";
+    errEl.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Guardar";
+  }
+}
+
+// Sumar/sacar admin a un socio (ej. Leonel, que empezó sin permiso para
+// editar/borrar gastos y cierres) — cualquier admin actual puede hacerlo
+// desde Ajustes (ver botón 🔓/🛡️ en renderAjustesSocios). No se puede
+// tocar a uno mismo (ver ese mismo render) para que nadie se quede sin
+// ningún admin activo por accidente.
+async function toggleAdminSocio(nombre) {
+  const yaEsAdmin = admins.includes(nombre);
+  try {
+    await fbSdk.updateDoc(fbSdk.doc(db, "config", "socios"), {
+      admins: yaEsAdmin ? fbSdk.arrayRemove(nombre) : fbSdk.arrayUnion(nombre)
+    });
+    showToast(yaEsAdmin ? `${nombre} ya no es admin` : `${nombre} ahora es admin ✅`);
+  } catch (e) {
+    console.error(e);
+    showToast("No se pudo actualizar. Revisá tu conexión.");
+  }
+}
+
+// Caja del local (Pancho): cualquier admin edita el total repuesto a mano
+// desde Ajustes (ver #ajustes-caja-local-card) — para "incrementarla" alcanza
+// con escribir el nuevo total y guardar. No hay historial de reposiciones a
+// propósito, es un solo número que se reescribe (ver cajaLocalMonto arriba).
+async function guardarCajaLocal() {
+  const monto = parseFloat($("#input-caja-local-monto").value);
+  const errEl = $("#caja-local-ajustes-error");
+  errEl.classList.add("hidden");
+
+  if (!Number.isFinite(monto) || monto < 0) {
+    errEl.textContent = "Ingresá un monto válido.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  const btn = $("#btn-guardar-caja-local");
+  btn.disabled = true;
+  btn.textContent = "Guardando…";
+  try {
+    await fbSdk.updateDoc(fbSdk.doc(db, "config", "socios"), { cajaLocalMonto: monto });
+    cajaLocalMonto = monto;
+    showToast("Caja del local actualizada ✅");
   } catch (e) {
     console.error(e);
     errEl.textContent = "No se pudo guardar. Revisá tu conexión.";
@@ -1736,6 +1858,9 @@ function openModal(gasto) {
   mixtoUltimoEditado = null;
   $("#input-mixto-efectivo").value = gasto && gasto.montoEfectivo != null ? gasto.montoEfectivo : "";
   $("#input-mixto-digital").value = gasto && gasto.montoDigital != null ? gasto.montoDigital : "";
+  // "Caja del local" es una forma de pago exclusiva de Pancho (ver
+  // renderResumen/renderAjustesSocios) — se esconde el chip en Heladería.
+  $("#chip-forma-caja").classList.toggle("hidden", negocioActual !== "pancho");
   selectFormaPago(gasto ? (gasto.formaPago || "efectivo") : "efectivo");
 
   if (gasto) {
@@ -1795,6 +1920,23 @@ async function saveGasto() {
       errEl.textContent = "Efectivo + Digital debe sumar el Importe total.";
       errEl.classList.remove("hidden");
       return;
+    }
+  }
+
+  // Aviso suave (no bloquea) si este gasto deja la Caja del local en
+  // negativo — para pescar errores de carga (elegir "Caja del local" por
+  // error, o un importe mal tipeado) sin impedir guardarlo si realmente
+  // se gastó de más y después se repone (ver guardarCajaLocal()). Al
+  // editar un gasto que YA era "caja", se excluye su monto viejo del
+  // cálculo para no descontarlo dos veces.
+  if (selectedFormaPago === "caja") {
+    const gastadoCajaOtros = gastosDelNegocio()
+      .filter(g => g.formaPago === "caja" && g.id !== editingGastoId)
+      .reduce((sum, g) => sum + (Number(g.importe) || 0), 0);
+    const saldoResultante = cajaLocalMonto - gastadoCajaOtros - importe;
+    if (saldoResultante < 0) {
+      const saldoTexto = (saldoResultante < 0 ? "-" : "") + money(Math.abs(saldoResultante));
+      if (!confirm(`Ojo: esto deja la Caja del local en ${saldoTexto}. ¿Guardar igual?`)) return;
     }
   }
 
@@ -1914,8 +2056,26 @@ async function marcarAbonado(id) {
 }
 
 // ---------- Modal: agregar cierre de Facturado ----------
+// Pancho y Heladería a veces siguen abiertos hasta las 3am — si alguien
+// carga el Cierre de Turno a esa hora, la fecha "de hoy" en realidad
+// todavía es la noche de AYER (el turno arrancó el día anterior). Sin
+// este ajuste quedaría fechado un día después de cuando realmente
+// funcionó el negocio. No es una franja dudosa: un cierre real JAMÁS se
+// carga entre la madrugada y el mediodía (a esa hora el negocio ni
+// abrió), así que hasta el mediodía siempre es el cierre de ayer, sin
+// excepción — recién a partir de esa hora "hoy" vuelve a ser hoy.
+function fechaSugeridaCierre() {
+  const hoy = new Date();
+  if (hoy.getHours() < 12) {
+    const ayer = new Date(hoy);
+    ayer.setDate(ayer.getDate() - 1);
+    return ayer;
+  }
+  return hoy;
+}
+
 function setDefaultFechaFact() {
-  $("#input-fecha-fact").value = fechaLocalISO();
+  $("#input-fecha-fact").value = fechaLocalISO(fechaSugeridaCierre());
 }
 
 // Cálculo cruzado Total/Efectivo/Digital: se pueden completar 2
@@ -2215,6 +2375,7 @@ async function handleSetupConnect() {
       admins = Array.isArray(data.admins) ? data.admins : [];
       pins = data.pins && typeof data.pins === "object" ? data.pins : {};
       claveMaestraAdmin = typeof data.claveMaestraAdmin === "string" ? data.claveMaestraAdmin : "";
+      cajaLocalMonto = Number(data.cajaLocalMonto) || 0;
       statusEl.textContent = "";
       await finalizeSetup(config);
     } else {
@@ -2468,7 +2629,9 @@ function wireEvents() {
     const delBtn = e.target.closest(".gasto-delete-btn");
     if (delBtn) { deleteGasto(delBtn.dataset.id); return; }
     const abonarBtn = e.target.closest(".meta-falta-abonar");
-    if (abonarBtn) marcarAbonado(abonarBtn.dataset.id);
+    if (abonarBtn) { marcarAbonado(abonarBtn.dataset.id); return; }
+    const verDetalleBtn = e.target.closest(".ver-detalle-btn");
+    if (verDetalleBtn) verDetalleGasto(verDetalleBtn.dataset.id);
   });
 
   // Editar y borrar de un cierre ya cargado (delegado, admin)
@@ -2496,6 +2659,7 @@ function wireEvents() {
   });
 
   $("#btn-guardar-clave-maestra").addEventListener("click", guardarClaveMaestra);
+  $("#btn-guardar-caja-local").addEventListener("click", guardarCajaLocal);
 
   // Agregar colaborador nuevo desde Ajustes (botón oculto para no-admin).
   $("#btn-add-colaborador-ajustes").addEventListener("click", () => openModalColaborador());
@@ -2507,6 +2671,10 @@ function wireEvents() {
 
   // Reasignar a qué negocio ve un colaborador, desde Ajustes (solo se
   // renderiza el <select> para el admin — ver renderAjustesSocios()).
+  $("#ajustes-socios-list").addEventListener("click", (e) => {
+    const adminBtn = e.target.closest(".admin-toggle-btn");
+    if (adminBtn) toggleAdminSocio(adminBtn.dataset.nombre);
+  });
   $("#ajustes-colaboradores-list").addEventListener("change", async (e) => {
     const select = e.target.closest(".colaborador-negocio-select");
     if (!select) return;

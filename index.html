@@ -271,6 +271,17 @@
         <button type="button" id="btn-guardar-clave-maestra" class="btn-secondary">Guardar</button>
       </div>
 
+      <div class="card hidden" id="ajustes-caja-local-card">
+        <h2>💰 Caja del local (Pancho)</h2>
+        <p class="muted small">Plata en efectivo que tiene Kiara en el local para pagar cosas sin transferirle cada vez. Poné acá el total repuesto hasta ahora (ej. si arrancó en $600.000 y le sumaron $200.000 más, poné $800.000) — lo que va quedando se calcula solo en Resumen mensual.</p>
+        <div class="field">
+          <label for="input-caja-local-monto">Total repuesto</label>
+          <input type="number" id="input-caja-local-monto" inputmode="decimal" placeholder="600000" min="0" step="0.01">
+        </div>
+        <p id="caja-local-ajustes-error" class="error-text hidden"></p>
+        <button type="button" id="btn-guardar-caja-local" class="btn-secondary">Guardar</button>
+      </div>
+
       <div class="card">
         <h2>Estado de conexión</h2>
         <p id="ajustes-conn-status" class="muted small"></p>
@@ -430,6 +441,12 @@
         <div class="stat-hero-sub">Total Facturado menos Gastos de este mes</div>
       </div>
 
+      <div class="stat-hero hidden" id="resumen-caja-local-wrap">
+        <div class="stat-hero-label stat-hero-label-lg">💰 Caja del local</div>
+        <div class="stat-hero-value" id="resumen-caja-local-queda">$0</div>
+        <div class="stat-hero-sub">Queda de <span id="resumen-caja-local-repuesto">$0</span> repuestos en total (no es solo de este mes)</div>
+      </div>
+
       <h3 class="section-title">Gastos por categoría</h3>
       <div id="resumen-categorias" class="socios-totales"></div>
       <p id="resumen-categorias-empty" class="muted small hidden">No hay gastos cargados este mes.</p>
@@ -503,6 +520,7 @@
           <div class="pagador-chip" data-forma="efectivo">💵 Efectivo</div>
           <div class="pagador-chip" data-forma="digital">💳 Digital</div>
           <div class="pagador-chip" data-forma="mixto">🔀 Mixto</div>
+          <div class="pagador-chip hidden" data-forma="caja" id="chip-forma-caja">💰 Caja del local</div>
         </div>
       </div>
 
