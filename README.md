@@ -203,6 +203,51 @@ clase `.tab` (solo para heredar estilos), pero **no** son parte de ese tabbar
 — por eso `switchTab()` limita su selector a `#screen-app` a propósito (ver
 comentario en el código). No tocar ese scoping sin entender por qué.
 
+## Lista de Gastos: fila, notas largas y "Ver detalle completo"
+
+Cambios recientes en cómo se ve y se abre el detalle de un gasto
+(`renderGastos()` en app.js) — documentados acá porque se probaron y
+ajustaron varias veces seguidas en la misma sesión:
+
+- **Fila de cada gasto**: se divide en `.expense-item-top` (avatar +
+  texto + monto) y, debajo, `.expense-item-actions` (íconos 📷 foto /
+  ✏️ editar / 🗑️ borrar). Antes todo iba en una sola fila y una
+  descripción o nota larga quedaba apretada contra el avatar y los
+  íconos. **Ojo**: Cierre de Turno y el aviso "Caja faltante" comparten
+  la misma clase base `.expense-item` pero NO tienen `.expense-item-actions`
+  — sus íconos se quedaron en la fila de siempre a propósito, porque su
+  texto es corto y no lo necesitaba.
+- **Notas largas**: se recortan a las primeras 2 palabras + "…" — el
+  texto completo (y el resto de los campos) se ve tocando **"Ver detalle
+  completo"**, que abre `#modal-detalle-gasto` (`verDetalleGasto(id)` /
+  `closeModalDetalleGasto()`). Notas de 2 palabras o menos se muestran
+  enteras, sin el botón.
+- **`#modal-detalle-gasto`**: reemplaza lo que antes era un `alert()`
+  nativo del navegador (mostraba el título "gestionegocios.netlify.app
+  dice", imposible de sacar o personalizar). Diseño final, a pedido: lista
+  simple de `ETIQUETA: valor` — etiqueta en mayúscula y negrita gris
+  (`.detalle-gasto-label`), valor en texto normal (`.detalle-gasto-valor`),
+  **todo en gris salvo "Falta abonar"** que se muestra en rojo
+  (`.detalle-gasto-label-critico`, mismo `--critical` que el resto de la
+  app) — es la única excepción de color, a propósito. Botón único
+  "Aceptar" (`.btn-primary`). Se probaron antes otras 2 versiones más
+  "de diseño" (con avatar, categoría en pastilla de color, fecha con
+  ícono, nota en tarjeta aparte) — se descartaron a pedido en favor de
+  esta lista simple; si se quiere retomar esa idea más adelante, están en
+  el historial de commits de abajo.
+
+**Para revertir estos cambios puntuales sin tocar el resto** (por si se
+prueba y no convence): son 3 commits seguidos, cada uno independiente —
+```
+git log --oneline   # ubicar los hashes actuales de estos 3 commits
+git revert <hash-simplificar> <hash-redisenar> <hash-mover-iconos>
+```
+(en ese orden, del más nuevo al más viejo) o, más simple todavía,
+`git reset --hard <hash-del-commit-anterior-a-"Mover íconos...">` seguido
+de `git push --force` si ya se había pusheado — **esto último borra el
+historial de esos 3 commits**, usar solo si se está seguro de no
+querer ninguna parte de este cambio.
+
 ## Reglas de negocio a tener en cuenta
 
 - **Reparto de deudas** (`computeSettlements`): calcula cuánto "debería" haber
