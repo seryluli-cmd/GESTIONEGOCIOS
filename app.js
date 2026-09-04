@@ -91,7 +91,7 @@ function negocioTieneCajaLocal(id) {
 const CATEGORIAS_GASTO = {
   pancho: ["Panchos", "Bebidas", "Papelería", "Publicidad", "Topping", "Sueldos", "Otros"],
   heladeria: ["Helado", "Tortas de repostería", "Café", "Medialunas", "Fiambres",
-              "Art Limpieza", "Sueldos", "Gastos Fijos", "Gastos varios"],
+              "Art Limpieza", "Sueldos", "Vale $$$", "Gastos Fijos", "Gastos varios"],
 };
 
 // Reparto de gastos entre los 3 socios: NO es igualitario (1/3 cada uno)
