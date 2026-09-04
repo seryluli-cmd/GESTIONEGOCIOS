@@ -904,6 +904,8 @@ function verDetalleGasto(id) {
 
   // Todo por textContent (no innerHTML) — no hace falta escapeHtml, texto
   // plano nunca se interpreta como HTML.
+  $("#detalle-gasto-avatar").textContent = socioInitial(g.pagadoPor);
+  $("#detalle-gasto-avatar").style.background = payerColorVar(g.pagadoPor);
   $("#detalle-gasto-monto").textContent = money(g.importe);
   $("#detalle-gasto-desc").textContent = g.descripcion || "Sin descripción";
   $("#detalle-gasto-categoria").textContent = g.categoria || "Otros";
@@ -920,12 +922,13 @@ function verDetalleGasto(id) {
     notaWrap.classList.add("hidden");
   }
 
-  const fotoWrap = $("#detalle-gasto-foto-wrap");
+  const fotoLink = $("#detalle-gasto-foto-link");
   if (g.fotoUrl) {
-    $("#detalle-gasto-foto-link").href = g.fotoUrl;
-    fotoWrap.classList.remove("hidden");
+    fotoLink.href = g.fotoUrl;
+    $("#detalle-gasto-foto-img").src = g.fotoUrl;
+    fotoLink.classList.remove("hidden");
   } else {
-    fotoWrap.classList.add("hidden");
+    fotoLink.classList.add("hidden");
   }
 
   $("#modal-detalle-gasto").classList.add("active");

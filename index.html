@@ -575,22 +575,47 @@
   <div id="modal-detalle-gasto" class="modal-overlay">
     <div class="modal-sheet detalle-gasto-sheet">
       <div class="modal-handle"></div>
-      <h2>Detalle del gasto</h2>
 
-      <div class="detalle-gasto-lista">
-        <div class="detalle-gasto-item"><span class="detalle-gasto-label">Importe:</span> <span class="detalle-gasto-valor" id="detalle-gasto-monto">$0</span></div>
-        <div class="detalle-gasto-item"><span class="detalle-gasto-label">Descripción:</span> <span class="detalle-gasto-valor" id="detalle-gasto-desc">—</span></div>
-        <div class="detalle-gasto-item"><span class="detalle-gasto-label">Categoría:</span> <span class="detalle-gasto-valor" id="detalle-gasto-categoria">—</span></div>
-        <div class="detalle-gasto-item"><span class="detalle-gasto-label">Forma de pago:</span> <span class="detalle-gasto-valor" id="detalle-gasto-formapago">—</span></div>
-        <div class="detalle-gasto-item"><span class="detalle-gasto-label">Pagado por:</span> <span class="detalle-gasto-valor" id="detalle-gasto-pagador">—</span></div>
-        <div class="detalle-gasto-item"><span class="detalle-gasto-label">Fecha:</span> <span class="detalle-gasto-valor" id="detalle-gasto-fecha">—</span></div>
-        <div class="detalle-gasto-item hidden" id="detalle-gasto-abonar"><span class="detalle-gasto-label detalle-gasto-label-critico">⚠️ Falta abonar</span></div>
-        <div class="detalle-gasto-item hidden" id="detalle-gasto-nota-wrap"><span class="detalle-gasto-label">Nota:</span> <span class="detalle-gasto-valor" id="detalle-gasto-nota-texto"></span></div>
-        <div class="detalle-gasto-item hidden" id="detalle-gasto-foto-wrap"><span class="detalle-gasto-label">Foto:</span> <a href="#" target="_blank" rel="noopener" class="detalle-gasto-valor" id="detalle-gasto-foto-link">Ver foto completa</a></div>
+      <div class="detalle-gasto-header">
+        <div class="detalle-gasto-avatar" id="detalle-gasto-avatar">?</div>
+        <div class="detalle-gasto-monto" id="detalle-gasto-monto">$0</div>
+        <div class="detalle-gasto-desc" id="detalle-gasto-desc">Descripción</div>
+        <div>
+          <span class="detalle-gasto-categoria" id="detalle-gasto-categoria">Categoría</span>
+          <span class="detalle-gasto-abonar hidden" id="detalle-gasto-abonar">⚠️ Falta abonar</span>
+        </div>
       </div>
 
+      <div class="detalle-gasto-filas">
+        <div class="detalle-gasto-fila">
+          <span class="detalle-gasto-fila-icono">📅</span>
+          <span class="detalle-gasto-fila-label">Fecha</span>
+          <span class="detalle-gasto-fila-valor" id="detalle-gasto-fecha">—</span>
+        </div>
+        <div class="detalle-gasto-fila">
+          <span class="detalle-gasto-fila-icono">👤</span>
+          <span class="detalle-gasto-fila-label">Pagado por</span>
+          <span class="detalle-gasto-fila-valor" id="detalle-gasto-pagador">—</span>
+        </div>
+        <div class="detalle-gasto-fila">
+          <span class="detalle-gasto-fila-icono">💳</span>
+          <span class="detalle-gasto-fila-label">Forma de pago</span>
+          <span class="detalle-gasto-fila-valor" id="detalle-gasto-formapago">—</span>
+        </div>
+      </div>
+
+      <div class="detalle-gasto-nota hidden" id="detalle-gasto-nota-wrap">
+        <div class="detalle-gasto-nota-label">📝 Nota</div>
+        <div class="detalle-gasto-nota-texto" id="detalle-gasto-nota-texto"></div>
+      </div>
+
+      <a href="#" target="_blank" rel="noopener" class="detalle-gasto-foto hidden" id="detalle-gasto-foto-link">
+        <img id="detalle-gasto-foto-img" alt="Foto del gasto">
+        <span>Ver foto completa</span>
+      </a>
+
       <div class="modal-actions">
-        <button type="button" id="btn-cerrar-detalle-gasto" class="btn-primary">Aceptar</button>
+        <button type="button" id="btn-cerrar-detalle-gasto" class="btn-secondary">Cerrar</button>
       </div>
     </div>
   </div>

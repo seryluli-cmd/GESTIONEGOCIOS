@@ -553,15 +553,88 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
 .modal-actions .btn-secondary, .modal-actions .btn-primary { width: auto; flex: 1; }
 
 /* ===== Modal: Ver detalle de gasto (solo lectura) ===== */
-/* A propósito todo en gris neutro, sin colores de marca — la única
-   excepción es "Falta abonar" en rojo (--critical), igual criterio que
-   el resto de la app: el rojo se reserva para avisos, no es decorativo. */
-.detalle-gasto-lista { display: flex; flex-direction: column; gap: 12px; }
-.detalle-gasto-item { font-size: 14.5px; line-height: 1.4; }
-.detalle-gasto-label { font-weight: 700; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.02em; }
-.detalle-gasto-label-critico { color: var(--critical); }
-.detalle-gasto-valor { font-weight: 400; color: var(--text-primary); }
-a.detalle-gasto-valor { text-decoration: underline; text-underline-offset: 2px; }
+.detalle-gasto-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding-bottom: 18px;
+}
+.detalle-gasto-avatar {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 4px;
+}
+.detalle-gasto-monto { font-size: 32px; font-weight: 800; line-height: 1.15; font-variant-numeric: proportional-nums; }
+.detalle-gasto-desc { font-size: 16px; font-weight: 600; }
+.detalle-gasto-categoria {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--series-1);
+  background: color-mix(in srgb, var(--series-1) 14%, var(--surface-1));
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-top: 4px;
+}
+.detalle-gasto-abonar {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--critical);
+  background: var(--critical-bg);
+  padding: 4px 12px;
+  border-radius: 20px;
+  margin-top: 4px;
+  margin-left: 6px;
+}
+
+.detalle-gasto-filas {
+  border-top: 1px solid var(--gridline);
+  border-bottom: 1px solid var(--gridline);
+  margin-bottom: 16px;
+}
+.detalle-gasto-fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 2px;
+}
+.detalle-gasto-fila + .detalle-gasto-fila { border-top: 1px solid var(--gridline); }
+.detalle-gasto-fila-icono { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+.detalle-gasto-fila-label { flex: 1; color: var(--text-secondary); font-size: 14px; }
+.detalle-gasto-fila-valor { font-weight: 600; font-size: 14px; text-align: right; }
+
+.detalle-gasto-nota {
+  background: var(--page-plane);
+  border: 1px solid var(--gridline);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.detalle-gasto-nota-label { font-size: 12.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+.detalle-gasto-nota-texto { font-size: 14px; font-style: italic; line-height: 1.4; white-space: pre-wrap; }
+
+.detalle-gasto-foto {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--page-plane);
+  border: 1px solid var(--gridline);
+  border-radius: 14px;
+  padding: 8px;
+  margin-bottom: 4px;
+  text-decoration: none;
+  color: var(--series-1);
+  font-weight: 600;
+  font-size: 14px;
+}
+.detalle-gasto-foto img { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; }
 
 .pagador-options { display: flex; flex-wrap: wrap; gap: 8px; }
 .pagador-chip {
