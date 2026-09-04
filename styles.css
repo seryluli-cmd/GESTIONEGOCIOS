@@ -404,6 +404,9 @@ input:focus, select:focus, textarea:focus {
    después). Ver checkbox #input-falta-abonar y campo faltaAbonar. */
 .expense-item.falta-abonar { background: var(--critical-bg); border-color: var(--critical); }
 .expense-item.falta-abonar .amount { color: var(--critical); }
+/* Aviso "Caja faltante" en Cierre de Turno (ver cierreFaltanteHoy) —
+   reusa el mismo rojo de falta-abonar, solo agrega el tamaño del botón. */
+.expense-item.falta-abonar .btn-cargar-faltante { width: auto; flex-shrink: 0; padding: 8px 14px; font-size: 14px; }
 .expense-item .meta-falta-abonar {
   color: var(--critical);
   font-weight: 600;

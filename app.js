@@ -953,6 +953,23 @@ function renderFacturado() {
     empty.classList.add("hidden");
   }
 
+  // Aviso "Caja faltante": solo tiene sentido mirando el mes actual (no
+  // al navegar meses viejos) — ver cierreFaltanteHoy().
+  const diaFaltante = esMesActual ? cierreFaltanteHoy() : null;
+  if (diaFaltante) {
+    empty.classList.add("hidden"); // si el único "hueco" es hoy, no mostrar el cartel de "sin cierres"
+    const aviso = document.createElement("li");
+    aviso.className = "expense-item falta-abonar";
+    aviso.innerHTML = `
+      <div class="info">
+        <div class="desc">⚠️ Caja faltante</div>
+        <div class="meta">${diaFaltante.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })} todavía no se cargó</div>
+      </div>
+      <button type="button" class="btn-secondary btn-cargar-faltante" data-fecha="${fechaLocalISO(diaFaltante)}">Cargar</button>
+    `;
+    list.appendChild(aviso);
+  }
+
   let totalMes = 0;
 
   items.forEach(f => {
@@ -2089,6 +2106,27 @@ function setDefaultFechaFact() {
   $("#input-fecha-fact").value = fechaLocalISO(fechaSugeridaCierre());
 }
 
+// Aviso "Caja faltante" (ver renderFacturado): a partir de las 5am,
+// margen de sobra sobre las 3am que dijeron que a veces cierran, se
+// considera que ya debería estar cargado el cierre del día que terminó
+// (mismo día que propone fechaSugeridaCierre — antes del mediodía,
+// siempre ayer; esa función no se toca, solo se reutiliza acá). Si
+// todavía no existe un cierre con esa fecha para el negocio actual,
+// devuelve esa fecha; si ya se cargó o todavía no son las 5am, devuelve
+// null (no hay nada que avisar).
+function cierreFaltanteHoy() {
+  const hoy = new Date();
+  if (hoy.getHours() < 5) return null;
+  const diaEsperado = fechaSugeridaCierre();
+  const yaCargado = facturacionesDelNegocio().some(f => {
+    const fecha = fechaDeRegistro(f);
+    return fecha.getFullYear() === diaEsperado.getFullYear()
+      && fecha.getMonth() === diaEsperado.getMonth()
+      && fecha.getDate() === diaEsperado.getDate();
+  });
+  return yaCargado ? null : diaEsperado;
+}
+
 // Cálculo cruzado Total/Efectivo/Digital: se pueden completar 2
 // cualquiera de los 3 campos y el que falta se calcula solo.
 // facturadoUltimosEditados guarda, en orden, los últimos 2 campos que
@@ -2133,7 +2171,11 @@ function calcularCampoFaltanteFacturado() {
 
 // Sin argumento: alta de un cierre nuevo. Con un cierre existente: edición
 // (solo admin, ver botón ✏️ en renderFacturado).
-function openModalFacturado(cierre) {
+// Sin argumento: alta de un cierre nuevo (usa la fecha "sugerida" de
+// hoy). Con un cierre existente: edición. Con "presetFecha" (Date): alta
+// para una fecha puntual — ver botón "Cargar" del aviso "Caja faltante"
+// en renderFacturado().
+function openModalFacturado(cierre, presetFecha) {
   editingCierreId = cierre ? cierre.id : null;
   // Cierre nuevo: se registra directo a nombre de quien está logueado
   // (mismo criterio que "Nuevo gasto" — ver openModal()) — el selector
@@ -2151,6 +2193,8 @@ function openModalFacturado(cierre) {
   facturadoUltimosEditados = [];
   if (cierre) {
     $("#input-fecha-fact").value = fechaLocalISO(fechaDeRegistro(cierre));
+  } else if (presetFecha) {
+    $("#input-fecha-fact").value = fechaLocalISO(presetFecha);
   } else {
     setDefaultFechaFact();
   }
@@ -2649,7 +2693,9 @@ function wireEvents() {
       return;
     }
     const delBtn = e.target.closest(".cierre-delete-btn");
-    if (delBtn) deleteCierre(delBtn.dataset.id);
+    if (delBtn) { deleteCierre(delBtn.dataset.id); return; }
+    const cargarBtn = e.target.closest(".btn-cargar-faltante");
+    if (cargarBtn) openModalFacturado(null, new Date(cargarBtn.dataset.fecha + "T12:00:00"));
   });
 
   // Pantalla "Fotos guardadas"

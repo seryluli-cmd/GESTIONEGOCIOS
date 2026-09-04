@@ -80,7 +80,12 @@ seguridad que exigen autenticación anónima.
   por si realmente se gastó de más y después se repone).
 - **`facturacion`** (colección) — un doc por cierre diario:
   `{ importe, registradoPor, negocio, fecha, creadoEn }`. Mismo patrón que
-  `gastos`.
+  `gastos`. **Aviso "Caja faltante"**: a partir de las 5am, si no existe
+  un cierre fechado el día que `fechaSugeridaCierre()` considera "de
+  ayer" (ver `cierreFaltanteHoy()`), `renderFacturado()` muestra un
+  cartel rojo (reusa el mismo estilo de "Falta abonar" de Gastos) con un
+  botón "Cargar" que abre el modal con esa fecha precargada — solo se
+  muestra mirando el mes actual, no al navegar meses viejos.
 - **`ideas`** (colección) — un doc por idea: `{ texto, estado, votos, propuestoPor, creadoEn }`.
   **A propósito NO tiene campo `negocio`** — son compartidas entre Pancho Recreo
   y Heladería Pablo, porque los 3 socios son dueños de ambos. `estado` es
