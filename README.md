@@ -64,13 +64,13 @@ seguridad que exigen autenticación anónima.
   `gastosDelNegocio()`. `formaPago` es `"efectivo"`, `"digital"`, `"mixto"`
   (con `montoEfectivo`/`montoDigital` propios) o `"caja"` — este último solo
   existe en negocios con Caja del local, ver más abajo. **Se elige solo,
-  sin que haga falta tocarlo**: si quien carga un gasto NUEVO es un
-  colaborador (no socio) en un negocio con Caja del local, `openModal()`
-  fuerza `formaPago: "caja"` y esconde el selector entero (queda un
-  aviso en su lugar) — un colaborador como Kiara siempre paga con esa
-  plata, no tiene sentido preguntarle cada vez. Al EDITAR un gasto ya
-  cargado (admin-only) el selector completo sigue disponible por si hay
-  que corregirlo. Un gasto "caja" suma a
+  sin que haga falta tocarlo, pero solo para Kiara** (encargada de
+  compras de Pancho — chequeo por nombre exacto, no "cualquier
+  colaborador", porque el resto del equipo podría no manejar esa caja):
+  si quien carga un gasto NUEVO es ella, `openModal()` fuerza
+  `formaPago: "caja"` y esconde el selector entero (queda un aviso en su
+  lugar). Al EDITAR un gasto ya cargado (admin-only) el selector
+  completo sigue disponible por si hay que corregirlo. Un gasto "caja" suma a
   Total Gastos y Rentabilidad como cualquier otro — no tiene ningún trato
   especial salvo restarse de `cajaLocalMonto` en el cálculo de "queda".
 - **Caja del local** (campo `cajaLocalMonto` en `config/socios`, no una

@@ -1925,19 +1925,21 @@ function openModal(gasto) {
   $("#input-mixto-efectivo").value = gasto && gasto.montoEfectivo != null ? gasto.montoEfectivo : "";
   $("#input-mixto-digital").value = gasto && gasto.montoDigital != null ? gasto.montoDigital : "";
 
-  // Un colaborador (ej. Kiara) en un negocio con Caja del local siempre
-  // paga con esa plata — no tiene sentido pedirle que elija la forma de
-  // pago cada vez si total la respuesta es siempre la misma. Para un
-  // gasto NUEVO cargado por ella, se fuerza "caja" solo y se esconde el
-  // selector entero (con un aviso de que quedó así). Al EDITAR un gasto
-  // ya cargado (admin-only) el selector completo sigue disponible, por
-  // si hay que corregirlo a otra forma de pago.
-  const esColaboradorConCaja = !gasto
-    && colaboradores.includes(usuarioActual)
+  // Kiara es la encargada de compras de Pancho: todo lo que paga sale de
+  // la Caja del local, siempre — no tiene sentido pedirle que elija la
+  // forma de pago cada vez si la respuesta es siempre la misma. A
+  // propósito es específico de ella por nombre (no "cualquier
+  // colaborador"), porque el resto del equipo podría no manejar esa
+  // caja. Para un gasto NUEVO cargado por Kiara, se fuerza "caja" solo
+  // y se esconde el selector entero (con un aviso de que quedó así). Al
+  // EDITAR un gasto ya cargado (admin-only) el selector completo sigue
+  // disponible, por si hay que corregirlo a otra forma de pago.
+  const esKiaraConCaja = !gasto
+    && usuarioActual === "Kiara"
     && negocioTieneCajaLocal(negocioActual);
-  $("#campo-forma-pago").classList.toggle("hidden", esColaboradorConCaja);
-  $("#aviso-forma-pago-auto").classList.toggle("hidden", !esColaboradorConCaja);
-  if (esColaboradorConCaja) {
+  $("#campo-forma-pago").classList.toggle("hidden", esKiaraConCaja);
+  $("#aviso-forma-pago-auto").classList.toggle("hidden", !esKiaraConCaja);
+  if (esKiaraConCaja) {
     selectFormaPago("caja");
   } else {
     // "Caja del local" es una forma de pago exclusiva de los negocios con
