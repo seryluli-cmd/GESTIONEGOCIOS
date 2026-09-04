@@ -1924,10 +1924,27 @@ function openModal(gasto) {
   mixtoUltimoEditado = null;
   $("#input-mixto-efectivo").value = gasto && gasto.montoEfectivo != null ? gasto.montoEfectivo : "";
   $("#input-mixto-digital").value = gasto && gasto.montoDigital != null ? gasto.montoDigital : "";
-  // "Caja del local" es una forma de pago exclusiva de los negocios con
-  // tieneCajaLocal:true en NEGOCIOS (ver renderResumen/renderAjustesSocios).
-  $("#chip-forma-caja").classList.toggle("hidden", !negocioTieneCajaLocal(negocioActual));
-  selectFormaPago(gasto ? (gasto.formaPago || "efectivo") : "efectivo");
+
+  // Un colaborador (ej. Kiara) en un negocio con Caja del local siempre
+  // paga con esa plata — no tiene sentido pedirle que elija la forma de
+  // pago cada vez si total la respuesta es siempre la misma. Para un
+  // gasto NUEVO cargado por ella, se fuerza "caja" solo y se esconde el
+  // selector entero (con un aviso de que quedó así). Al EDITAR un gasto
+  // ya cargado (admin-only) el selector completo sigue disponible, por
+  // si hay que corregirlo a otra forma de pago.
+  const esColaboradorConCaja = !gasto
+    && colaboradores.includes(usuarioActual)
+    && negocioTieneCajaLocal(negocioActual);
+  $("#campo-forma-pago").classList.toggle("hidden", esColaboradorConCaja);
+  $("#aviso-forma-pago-auto").classList.toggle("hidden", !esColaboradorConCaja);
+  if (esColaboradorConCaja) {
+    selectFormaPago("caja");
+  } else {
+    // "Caja del local" es una forma de pago exclusiva de los negocios con
+    // tieneCajaLocal:true en NEGOCIOS (ver renderResumen/renderAjustesSocios).
+    $("#chip-forma-caja").classList.toggle("hidden", !negocioTieneCajaLocal(negocioActual));
+    selectFormaPago(gasto ? (gasto.formaPago || "efectivo") : "efectivo");
+  }
 
   if (gasto) {
     $("#input-fecha").value = fechaLocalISO(fechaDeRegistro(gasto));

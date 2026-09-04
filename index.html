@@ -514,7 +514,7 @@
         <label class="checkbox-label"><input type="checkbox" id="input-falta-abonar"> ⚠️ Falta abonar</label>
       </div>
 
-      <div class="field">
+      <div class="field" id="campo-forma-pago">
         <label>Forma de pago</label>
         <div id="forma-pago-options" class="pagador-options">
           <div class="pagador-chip" data-forma="efectivo">💵 Efectivo</div>
@@ -523,6 +523,7 @@
           <div class="pagador-chip hidden" data-forma="caja" id="chip-forma-caja">💰 Caja del local</div>
         </div>
       </div>
+      <p class="muted small hidden" id="aviso-forma-pago-auto">💰 Este gasto se descuenta automáticamente de la Caja del local.</p>
 
       <div class="field hidden" id="campo-mixto">
         <label>Desglose <span class="muted small">(debe sumar el importe)</span></label>
