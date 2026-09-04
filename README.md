@@ -46,12 +46,17 @@ credenciales públicas del proyecto (`firebaseConfig`), protegido por reglas de
 seguridad que exigen autenticación anónima.
 
 - **`config/socios`** (un solo documento) —
-  `{ socios: [string, string, string], colaboradores: string[], colaboradorNegocio: { [nombre]: "pancho"|"heladeria" }, admins: string[], pins: { [nombre]: "1234" } }`.
+  `{ socios: [string, string, string], colaboradores: string[], colaboradorNegocio: { [nombre]: "pancho"|"heladeria" }, admins: string[], pins: { [nombre]: "1234" }, claveMaestraAdmin: string, cajaLocalMonto: number }`.
   Se crea una única vez, la primera vez que alguien conecta el negocio (ver
   `handleSetupGuardar`). El resto de los dispositivos lo leen y ya no lo
   vuelven a pedir. `admins` y `pins` se explican en la sección de abajo.
   `colaboradorNegocio` se explica en "Acceso restringido por negocio" más
   abajo — un colaborador que no aparece ahí ve los 2 negocios.
+  **Los 3 lugares que leen este doc** (`connectAndBoot`, `listenSocios`,
+  `handleSetupConnect`) vuelcan el resultado a las variables globales a
+  través de una única función, `aplicarConfigSocios(data)` — si se agrega
+  un campo nuevo al doc (como pasó con `cajaLocalMonto`), alcanza con
+  tocar esa función, no los 3 lugares.
 - **`gastos`** (colección) — un doc por gasto:
   `{ importe, descripcion, categoria, pagadoPor, formaPago, negocio, fecha, creadoEn, fotoUrl?, fotoPath? }`.
   `negocio` es `"pancho"` o `"heladeria"` (ver `NEGOCIOS` en app.js) — **ambos

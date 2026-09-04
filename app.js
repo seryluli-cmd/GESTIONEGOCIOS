@@ -289,6 +289,21 @@ async function initFirebase(config) {
   });
 }
 
+// Vuelca el doc config/socios en las variables globales — se llama desde
+// los 3 lugares donde se lee ese doc (connectAndBoot, listenSocios,
+// handleSetupConnect) para no repetir el mismo bloque 3 veces. Si el día
+// de mañana se agrega un campo nuevo al doc (como pasó con
+// cajaLocalMonto), alcanza con tocar esta única función.
+function aplicarConfigSocios(data) {
+  socios = data.socios;
+  colaboradores = Array.isArray(data.colaboradores) ? data.colaboradores : [];
+  colaboradorNegocio = data.colaboradorNegocio && typeof data.colaboradorNegocio === "object" ? data.colaboradorNegocio : {};
+  admins = Array.isArray(data.admins) ? data.admins : [];
+  pins = data.pins && typeof data.pins === "object" ? data.pins : {};
+  claveMaestraAdmin = typeof data.claveMaestraAdmin === "string" ? data.claveMaestraAdmin : "";
+  cajaLocalMonto = Number(data.cajaLocalMonto) || 0;
+}
+
 async function connectAndBoot(config, namesFromInput, colabFromInput) {
   await initFirebase(config);
   const sdk = fbSdk;
@@ -297,14 +312,7 @@ async function connectAndBoot(config, namesFromInput, colabFromInput) {
   const snap = await sdk.getDoc(socioDocRef);
 
   if (snap.exists() && Array.isArray(snap.data().socios) && snap.data().socios.length === 3) {
-    const data = snap.data();
-    socios = data.socios;
-    colaboradores = Array.isArray(data.colaboradores) ? data.colaboradores : [];
-    colaboradorNegocio = data.colaboradorNegocio && typeof data.colaboradorNegocio === "object" ? data.colaboradorNegocio : {};
-    admins = Array.isArray(data.admins) ? data.admins : [];
-    pins = data.pins && typeof data.pins === "object" ? data.pins : {};
-    claveMaestraAdmin = typeof data.claveMaestraAdmin === "string" ? data.claveMaestraAdmin : "";
-    cajaLocalMonto = Number(data.cajaLocalMonto) || 0;
+    aplicarConfigSocios(snap.data());
   } else {
     if (!namesFromInput || namesFromInput.some(n => !n.trim())) {
       throw new Error("Completá los nombres de los 3 socios.");
@@ -693,14 +701,7 @@ function listenSocios() {
   const socioDocRef = fbSdk.doc(db, "config", "socios");
   fbSdk.onSnapshot(socioDocRef, (snap) => {
     if (snap.exists() && Array.isArray(snap.data().socios)) {
-      const data = snap.data();
-      socios = data.socios;
-      colaboradores = Array.isArray(data.colaboradores) ? data.colaboradores : [];
-      colaboradorNegocio = data.colaboradorNegocio && typeof data.colaboradorNegocio === "object" ? data.colaboradorNegocio : {};
-      admins = Array.isArray(data.admins) ? data.admins : [];
-      pins = data.pins && typeof data.pins === "object" ? data.pins : {};
-      claveMaestraAdmin = typeof data.claveMaestraAdmin === "string" ? data.claveMaestraAdmin : "";
-      cajaLocalMonto = Number(data.cajaLocalMonto) || 0;
+      aplicarConfigSocios(snap.data());
       localStorage.setItem(LS_SOCIOS_CACHE, JSON.stringify(socios));
       localStorage.setItem(LS_COLAB_CACHE, JSON.stringify(colaboradores));
       esAdmin = usuarioActual ? admins.includes(usuarioActual) : false;
@@ -2368,14 +2369,7 @@ async function handleSetupConnect() {
     const snap = await fbSdk.getDoc(socioDocRef);
 
     if (snap.exists() && Array.isArray(snap.data().socios) && snap.data().socios.length === 3) {
-      const data = snap.data();
-      socios = data.socios;
-      colaboradores = Array.isArray(data.colaboradores) ? data.colaboradores : [];
-      colaboradorNegocio = data.colaboradorNegocio && typeof data.colaboradorNegocio === "object" ? data.colaboradorNegocio : {};
-      admins = Array.isArray(data.admins) ? data.admins : [];
-      pins = data.pins && typeof data.pins === "object" ? data.pins : {};
-      claveMaestraAdmin = typeof data.claveMaestraAdmin === "string" ? data.claveMaestraAdmin : "";
-      cajaLocalMonto = Number(data.cajaLocalMonto) || 0;
+      aplicarConfigSocios(snap.data());
       statusEl.textContent = "";
       await finalizeSetup(config);
     } else {
