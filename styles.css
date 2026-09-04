@@ -382,8 +382,17 @@ input:focus, select:focus, textarea:focus {
   border-radius: 14px;
   padding: 14px;
   margin-bottom: 10px;
-  display: flex; align-items: center; gap: 12px;
+  display: flex; flex-direction: column; gap: 8px;
 }
+/* Fila de arriba: avatar + texto + monto (lo que antes era la fila
+   única de .expense-item). En Gastos, los íconos de foto/editar/borrar
+   quedan afuera de esta fila, en .expense-item-actions debajo — así el
+   texto (descripción larga, categoría, nota) tiene todo el ancho para
+   él solo en vez de competir con los íconos y verse apretado. En
+   Cierre de Turno y en el aviso "Caja faltante" no cambia nada visual:
+   simplemente quedó todo adentro de esta misma fila, como ya estaba. */
+.expense-item-top { display: flex; align-items: center; gap: 12px; }
+.expense-item-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .expense-item .avatar {
   width: 38px; height: 38px;
   border-radius: 50%;

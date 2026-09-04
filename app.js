@@ -861,16 +861,23 @@ function renderGastos() {
 
     const li = document.createElement("li");
     li.className = "expense-item" + (g.faltaAbonar ? " falta-abonar" : "");
+    // Foto/editar/borrar van en su propia fila abajo (ver .expense-item-actions
+    // en styles.css) — así el texto de arriba usa todo el ancho disponible
+    // en vez de competir con los íconos cuando la descripción/nota es larga.
+    const acciones = (fotoBtn || adminBtns)
+      ? `<div class="expense-item-actions">${fotoBtn}${adminBtns}</div>`
+      : "";
     li.innerHTML = `
-      <div class="avatar" style="background:${payerColorVar(g.pagadoPor)}">${socioInitial(g.pagadoPor)}</div>
-      <div class="info">
-        <div class="desc">${escapeHtml(g.descripcion || "Sin descripción")}</div>
-        <div class="meta">${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · ${escapeHtml(g.categoria || "Otros")} · Pagó ${escapeHtml(g.pagadoPor || "?")} · ${formaPagoLabel(g)}${metaFaltaAbonar}</div>
-        ${notaHtml}
+      <div class="expense-item-top">
+        <div class="avatar" style="background:${payerColorVar(g.pagadoPor)}">${socioInitial(g.pagadoPor)}</div>
+        <div class="info">
+          <div class="desc">${escapeHtml(g.descripcion || "Sin descripción")}</div>
+          <div class="meta">${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · ${escapeHtml(g.categoria || "Otros")} · Pagó ${escapeHtml(g.pagadoPor || "?")} · ${formaPagoLabel(g)}${metaFaltaAbonar}</div>
+          ${notaHtml}
+        </div>
+        <div class="amount">${money(g.importe)}</div>
       </div>
-      <div class="amount">${money(g.importe)}</div>
-      ${fotoBtn}
-      ${adminBtns}
+      ${acciones}
     `;
     list.appendChild(li);
   });
@@ -961,11 +968,13 @@ function renderFacturado() {
     const aviso = document.createElement("li");
     aviso.className = "expense-item falta-abonar";
     aviso.innerHTML = `
-      <div class="info">
-        <div class="desc">⚠️ Caja faltante</div>
-        <div class="meta">${diaFaltante.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })} todavía no se cargó</div>
+      <div class="expense-item-top">
+        <div class="info">
+          <div class="desc">⚠️ Caja faltante</div>
+          <div class="meta">${diaFaltante.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })} todavía no se cargó</div>
+        </div>
+        <button type="button" class="btn-secondary btn-cargar-faltante" data-fecha="${fechaLocalISO(diaFaltante)}">Cargar</button>
       </div>
-      <button type="button" class="btn-secondary btn-cargar-faltante" data-fecha="${fechaLocalISO(diaFaltante)}">Cargar</button>
     `;
     list.appendChild(aviso);
   }
@@ -986,15 +995,20 @@ function renderFacturado() {
 
     const li = document.createElement("li");
     li.className = "expense-item";
+    // Acá los íconos se quedan en la misma fila que el texto (a
+    // diferencia de Gastos) — el texto de un cierre es corto y no
+    // necesita el ancho extra, así que no hacía falta tocarle nada.
     li.innerHTML = `
-      <div class="avatar" style="background:${payerColorVar(f.registradoPor)}">${socioInitial(f.registradoPor)}</div>
-      <div class="info">
-        <div class="desc">${fecha.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })}</div>
-        <div class="meta">Cargado por ${escapeHtml(f.registradoPor || "?")}</div>
+      <div class="expense-item-top">
+        <div class="avatar" style="background:${payerColorVar(f.registradoPor)}">${socioInitial(f.registradoPor)}</div>
+        <div class="info">
+          <div class="desc">${fecha.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })}</div>
+          <div class="meta">Cargado por ${escapeHtml(f.registradoPor || "?")}</div>
+        </div>
+        <div class="amount">${money(f.importe)}</div>
+        ${fotoBtn}
+        ${adminBtns}
       </div>
-      <div class="amount">${money(f.importe)}</div>
-      ${fotoBtn}
-      ${adminBtns}
     `;
     list.appendChild(li);
   });
