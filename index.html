@@ -276,7 +276,7 @@
         <p class="muted small">Plata que tiene KIARA en Digital/Efectivo para pagar Gastos de la pancheria. Poné acá el total repuesto hasta ahora (ej. si arrancó en $600.000 y le sumaron $200.000 más, poné $800.000).</p>
         <div class="field">
           <label for="input-caja-local-monto">Total Presupuesto Inicial</label>
-          <input type="number" id="input-caja-local-monto" inputmode="decimal" placeholder="600000" min="0" step="0.01">
+          <input type="text" id="input-caja-local-monto" inputmode="decimal" placeholder="600000">
         </div>
         <p id="caja-local-ajustes-error" class="error-text hidden"></p>
         <button type="button" id="btn-guardar-caja-local" class="btn-secondary">Guardar</button>
@@ -484,7 +484,7 @@
 
       <div class="field">
         <label for="input-importe">Importe</label>
-        <input type="number" id="input-importe" inputmode="decimal" placeholder="0" min="0" step="0.01">
+        <input type="text" id="input-importe" inputmode="decimal" placeholder="0">
       </div>
 
       <div class="field">
@@ -530,11 +530,11 @@
         <div class="mixto-row">
           <div>
             <label for="input-mixto-efectivo" class="muted small">Efectivo</label>
-            <input type="number" id="input-mixto-efectivo" inputmode="decimal" placeholder="0" min="0" step="0.01">
+            <input type="text" id="input-mixto-efectivo" inputmode="decimal" placeholder="0">
           </div>
           <div>
             <label for="input-mixto-digital" class="muted small">Digital</label>
-            <input type="number" id="input-mixto-digital" inputmode="decimal" placeholder="0" min="0" step="0.01">
+            <input type="text" id="input-mixto-digital" inputmode="decimal" placeholder="0">
           </div>
         </div>
       </div>
@@ -631,17 +631,17 @@
 
       <div class="field">
         <label for="input-importe-fact">Total (Efectivo + Digital)</label>
-        <input type="number" id="input-importe-fact" inputmode="decimal" placeholder="0" min="0" step="0.01">
+        <input type="text" id="input-importe-fact" inputmode="decimal" placeholder="0">
       </div>
 
       <div class="field">
         <label for="input-efectivo-fact">Efectivo</label>
-        <input type="number" id="input-efectivo-fact" inputmode="decimal" placeholder="Dinero en caja" min="0" step="0.01">
+        <input type="text" id="input-efectivo-fact" inputmode="decimal" placeholder="Dinero en caja">
       </div>
 
       <div class="field">
         <label for="input-digital-fact">Digital</label>
-        <input type="number" id="input-digital-fact" inputmode="decimal" placeholder="Mercado Pago / transferencia" min="0" step="0.01">
+        <input type="text" id="input-digital-fact" inputmode="decimal" placeholder="Mercado Pago / transferencia">
       </div>
 
       <div class="field">
