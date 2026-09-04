@@ -571,6 +571,55 @@
     </div>
   </div>
 
+  <!-- ===== MODAL: VER DETALLE DE GASTO (solo lectura) ===== -->
+  <div id="modal-detalle-gasto" class="modal-overlay">
+    <div class="modal-sheet detalle-gasto-sheet">
+      <div class="modal-handle"></div>
+
+      <div class="detalle-gasto-header">
+        <div class="detalle-gasto-avatar" id="detalle-gasto-avatar">?</div>
+        <div class="detalle-gasto-monto" id="detalle-gasto-monto">$0</div>
+        <div class="detalle-gasto-desc" id="detalle-gasto-desc">Descripción</div>
+        <div>
+          <span class="detalle-gasto-categoria" id="detalle-gasto-categoria">Categoría</span>
+          <span class="detalle-gasto-abonar hidden" id="detalle-gasto-abonar">⚠️ Falta abonar</span>
+        </div>
+      </div>
+
+      <div class="detalle-gasto-filas">
+        <div class="detalle-gasto-fila">
+          <span class="detalle-gasto-fila-icono">📅</span>
+          <span class="detalle-gasto-fila-label">Fecha</span>
+          <span class="detalle-gasto-fila-valor" id="detalle-gasto-fecha">—</span>
+        </div>
+        <div class="detalle-gasto-fila">
+          <span class="detalle-gasto-fila-icono">👤</span>
+          <span class="detalle-gasto-fila-label">Pagado por</span>
+          <span class="detalle-gasto-fila-valor" id="detalle-gasto-pagador">—</span>
+        </div>
+        <div class="detalle-gasto-fila">
+          <span class="detalle-gasto-fila-icono">💳</span>
+          <span class="detalle-gasto-fila-label">Forma de pago</span>
+          <span class="detalle-gasto-fila-valor" id="detalle-gasto-formapago">—</span>
+        </div>
+      </div>
+
+      <div class="detalle-gasto-nota hidden" id="detalle-gasto-nota-wrap">
+        <div class="detalle-gasto-nota-label">📝 Nota</div>
+        <div class="detalle-gasto-nota-texto" id="detalle-gasto-nota-texto"></div>
+      </div>
+
+      <a href="#" target="_blank" rel="noopener" class="detalle-gasto-foto hidden" id="detalle-gasto-foto-link">
+        <img id="detalle-gasto-foto-img" alt="Foto del gasto">
+        <span>Ver foto completa</span>
+      </a>
+
+      <div class="modal-actions">
+        <button type="button" id="btn-cerrar-detalle-gasto" class="btn-secondary">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== MODAL: AGREGAR CIERRE DE FACTURADO ===== -->
   <div id="modal-add-facturado" class="modal-overlay">
     <div class="modal-sheet">

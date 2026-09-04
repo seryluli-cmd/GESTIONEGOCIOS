@@ -901,17 +901,41 @@ function verDetalleGasto(id) {
   const g = gastos.find(x => x.id === id);
   if (!g) return;
   const fecha = fechaDeRegistro(g).toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
-  const lineas = [
-    `Importe: ${money(g.importe)}`,
-    `Descripción: ${g.descripcion || "-"}`,
-    `Categoría: ${g.categoria || "-"}`,
-    `Forma de pago: ${formaPagoLabel(g)}`,
-    `Pagado por: ${g.pagadoPor || "-"}`,
-    `Fecha: ${fecha}`
-  ];
-  if (g.faltaAbonar) lineas.push(`⚠️ Falta abonar`);
-  if (g.nota) lineas.push(`Nota: ${g.nota}`);
-  alert(lineas.join("\n"));
+
+  // Todo por textContent (no innerHTML) — no hace falta escapeHtml, texto
+  // plano nunca se interpreta como HTML.
+  $("#detalle-gasto-avatar").textContent = socioInitial(g.pagadoPor);
+  $("#detalle-gasto-avatar").style.background = payerColorVar(g.pagadoPor);
+  $("#detalle-gasto-monto").textContent = money(g.importe);
+  $("#detalle-gasto-desc").textContent = g.descripcion || "Sin descripción";
+  $("#detalle-gasto-categoria").textContent = g.categoria || "Otros";
+  $("#detalle-gasto-abonar").classList.toggle("hidden", !g.faltaAbonar);
+  $("#detalle-gasto-fecha").textContent = fecha;
+  $("#detalle-gasto-pagador").textContent = g.pagadoPor || "?";
+  $("#detalle-gasto-formapago").textContent = formaPagoLabel(g);
+
+  const notaWrap = $("#detalle-gasto-nota-wrap");
+  if (g.nota) {
+    $("#detalle-gasto-nota-texto").textContent = g.nota;
+    notaWrap.classList.remove("hidden");
+  } else {
+    notaWrap.classList.add("hidden");
+  }
+
+  const fotoLink = $("#detalle-gasto-foto-link");
+  if (g.fotoUrl) {
+    fotoLink.href = g.fotoUrl;
+    $("#detalle-gasto-foto-img").src = g.fotoUrl;
+    fotoLink.classList.remove("hidden");
+  } else {
+    fotoLink.classList.add("hidden");
+  }
+
+  $("#modal-detalle-gasto").classList.add("active");
+}
+
+function closeModalDetalleGasto() {
+  $("#modal-detalle-gasto").classList.remove("active");
 }
 
 // Todo texto que viene de Firestore (descripción, nombres) pasa por acá antes
@@ -2553,6 +2577,10 @@ function wireEvents() {
   $("#btn-save-add").addEventListener("click", saveGasto);
   $("#modal-add").addEventListener("click", (e) => {
     if (e.target.id === "modal-add") closeModal();
+  });
+  $("#btn-cerrar-detalle-gasto").addEventListener("click", closeModalDetalleGasto);
+  $("#modal-detalle-gasto").addEventListener("click", (e) => {
+    if (e.target.id === "modal-detalle-gasto") closeModalDetalleGasto();
   });
   $$("#forma-pago-options .pagador-chip").forEach(chip => {
     chip.addEventListener("click", () => selectFormaPago(chip.dataset.forma));
