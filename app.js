@@ -448,19 +448,21 @@ function esSocio() {
   return !!usuarioActual && socios.includes(usuarioActual);
 }
 
-// Esconde a los colaboradores lo que es solo de los socios. Hoy: la
-// pestaña Balance (cuánto puso cada uno y quién le debe a quién). El
-// Resumen mensual se filtra aparte, en renderSeccionCards(), porque es
-// una tarjeta de sección y no una pestaña. Se llama cada vez que puede
+// Esconde a los colaboradores lo que es solo de los socios: la pestaña
+// Balance (cuánto puso cada uno y quién le debe a quién) y la tarjeta
+// de Ajustes que baja todo el historial del negocio en CSV. El Resumen
+// mensual se filtra aparte, en renderSeccionCards(), porque es una
+// tarjeta de sección y no una pestaña. Se llama cada vez que puede
 // cambiar quién está identificado o la lista de socios
 // (setUsuarioActual y listenSocios).
 function aplicarPermisosDeVista() {
-  const ocultarBalance = !esSocio();
-  $('.tabbtn[data-tab="balance"]').classList.toggle("hidden", ocultarBalance);
+  const soloSocios = !esSocio();
+  $('.tabbtn[data-tab="balance"]').classList.toggle("hidden", soloSocios);
+  $("#ajustes-export-card").classList.toggle("hidden", soloSocios);
   // Si justo estaba parado en Balance (ej. venía de otro usuario en el
   // mismo celular), se lo manda a Gastos para que no quede mirando una
   // pestaña que ya no le corresponde.
-  if (ocultarBalance && $("#tab-balance").classList.contains("active")) {
+  if (soloSocios && $("#tab-balance").classList.contains("active")) {
     switchTab("gastos");
   }
 }

@@ -198,14 +198,16 @@ plata de los socios ni los totales del negocio:
 | Gastos (lista, carga, caja del local) | ✅ | ✅ |
 | Cierre de Turno | ✅ | ✅ |
 | Ideas/Metas | ✅ | ✅ |
-| Ajustes (incluye exportar CSV y fotos) | ✅ | ✅ |
+| Ajustes (usuario, socios, conexión, fotos de facturas) | ✅ | ✅ |
 | **Balance** (cuánto puso cada socio, quién le debe a quién) | ✅ | ❌ |
 | **Resumen mensual** (facturado, gastos totales, rentabilidad) | ✅ | ❌ |
+| **Exportar datos** (CSV con todo el historial del negocio) | ✅ | ❌ |
 
-- La pestaña **Balance** se esconde en `aplicarPermisosDeVista()`, que se
+- La pestaña **Balance** y la tarjeta **Exportar datos** de Ajustes
+  (`#ajustes-export-card`) se esconden en `aplicarPermisosDeVista()`, que se
   llama desde `setUsuarioActual()` y `listenSocios()` (los dos momentos en
   que puede cambiar quién está identificado). Si la persona estaba parada
-  en esa pestaña, se la manda a Gastos.
+  en la pestaña Balance, se la manda a Gastos.
 - **Resumen mensual** se filtra en `renderSeccionCards()`, porque es una
   tarjeta de sección y no una pestaña. El colaborador no pierde nada de lo
   que necesita: **la caja del local la ve en la pestaña Gastos** — ese fue
@@ -214,8 +216,9 @@ plata de los socios ni los totales del negocio:
   prometerle "el balance entre socios" a alguien que no lo va a encontrar.
 
 ⚠️ Vale lo mismo que para el PIN: **esto es solo la interfaz**, no seguridad
-real. Cualquiera con la `firebaseConfig` puede leer todo directo de
-Firestore, y la exportación a CSV de Ajustes sigue disponible para todos.
+real. Los datos siguen estando en Firestore al alcance de cualquiera que
+tenga la `firebaseConfig` — esconder botones evita el acceso accidental o
+casual, no a alguien decidido a mirar.
 
 ## Acceso restringido por negocio (solo colaboradores)
 
