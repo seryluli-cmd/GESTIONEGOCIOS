@@ -944,10 +944,14 @@ function renderCajaLocalDetalle() {
   empty.classList.toggle("hidden", items.length > 0);
   items.forEach(g => list.appendChild(crearFilaGasto(g)));
 
-  const { repuesto, queda } = cajaLocalCalculo();
+  // Se muestra también cuánto se GASTÓ (no solo lo que queda): la
+  // pantalla existe justamente para responder "en qué se fue yendo la
+  // caja", así que el total gastado va arriba y el desglose, abajo.
+  const { repuesto, gastado, queda } = cajaLocalCalculo();
   const quedaEl = $("#caja-local-detalle-queda");
   quedaEl.textContent = (queda < 0 ? "-" : "") + money(Math.abs(queda));
   quedaEl.style.color = queda < 0 ? "var(--critical)" : "var(--text-primary)";
+  $("#caja-local-detalle-gastado").textContent = money(gastado);
   $("#caja-local-detalle-repuesto").textContent = money(repuesto);
 }
 
