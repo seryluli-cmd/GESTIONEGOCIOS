@@ -357,10 +357,11 @@ input:focus, select:focus, textarea:focus {
 .stat-hero-label-lg { font-size: 18.2px; margin-bottom: 10px; }
 .stat-hero-value { font-size: 32px; font-weight: 700; font-variant-numeric: proportional-nums; }
 /* Títulos grandes de las tarjetas de la pestaña Gastos ("Total gastado"
-   y "Caja del local"). Pedido a mano, en dos pasos: primero al doble de
-   un stat-hero-label normal (13px -> 26px) y después un 20% más
-   (26 -> 31.2px). El número de abajo (.stat-hero-value) no se toca. */
-.stat-hero-label-xl { font-size: 31.2px; }
+   y "Caja del local"). El tamaño se fue ajustando a ojo, a pedido: el
+   doble de un stat-hero-label normal (13px -> 26px), después un 20% más
+   (-> 31.2px) y por último un 10% menos (-> 28.08px). El número de
+   abajo (.stat-hero-value) no se toca. */
+.stat-hero-label-xl { font-size: 28.08px; }
 
 /* Los dos títulos grandes van en distinto color para que se lean como
    dos cosas separadas de un vistazo:
