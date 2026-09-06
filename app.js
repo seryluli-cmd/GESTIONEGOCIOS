@@ -129,6 +129,7 @@ let cajaLocalMonto = 0;     // Caja del local de Pancho Recreo: total repuesto e
                              // total que se reescribe cada vez que se repone.
 let gastos = [];           // TODOS los gastos, de los 2 negocios — [{id, importe, descripcion, categoria, pagadoPor, fecha, negocio}]
 let facturaciones = [];    // TODOS los cierres diarios, de los 2 negocios — [{id, importe, registradoPor, fecha, negocio}]
+let reposiciones = [];     // TODAS las reposiciones de la caja del local, de los 2 negocios — [{id, monto, nota, negocio, repuestoPor, fecha}], filtradas por reposicionesDelNegocio()
 let ideas = [];            // TODAS las ideas de mejora, de los 2 negocios — [{id, texto, estado, propuestoPor, negocio, creadoEn}], filtradas por ideasDelNegocio()
 let negocioActual = null;  // "pancho" | "heladeria"
 let seccionActual = null;  // "gastos" | "facturado" | "resumen"
@@ -351,6 +352,7 @@ function bootApp() {
   renderNegocioCards();
   listenGastos();
   listenFacturacion();
+  listenReposiciones();
   listenIdeas();
   listenSocios();
   listenConnectivity();
@@ -739,6 +741,11 @@ function facturacionesDelNegocio() {
 // viejas, creadas antes de este cambio, no tienen "negocio" guardado —
 // se siguen mostrando en los dos negocios (en vez de desaparecer) hasta
 // que alguien las recargue como nuevas, ya con negocio asignado.
+// Reposiciones de la caja del negocio actualmente seleccionado.
+function reposicionesDelNegocio() {
+  return reposiciones.filter(r => r.negocio === negocioActual);
+}
+
 function ideasDelNegocio() {
   return ideas.filter(i => i.negocio === negocioActual || !i.negocio);
 }
@@ -788,6 +795,24 @@ function listenFacturacion() {
   fbSdk.onSnapshot(q, (snapshot) => {
     facturaciones = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     renderFacturado();
+    if (negocioActual) renderResumen();
+    setSyncOffline(false);
+  }, (err) => {
+    console.error(err);
+    setSyncOffline(true);
+  });
+}
+
+// Reposiciones de la caja del local (ver cajaLocalCalculo). Es una
+// colección aparte y no un número en config/socios como el monto
+// inicial, justamente para tener el historial de quién puso cuánto,
+// cuándo y por qué.
+function listenReposiciones() {
+  const q = fbSdk.query(fbSdk.collection(db, "reposiciones"), fbSdk.orderBy("fecha", "desc"));
+  fbSdk.onSnapshot(q, (snapshot) => {
+    reposiciones = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderGastos();          // la card de Caja del local vive en la pestaña Gastos
+    renderCajaLocalDetalle();
     if (negocioActual) renderResumen();
     setSyncOffline(false);
   }, (err) => {
@@ -935,15 +960,24 @@ function crearFilaGasto(g) {
   return li;
 }
 
-// Repuesto total (cajaLocalMonto) menos TODOS los gastos "caja" del
-// negocio actual, de siempre (no solo del mes elegido) — mismo cálculo
-// que usan la card de Resumen mensual, la card nueva de Gastos y el
-// detalle de Caja del local, para no repetirlo 3 veces.
+// Cuánto se le puso a la caja y cuánto se gastó, de siempre (no solo
+// del mes elegido) — mismo cálculo para la card de Resumen mensual, la
+// card de Gastos y el detalle de Caja del local, para no repetirlo.
+//
+// El total repuesto son DOS cosas sumadas, por historia: `cajaLocalMonto`
+// (un solo número en config/socios, que es como funcionaba antes de que
+// existiera el historial) más las `reposiciones` cargadas una por una.
+// Se mantiene el número viejo como "monto inicial" en vez de migrarlo,
+// así lo que ya estaba cargado sigue contando sin tener que tocar nada
+// a mano ni arriesgar que la caja aparezca en cero.
 function cajaLocalCalculo() {
   const gastado = gastosDelNegocio()
     .filter(g => g.formaPago === "caja")
     .reduce((sum, g) => sum + (Number(g.importe) || 0), 0);
-  return { repuesto: cajaLocalMonto, gastado, queda: cajaLocalMonto - gastado };
+  const sumaReposiciones = reposicionesDelNegocio()
+    .reduce((sum, r) => sum + (Number(r.monto) || 0), 0);
+  const repuesto = cajaLocalMonto + sumaReposiciones;
+  return { inicial: cajaLocalMonto, sumaReposiciones, repuesto, gastado, queda: repuesto - gastado };
 }
 
 // Card "Caja del local" en la pestaña Gastos (además de la que ya
@@ -984,12 +1018,65 @@ function renderCajaLocalDetalle() {
   // Se muestra también cuánto se GASTÓ (no solo lo que queda): la
   // pantalla existe justamente para responder "en qué se fue yendo la
   // caja", así que el total gastado va arriba y el desglose, abajo.
-  const { repuesto, gastado, queda } = cajaLocalCalculo();
+  const { inicial, repuesto, gastado, queda } = cajaLocalCalculo();
   const quedaEl = $("#caja-local-detalle-queda");
   quedaEl.textContent = (queda < 0 ? "-" : "") + money(Math.abs(queda));
   quedaEl.style.color = queda < 0 ? "var(--critical)" : "var(--text-primary)";
   $("#caja-local-detalle-gastado").textContent = money(gastado);
   $("#caja-local-detalle-repuesto").textContent = money(repuesto);
+
+  renderReposiciones(inicial);
+}
+
+// Historial de reposiciones (la otra mitad del movimiento de la caja:
+// lo que ENTRA). El "monto inicial" no es una reposición cargada sino
+// el número viejo de config/socios, así que se muestra como una línea
+// aparte arriba de la lista — ver cajaLocalCalculo().
+function renderReposiciones(inicial) {
+  $("#caja-local-detalle-inicial").textContent = money(inicial);
+  // Si nunca se usó el campo viejo (ej. un negocio nuevo que arranca ya
+  // con historial), la línea del monto inicial solo confunde.
+  $("#caja-local-inicial-linea").classList.toggle("hidden", !inicial);
+
+  const list = $("#caja-local-reposiciones-list");
+  const empty = $("#caja-local-reposiciones-empty");
+  list.innerHTML = "";
+
+  const items = reposicionesDelNegocio()
+    .slice()
+    .sort((a, b) => fechaDeRegistro(b) - fechaDeRegistro(a));
+  empty.classList.toggle("hidden", items.length > 0);
+  // Registrar y borrar reposiciones es solo para admin, mismo criterio
+  // que editar el monto inicial desde Ajustes.
+  $("#btn-add-reposicion").classList.toggle("hidden", !esAdmin);
+
+  items.forEach(r => {
+    const fecha = fechaDeRegistro(r);
+    const borrarBtn = esAdmin
+      ? `<button type="button" class="icon-btn danger reposicion-delete-btn" data-id="${r.id}" aria-label="Borrar reposición">🗑️</button>`
+      : "";
+    const notaHtml = r.nota
+      ? `<div class="meta gasto-nota">📝 ${escapeHtml(r.nota)}</div>`
+      : "";
+    const li = document.createElement("li");
+    li.className = "expense-item reposicion";
+    // El 🗑️ va en su propia fila abajo (mismo criterio que las filas de
+    // gasto, ver crearFilaGasto): si la nota es larga, así usa todo el
+    // ancho en vez de quedar apretada contra el monto y el ícono.
+    li.innerHTML = `
+      <div class="expense-item-top">
+        <div class="avatar" style="background:${payerColorVar(r.repuestoPor)}">${socioInitial(r.repuestoPor)}</div>
+        <div class="info">
+          <div class="desc">Reposición</div>
+          <div class="meta">${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · Cargó ${escapeHtml(r.repuestoPor || "?")}</div>
+          ${notaHtml}
+        </div>
+        <div class="amount">+${money(r.monto)}</div>
+      </div>
+      ${borrarBtn ? `<div class="expense-item-actions">${borrarBtn}</div>` : ""}
+    `;
+    list.appendChild(li);
+  });
 }
 
 // Gastos cargados antes de que existiera "forma de pago" no tienen el
@@ -1836,6 +1923,70 @@ async function guardarCajaLocal() {
   } finally {
     btn.disabled = false;
     btn.textContent = "Guardar";
+  }
+}
+
+// ---------- Reposiciones de la caja del local (solo admin) ----------
+function openModalReposicion() {
+  $("#input-reposicion-monto").value = "";
+  $("#input-reposicion-nota").value = "";
+  $("#input-reposicion-fecha").value = fechaLocalISO();
+  $("#modal-reposicion-error").classList.add("hidden");
+  $("#modal-add-reposicion").classList.add("active");
+  setTimeout(() => $("#input-reposicion-monto").focus(), 150);
+}
+
+function closeModalReposicion() {
+  $("#modal-add-reposicion").classList.remove("active");
+}
+
+async function saveReposicion() {
+  const monto = parseFloat($("#input-reposicion-monto").value);
+  const nota = $("#input-reposicion-nota").value.trim();
+  const fechaStr = $("#input-reposicion-fecha").value;
+  const errEl = $("#modal-reposicion-error");
+  errEl.classList.add("hidden");
+
+  if (!Number.isFinite(monto) || monto <= 0) {
+    errEl.textContent = "Ingresá un monto válido.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  const btn = $("#btn-save-reposicion");
+  btn.disabled = true;
+  btn.textContent = "Guardando…";
+  try {
+    await fbSdk.addDoc(fbSdk.collection(db, "reposiciones"), {
+      monto,
+      nota,
+      negocio: negocioActual,
+      repuestoPor: usuarioActual,
+      fecha: fechaStr ? new Date(fechaStr + "T12:00:00") : fbSdk.serverTimestamp(),
+      creadoEn: fbSdk.serverTimestamp()
+    });
+    closeModalReposicion();
+    showToast("Reposición registrada ✅");
+  } catch (e) {
+    console.error(e);
+    errEl.textContent = "No se pudo guardar. Revisá tu conexión.";
+    errEl.classList.remove("hidden");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Guardar";
+  }
+}
+
+// Solo admin (ver botón 🗑️ en renderReposiciones). Borrar una reposición
+// baja el total repuesto, así que "queda" se recalcula solo.
+async function deleteReposicion(id) {
+  if (!confirm("¿Borrar esta reposición? La caja va a quedar con menos plata cargada.")) return;
+  try {
+    await fbSdk.deleteDoc(fbSdk.doc(db, "reposiciones", id));
+    showToast("Reposición borrada");
+  } catch (e) {
+    console.error(e);
+    showToast("No se pudo borrar. Revisá tu conexión.");
   }
 }
 
@@ -2881,6 +3032,16 @@ function wireEvents() {
   $("#btn-back-from-caja-local").addEventListener("click", () => {
     switchTab("gastos");
     showScreen("screen-app");
+  });
+  $("#btn-add-reposicion").addEventListener("click", openModalReposicion);
+  $("#btn-cancel-reposicion").addEventListener("click", closeModalReposicion);
+  $("#btn-save-reposicion").addEventListener("click", saveReposicion);
+  $("#modal-add-reposicion").addEventListener("click", (e) => {
+    if (e.target.id === "modal-add-reposicion") closeModalReposicion();
+  });
+  $("#caja-local-reposiciones-list").addEventListener("click", (e) => {
+    const delBtn = e.target.closest(".reposicion-delete-btn");
+    if (delBtn) deleteReposicion(delBtn.dataset.id);
   });
 
   // Pantalla "Fotos guardadas"

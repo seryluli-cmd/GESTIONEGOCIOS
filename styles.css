@@ -428,6 +428,11 @@ input:focus, select:focus, textarea:focus {
    más urgente de los dos y tiene prioridad (ver crearFilaGasto en app.js). */
 .expense-item.caja-local { background: var(--caja-local-bg); border-color: var(--caja-local); }
 .expense-item.caja-local .amount { color: var(--caja-local); }
+/* Reposición de la caja (plata que ENTRA, al revés de un gasto) — se
+   marca en verde para que se distinga de un vistazo del dorado de los
+   gastos que salen de la caja. Ver renderCajaLocalDetalle() en app.js. */
+.expense-item.reposicion { border-color: var(--good); }
+.expense-item.reposicion .amount { color: var(--good); }
 /* Aviso "Caja faltante" en Cierre de Turno (ver cierreFaltanteHoy) —
    reusa el mismo rojo de falta-abonar, solo agrega el tamaño del botón. */
 .expense-item.falta-abonar .btn-cargar-faltante { width: auto; flex-shrink: 0; padding: 8px 14px; font-size: 14px; }

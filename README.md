@@ -73,26 +73,39 @@ seguridad que exigen autenticación anónima.
   completo sigue disponible por si hay que corregirlo. Un gasto "caja" suma a
   Total Gastos y Rentabilidad como cualquier otro — no tiene ningún trato
   especial salvo restarse de `cajaLocalMonto` en el cálculo de "queda".
-- **Caja del local** (campo `cajaLocalMonto` en `config/socios`, no una
-  colección propia) — el efectivo físico que tiene la encargada de Pancho
-  para pagar cosas sin transferirle cada vez. Es **un solo número que
-  cualquier admin reescribe a mano desde Ajustes** (`guardarCajaLocal()`)
-  para "reponer" la caja — a propósito no hay historial de reposiciones,
-  se prefirió simple. Lo que "queda" se calcula en `cajaLocalCalculo()`:
-  `cajaLocalMonto` menos la suma de TODOS los gastos con `formaPago: "caja"`
-  (de siempre, no solo del mes elegido) — función compartida por las 3
-  vistas que muestran este dato: la card de Resumen mensual, la card de
-  la pestaña Gastos (`renderCajaLocalCard()`) y la pantalla de detalle
-  (ver abajo). Todas se ocultan solo si `negocioTieneCajaLocal(negocioActual)`
-  da `true` (hoy solo Pancho, ver `tieneCajaLocal` en `NEGOCIOS`). Si un
-  gasto "caja" deja el saldo en negativo, `saveGasto()` avisa con un
-  `confirm()` (no bloquea, por si realmente se gastó de más y después se
-  repone).
+- **Caja del local** — el efectivo físico que tiene la encargada de Pancho
+  para pagar cosas sin transferirle cada vez. Lo que "queda" se calcula en
+  `cajaLocalCalculo()`: **total repuesto menos** la suma de TODOS los gastos
+  con `formaPago: "caja"` (de siempre, no solo del mes elegido). Es la
+  función compartida por las 3 vistas que muestran este dato: la card de
+  Resumen mensual, la card de la pestaña Gastos (`renderCajaLocalCard()`) y
+  la pantalla de detalle (ver abajo). Todas aparecen solo si
+  `negocioTieneCajaLocal(negocioActual)` da `true` (hoy solo Pancho, ver
+  `tieneCajaLocal` en `NEGOCIOS`). Si un gasto "caja" deja el saldo en
+  negativo, `saveGasto()` avisa con un `confirm()` (no bloquea, por si
+  realmente se gastó de más y después se repone).
+  - ⚠️ **El total repuesto son DOS cosas sumadas**, por historia:
+    `cajaLocalMonto` (un solo número en `config/socios`, que es como
+    funcionaba antes) **más** la colección `reposiciones`. Cuando se agregó
+    el historial se decidió **no migrar** el número viejo sino dejarlo como
+    "monto inicial", así lo ya cargado siguió contando sin tocar nada a mano
+    ni arriesgar que la caja apareciera en cero. Por eso la tarjeta de
+    Ajustes ahora dice explícitamente que para agregar plata **no** se use
+    ese campo: si se reescribe el total acumulado ahí *y* además se cargan
+    reposiciones, la plata se cuenta dos veces.
+  - **`reposiciones`** (colección) — un doc por reposición:
+    `{ monto, nota, negocio, repuestoPor, fecha, creadoEn }`. Mismo patrón
+    que `gastos`/`facturacion` (se filtra en memoria con
+    `reposicionesDelNegocio()`). Registrarlas y borrarlas es **solo para
+    admin**, igual que editar el monto inicial. La `nota` es opcional y
+    sirve para aclarar de dónde salió la plata.
   - **Card en Gastos + pantalla de Detalle**: además de Resumen mensual,
     la pestaña Gastos muestra la misma card de "queda" (para no tener
     que ir a otra pantalla), con un botón **"Detalle"** que abre
-    `screen-caja-local` (`renderCajaLocalDetalle()`) — lista TODOS los
-    gastos "caja" del negocio, sin importar el mes, más nuevo primero.
+    `screen-caja-local` (`renderCajaLocalDetalle()`) — muestra los 2 lados
+    del movimiento, sin importar el mes: **Reposiciones** (lo que entró,
+    en verde con `+`) y **En qué se fue gastando** (los gastos "caja", en
+    dorado), cada lista más nueva primero.
   - **Color diferencial**: en cualquier lista de gastos (Gastos y el
     Detalle de Caja del local), la fila de un gasto con
     `formaPago: "caja"` se pinta en dorado (`.expense-item.caja-local`

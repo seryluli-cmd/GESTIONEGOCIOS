@@ -282,9 +282,10 @@
 
       <div class="card hidden" id="ajustes-caja-local-card">
         <h2>💰 Caja del local (Pancho)</h2>
-        <p class="muted small">Plata que tiene KIARA en Digital/Efectivo para pagar Gastos de la pancheria. Poné acá el total repuesto hasta ahora (ej. si arrancó en $600.000 y le sumaron $200.000 más, poné $800.000).</p>
+        <p class="muted small">Plata que tiene KIARA en Digital/Efectivo para pagar Gastos de la pancheria.</p>
+        <p class="muted small"><b>Para agregarle plata no uses este campo</b>: andá a Gastos → Caja del local → Detalle → "Registrar reposición", así queda el historial de cuánto le fuiste dando y cuándo. Este número es solo el monto con el que arrancó, antes de que existiera ese historial.</p>
         <div class="field">
-          <label for="input-caja-local-monto">Total Presupuesto Inicial</label>
+          <label for="input-caja-local-monto">Monto inicial</label>
           <input type="number" id="input-caja-local-monto" inputmode="decimal" placeholder="600000" min="0" step="0.01">
         </div>
         <p id="caja-local-ajustes-error" class="error-text hidden"></p>
@@ -467,9 +468,10 @@
 
   <!-- ===== PANTALLA: DETALLE CAJA DEL LOCAL ===== -->
   <!-- Se abre con el botón "Detalle" de la card de Caja del local en
-       Gastos. Lista TODOS los gastos "caja" del negocio actual, sin
-       importar el mes — mismo criterio que el cálculo de "queda"
-       (ver cajaLocalCalculo() en app.js). -->
+       Gastos. Muestra los 2 lados del movimiento de la caja, sin
+       importar el mes: las reposiciones (lo que se le fue poniendo) y
+       los gastos "caja" (en qué se fue yendo) — mismo criterio que el
+       cálculo de "queda" (ver cajaLocalCalculo() en app.js). -->
   <div id="screen-caja-local" class="screen">
 
     <header class="topbar">
@@ -487,6 +489,14 @@
         <div class="stat-hero-sub">Se gastaron <span id="caja-local-detalle-gastado">$0</span> de <span id="caja-local-detalle-repuesto">$0</span> repuestos en total (no es solo de este mes)</div>
       </div>
 
+      <h3 class="section-title">Reposiciones</h3>
+      <p class="muted small" id="caja-local-inicial-linea">Monto inicial: <span id="caja-local-detalle-inicial">$0</span></p>
+      <ul id="caja-local-reposiciones-list" class="expenses-list"></ul>
+      <p id="caja-local-reposiciones-empty" class="muted small hidden">Todavía no se cargó ninguna reposición.</p>
+      <!-- Solo admin — ver renderCajaLocalDetalle() en app.js. -->
+      <button type="button" id="btn-add-reposicion" class="btn-secondary hidden" style="margin-bottom:18px;">+ Registrar reposición</button>
+
+      <h3 class="section-title">En qué se fue gastando</h3>
       <div id="caja-local-detalle-empty" class="empty-state hidden">
         <p>Todavía no se cargó ningún gasto de la Caja del local.</p>
       </div>
@@ -714,6 +724,41 @@
       <div class="modal-actions">
         <button id="btn-cancel-add-facturado" class="btn-secondary">Cancelar</button>
         <button id="btn-save-facturado" class="btn-primary">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: REPONER CAJA DEL LOCAL ===== -->
+  <!-- Cada reposición es un doc propio en la colección "reposiciones"
+       (a diferencia del monto inicial, que es un solo número en
+       config/socios) — así queda el historial de quién puso cuánto,
+       cuándo y por qué. Solo admin. -->
+  <div id="modal-add-reposicion" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <h2 id="modal-reposicion-title">Registrar reposición</h2>
+      <p class="muted small">Plata que le agregás a la caja del local. Se suma a lo que ya había — no reemplaza nada.</p>
+
+      <div class="field">
+        <label for="input-reposicion-monto">¿Cuánto le pusiste?</label>
+        <input type="number" id="input-reposicion-monto" inputmode="decimal" placeholder="0" min="0" step="0.01">
+      </div>
+
+      <div class="field">
+        <label for="input-reposicion-nota">Nota <span class="muted small">(opcional)</span></label>
+        <textarea id="input-reposicion-nota" rows="2" maxlength="200" placeholder="Ej: se lo di en efectivo el viernes"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="input-reposicion-fecha">Fecha</label>
+        <input type="date" id="input-reposicion-fecha">
+      </div>
+
+      <p id="modal-reposicion-error" class="error-text hidden"></p>
+
+      <div class="modal-actions">
+        <button id="btn-cancel-reposicion" class="btn-secondary">Cancelar</button>
+        <button id="btn-save-reposicion" class="btn-primary">Guardar</button>
       </div>
     </div>
   </div>
