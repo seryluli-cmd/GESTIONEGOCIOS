@@ -347,7 +347,16 @@
       <button id="btn-back-to-seccion-fact" class="topbar-title" aria-label="Volver a la sección">
         <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
         <span class="logo-badge small" id="facturado-icon-badge">$</span>
-        <span id="facturado-titulo">Cierre de Turno</span>
+        <!-- Dos líneas a propósito: el negocio grande arriba y la sección
+             chiquita abajo. En una sola línea no entraba con el título
+             agrandado, y así ocupa menos que dejar que se parta solo. -->
+        <span class="topbar-stack">
+          <span id="facturado-titulo">Cierre de Turno</span>
+          <span class="topbar-subtitulo">Cierre de Turno</span>
+        </span>
+        <!-- OJO: #facturado-titulo lo pisa selectNegocio() con el nombre
+             del negocio; el texto de acá es solo el que se ve antes de
+             elegir uno. -->
       </button>
       <div class="sync-dot" id="sync-dot-fact" title="Sincronizado"></div>
     </header>
@@ -382,7 +391,12 @@
       <button id="btn-back-to-seccion-resumen" class="topbar-title" aria-label="Volver a la sección">
         <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
         <span class="logo-badge small" id="resumen-icon-badge">$</span>
-        <span id="resumen-titulo">Resumen</span>
+        <!-- Mismo criterio que Cierre de Turno: negocio arriba, sección
+             abajo. #resumen-titulo lo pisa selectNegocio(). -->
+        <span class="topbar-stack">
+          <span id="resumen-titulo">Resumen</span>
+          <span class="topbar-subtitulo">Resumen mensual</span>
+        </span>
       </button>
     </header>
 
@@ -470,9 +484,10 @@
       <button id="btn-back-from-caja-local" class="topbar-title" aria-label="Volver a Gastos">
         <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
         <span class="logo-badge small">💰</span>
-        <!-- Sin el "— Detalle": con el título más grande se partía en dos
-             líneas y estiraba el header. Que es el detalle se ve solo. -->
-        <span>Caja del local</span>
+        <span class="topbar-stack">
+          <span>Caja del local</span>
+          <span class="topbar-subtitulo">Detalle</span>
+        </span>
       </button>
     </header>
 

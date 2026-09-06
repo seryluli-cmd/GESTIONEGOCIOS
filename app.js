@@ -639,21 +639,17 @@ function selectNegocio(id) {
   $("#negocio-icon-badge").textContent = biz.emoji;
   $("#negocio-icon-badge").style.background = biz.color;
 
-  // Facturado y Resumen muestran solo el nombre de la sección, sin
-  // repetir el del negocio: la insignia de color que va justo al lado
-  // (🌭 naranja / 🍦 magenta) ya dice en cuál estás. Con el nombre
-  // adelante, "Pancho Recreo — Cierre de Turno" se partía en dos líneas
-  // en TODOS los anchos de celular y estiraba el header a 69px,
-  // justo lo que se había achicado.
-  $("#facturado-titulo").textContent = "Cierre de Turno";
+  // En Facturado y Resumen el título es solo el nombre del negocio: la
+  // sección va en la segunda línea, fija en el HTML (.topbar-subtitulo).
+  // Antes iban juntos en una línea ("Pancho Recreo — Cierre de Turno"),
+  // pero con el título agrandado eso no entraba en ningún ancho de
+  // celular y se partía solo a mitad de frase.
+  $("#facturado-titulo").textContent = biz.nombre;
   $("#facturado-icon-badge").textContent = biz.emoji;
   $("#facturado-icon-badge").style.background = biz.color;
 
   // Pantalla "Resumen mensual" — badge del topbar
-  // "Resumen" a secas y no "Resumen mensual": esa versión también se
-  // partía en dos líneas en los celulares más angostos. Abajo del título
-  // está el navegador de mes, así que lo de "mensual" se entiende igual.
-  $("#resumen-titulo").textContent = "Resumen";
+  $("#resumen-titulo").textContent = biz.nombre;
   $("#resumen-icon-badge").textContent = biz.emoji;
   $("#resumen-icon-badge").style.background = biz.color;
 
