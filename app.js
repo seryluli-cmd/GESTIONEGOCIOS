@@ -380,6 +380,7 @@ function setUsuarioActual(nombre) {
   esAdmin = admins.includes(nombre);
   localStorage.setItem(LS_USER_KEY, nombre);
   registrarLogin(nombre);
+  aplicarPermisosDeVista();
   renderAjustesSocios();
   renderNegocioCards();
   renderGastos();
@@ -435,6 +436,33 @@ function negociosPermitidos(nombre) {
   if (socios.includes(nombre)) return NEGOCIOS.map(b => b.id);
   const asignado = colaboradorNegocio[nombre];
   return NEGOCIOS.some(b => b.id === asignado) ? [asignado] : NEGOCIOS.map(b => b.id);
+}
+
+// ¿La persona identificada es uno de los 3 socios? Los colaboradores
+// (ej. la encargada) cargan gastos y ven la caja del local, pero NO la
+// plata entre socios ni los totales del negocio — ver
+// aplicarPermisosDeVista() y renderSeccionCards(). OJO: esto es solo la
+// interfaz, no es seguridad real (ver README: cualquiera con la
+// firebaseConfig puede leer todo directo de Firestore).
+function esSocio() {
+  return !!usuarioActual && socios.includes(usuarioActual);
+}
+
+// Esconde a los colaboradores lo que es solo de los socios. Hoy: la
+// pestaña Balance (cuánto puso cada uno y quién le debe a quién). El
+// Resumen mensual se filtra aparte, en renderSeccionCards(), porque es
+// una tarjeta de sección y no una pestaña. Se llama cada vez que puede
+// cambiar quién está identificado o la lista de socios
+// (setUsuarioActual y listenSocios).
+function aplicarPermisosDeVista() {
+  const ocultarBalance = !esSocio();
+  $('.tabbtn[data-tab="balance"]').classList.toggle("hidden", ocultarBalance);
+  // Si justo estaba parado en Balance (ej. venía de otro usuario en el
+  // mismo celular), se lo manda a Gastos para que no quede mirando una
+  // pestaña que ya no le corresponde.
+  if (ocultarBalance && $("#tab-balance").classList.contains("active")) {
+    switchTab("gastos");
+  }
 }
 
 // Se llama después de identificarse (PIN nuevo, PIN verificado, o sesión
@@ -634,7 +662,10 @@ function renderSeccionCards(biz) {
   $("#btn-back-to-negocio").classList.toggle("hidden", negociosPermitidos(usuarioActual).length <= 1);
 
   const SECCIONES = [
-    { id: "gastos", emoji: "🧾", nombre: "Gastos", sub: "Cargar gastos y ver el balance entre socios" },
+    // El colaborador no ve la pestaña Balance (ver aplicarPermisosDeVista),
+    // así que a él no se le promete "el balance entre socios".
+    { id: "gastos", emoji: "🧾", nombre: "Gastos",
+      sub: esSocio() ? "Cargar gastos y ver el balance entre socios" : "Cargar y ver los gastos del negocio" },
     { id: "facturado", emoji: "💰", nombre: "Cierre de Turno", sub: "Anotar lo que se facturó cada día" },
     { id: "resumen", emoji: "📊", nombre: "Resumen mensual", sub: "Ver los totales de cada mes" },
     { id: "ideas", emoji: "💡", nombre: "Ideas/Metas", sub: "Para mejorar este negocio" }
@@ -642,7 +673,10 @@ function renderSeccionCards(biz) {
 
   const wrap = $("#seccion-cards");
   wrap.innerHTML = "";
-  SECCIONES.forEach(s => {
+  // Resumen mensual (facturado, gastos totales y rentabilidad del
+  // negocio) es solo para los socios. El colaborador no pierde nada de
+  // lo que necesita: la caja del local la ve en la pestaña Gastos.
+  SECCIONES.filter(s => s.id !== "resumen" || esSocio()).forEach(s => {
     const card = document.createElement("div");
     card.className = "negocio-card";
     card.style.setProperty("--biz-color", biz.color);
@@ -715,6 +749,7 @@ function listenSocios() {
       localStorage.setItem(LS_SOCIOS_CACHE, JSON.stringify(socios));
       localStorage.setItem(LS_COLAB_CACHE, JSON.stringify(colaboradores));
       esAdmin = usuarioActual ? admins.includes(usuarioActual) : false;
+      aplicarPermisosDeVista();
       renderPagadorChips();
       renderPagadorChipsFacturado();
       renderAjustesSocios();

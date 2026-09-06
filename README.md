@@ -188,6 +188,35 @@ de alguien mal intencionado con acceso a la config. Si eso llega a hacer
 falta, hay que migrar a Firebase Auth con cuentas reales + reglas de
 Firestore por rol.
 
+## Qué ve un colaborador y qué no (`esSocio()`)
+
+Un **colaborador** (alguien que no está en `socios`, ej. Kiara) no ve la
+plata de los socios ni los totales del negocio:
+
+| Vista | Socios | Colaboradores |
+|---|---|---|
+| Gastos (lista, carga, caja del local) | ✅ | ✅ |
+| Cierre de Turno | ✅ | ✅ |
+| Ideas/Metas | ✅ | ✅ |
+| Ajustes (incluye exportar CSV y fotos) | ✅ | ✅ |
+| **Balance** (cuánto puso cada socio, quién le debe a quién) | ✅ | ❌ |
+| **Resumen mensual** (facturado, gastos totales, rentabilidad) | ✅ | ❌ |
+
+- La pestaña **Balance** se esconde en `aplicarPermisosDeVista()`, que se
+  llama desde `setUsuarioActual()` y `listenSocios()` (los dos momentos en
+  que puede cambiar quién está identificado). Si la persona estaba parada
+  en esa pestaña, se la manda a Gastos.
+- **Resumen mensual** se filtra en `renderSeccionCards()`, porque es una
+  tarjeta de sección y no una pestaña. El colaborador no pierde nada de lo
+  que necesita: **la caja del local la ve en la pestaña Gastos** — ese fue
+  justamente el motivo de llevarla ahí (Kiara no llegaba a Resumen).
+- La bajada de la tarjeta "Gastos" también cambia según quién sea, para no
+  prometerle "el balance entre socios" a alguien que no lo va a encontrar.
+
+⚠️ Vale lo mismo que para el PIN: **esto es solo la interfaz**, no seguridad
+real. Cualquiera con la `firebaseConfig` puede leer todo directo de
+Firestore, y la exportación a CSV de Ajustes sigue disponible para todos.
+
 ## Acceso restringido por negocio (solo colaboradores)
 
 Los 3 **socios** siempre ven los 2 negocios — reparten gastos entre ambos
