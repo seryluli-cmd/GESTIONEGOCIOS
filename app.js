@@ -639,13 +639,21 @@ function selectNegocio(id) {
   $("#negocio-icon-badge").textContent = biz.emoji;
   $("#negocio-icon-badge").style.background = biz.color;
 
-  // Pantalla "Facturado" — badge del topbar
-  $("#facturado-titulo").textContent = biz.nombre + " — Cierre de Turno";
+  // Facturado y Resumen muestran solo el nombre de la sección, sin
+  // repetir el del negocio: la insignia de color que va justo al lado
+  // (🌭 naranja / 🍦 magenta) ya dice en cuál estás. Con el nombre
+  // adelante, "Pancho Recreo — Cierre de Turno" se partía en dos líneas
+  // en TODOS los anchos de celular y estiraba el header a 69px,
+  // justo lo que se había achicado.
+  $("#facturado-titulo").textContent = "Cierre de Turno";
   $("#facturado-icon-badge").textContent = biz.emoji;
   $("#facturado-icon-badge").style.background = biz.color;
 
   // Pantalla "Resumen mensual" — badge del topbar
-  $("#resumen-titulo").textContent = biz.nombre + " — Resumen";
+  // "Resumen" a secas y no "Resumen mensual": esa versión también se
+  // partía en dos líneas en los celulares más angostos. Abajo del título
+  // está el navegador de mes, así que lo de "mensual" se entiende igual.
+  $("#resumen-titulo").textContent = "Resumen";
   $("#resumen-icon-badge").textContent = biz.emoji;
   $("#resumen-icon-badge").style.background = biz.color;
 

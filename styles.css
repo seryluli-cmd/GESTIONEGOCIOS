@@ -310,6 +310,11 @@ input:focus, select:focus, textarea:focus {
   border-radius: 10px;
   font: inherit;
   font-weight: 600;
+  /* Nombre del negocio/pantalla un 35% más grande (16px -> 21.6px), a
+     pedido. Va DESPUÉS del `font: inherit` de arriba, que si no lo
+     pisaría. No agranda el header: la flecha (36px) y la insignia
+     (28px) tienen medidas propias y siguen mandando en el alto. */
+  font-size: 21.6px;
   color: var(--text-primary);
   cursor: pointer;
 }
