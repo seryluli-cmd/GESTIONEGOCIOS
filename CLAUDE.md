@@ -76,9 +76,13 @@ Si agregás un campo nuevo a `config/socios`, alcanza con tocar
   global las deja en blanco.
 - **`fechaLocalISO()` existe porque `toISOString()` da UTC.** De noche en
   Argentina eso adelanta un día y los gastos caen en el mes equivocado.
-- **La caja del local suma dos fuentes:** `cajaLocalMonto` (monto inicial, el
-  campo viejo) **más** la colección `reposiciones`. Si alguien vuelve a
-  reescribir el campo viejo para "reponer", la plata se cuenta dos veces.
+- **La caja del local se maneja solo con la colección `reposiciones`.** El
+  campo viejo `cajaLocalMonto` quedó obsoleto: `migrarMontoInicialCaja()` lo
+  pasa a una reposición con `esInicial: true` y lo deja en cero. Se sigue
+  sumando en `cajaLocalCalculo()` solo como red de seguridad hasta que la
+  migración corra. **No lo vuelvas a hacer editable**: tener dos lugares
+  para cargar lo mismo ya causó un bug real (el aviso de saldo negativo de
+  `saveGasto()` ignoraba las reposiciones).
 - **Aviso "Caja faltante":** turno del día 1 → recién avisa a las 5hs del día
   2. Se calcula sobre *ayer*, y a propósito **no** reutiliza
   `fechaSugeridaCierre()` (esa devuelve *hoy* pasado el mediodía).

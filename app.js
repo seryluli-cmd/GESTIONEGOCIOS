@@ -122,11 +122,12 @@ let claveMaestraAdmin = ""; // clave compartida entre los admins, solo para CREA
                              // en un celular nuevo (ver openPinModal/confirmPinModal) — evita que cualquiera
                              // tocando "Sergio" por primera vez se autoasigne el PIN de admin sin saberla.
                              // Si no está configurada (vacía), no se pide — no es seguridad real, ver README.
-let cajaLocalMonto = 0;     // Caja del local de Pancho Recreo: total repuesto en efectivo (ej. $600.000),
-                             // editable a mano por cualquier admin desde Ajustes (ver guardarCajaLocal()).
-                             // Lo que "queda" se calcula solo: este número menos los gastos con
-                             // formaPago "caja" (ver renderResumen()) — no es un historial, es un
-                             // total que se reescribe cada vez que se repone.
+let cajaLocalMonto = 0;     // OBSOLETO: era el total repuesto de la caja del local cuando se
+                             // manejaba con un solo número editable desde Ajustes. Ahora eso vive
+                             // en la colección "reposiciones" y este campo lo migra a cero
+                             // migrarMontoInicialCaja(). No se edita desde ningún lado; se sigue
+                             // leyendo solo para que el total no se caiga a cero en el rato previo
+                             // a que la migración corra (ver cajaLocalCalculo()).
 let gastos = [];           // TODOS los gastos, de los 2 negocios — [{id, importe, descripcion, categoria, pagadoPor, fecha, negocio}]
 let facturaciones = [];    // TODOS los cierres diarios, de los 2 negocios — [{id, importe, registradoPor, fecha, negocio}]
 let reposiciones = [];     // TODAS las reposiciones de la caja del local, de los 2 negocios — [{id, monto, nota, negocio, repuestoPor, fecha}], filtradas por reposicionesDelNegocio()
@@ -758,6 +759,7 @@ function listenSocios() {
       localStorage.setItem(LS_SOCIOS_CACHE, JSON.stringify(socios));
       localStorage.setItem(LS_COLAB_CACHE, JSON.stringify(colaboradores));
       esAdmin = usuarioActual ? admins.includes(usuarioActual) : false;
+      migrarMontoInicialCaja();
       aplicarPermisosDeVista();
       renderPagadorChips();
       renderPagadorChipsFacturado();
@@ -964,12 +966,12 @@ function crearFilaGasto(g) {
 // del mes elegido) — mismo cálculo para la card de Resumen mensual, la
 // card de Gastos y el detalle de Caja del local, para no repetirlo.
 //
-// El total repuesto son DOS cosas sumadas, por historia: `cajaLocalMonto`
-// (un solo número en config/socios, que es como funcionaba antes de que
-// existiera el historial) más las `reposiciones` cargadas una por una.
-// Se mantiene el número viejo como "monto inicial" en vez de migrarlo,
-// así lo que ya estaba cargado sigue contando sin tener que tocar nada
-// a mano ni arriesgar que la caja aparezca en cero.
+// La única fuente de lo repuesto es la colección `reposiciones` (el
+// saldo inicial es una más, ver migrarMontoInicialCaja). Igual se le
+// suma `cajaLocalMonto` porque es el campo viejo: vale 0 apenas la
+// migración corre, pero mientras no haya corrido —o si un celular
+// todavía tiene la config vieja en caché— así el total no se cae a cero
+// ni por un segundo. No se edita desde ningún lado.
 function cajaLocalCalculo() {
   const gastado = gastosDelNegocio()
     .filter(g => g.formaPago === "caja")
@@ -977,7 +979,7 @@ function cajaLocalCalculo() {
   const sumaReposiciones = reposicionesDelNegocio()
     .reduce((sum, r) => sum + (Number(r.monto) || 0), 0);
   const repuesto = cajaLocalMonto + sumaReposiciones;
-  return { inicial: cajaLocalMonto, sumaReposiciones, repuesto, gastado, queda: repuesto - gastado };
+  return { repuesto, gastado, queda: repuesto - gastado };
 }
 
 // Card "Caja del local" en la pestaña Gastos (además de la que ya
@@ -1018,36 +1020,34 @@ function renderCajaLocalDetalle() {
   // Se muestra también cuánto se GASTÓ (no solo lo que queda): la
   // pantalla existe justamente para responder "en qué se fue yendo la
   // caja", así que el total gastado va arriba y el desglose, abajo.
-  const { inicial, repuesto, gastado, queda } = cajaLocalCalculo();
+  const { repuesto, gastado, queda } = cajaLocalCalculo();
   const quedaEl = $("#caja-local-detalle-queda");
   quedaEl.textContent = (queda < 0 ? "-" : "") + money(Math.abs(queda));
   quedaEl.style.color = queda < 0 ? "var(--critical)" : "var(--text-primary)";
   $("#caja-local-detalle-gastado").textContent = money(gastado);
   $("#caja-local-detalle-repuesto").textContent = money(repuesto);
 
-  renderReposiciones(inicial);
+  renderReposiciones();
 }
 
-// Historial de reposiciones (la otra mitad del movimiento de la caja:
-// lo que ENTRA). El "monto inicial" no es una reposición cargada sino
-// el número viejo de config/socios, así que se muestra como una línea
-// aparte arriba de la lista — ver cajaLocalCalculo().
-function renderReposiciones(inicial) {
-  $("#caja-local-detalle-inicial").textContent = money(inicial);
-  // Si nunca se usó el campo viejo (ej. un negocio nuevo que arranca ya
-  // con historial), la línea del monto inicial solo confunde.
-  $("#caja-local-inicial-linea").classList.toggle("hidden", !inicial);
-
+// Historial de reposiciones: la otra mitad del movimiento de la caja (lo
+// que ENTRA). Incluye el saldo inicial, que es una reposición más pero
+// marcada con esInicial (ver migrarMontoInicialCaja).
+function renderReposiciones() {
   const list = $("#caja-local-reposiciones-list");
   const empty = $("#caja-local-reposiciones-empty");
   list.innerHTML = "";
 
+  // El saldo inicial va siempre último aunque su fecha sea la del día en
+  // que se migró: es la plata más vieja de la caja, no la más nueva.
   const items = reposicionesDelNegocio()
     .slice()
-    .sort((a, b) => fechaDeRegistro(b) - fechaDeRegistro(a));
+    .sort((a, b) => {
+      if (!!a.esInicial !== !!b.esInicial) return a.esInicial ? 1 : -1;
+      return fechaDeRegistro(b) - fechaDeRegistro(a);
+    });
   empty.classList.toggle("hidden", items.length > 0);
-  // Registrar y borrar reposiciones es solo para admin, mismo criterio
-  // que editar el monto inicial desde Ajustes.
+  // Registrar y borrar reposiciones es solo para admin.
   $("#btn-add-reposicion").classList.toggle("hidden", !esAdmin);
 
   items.forEach(r => {
@@ -1058,6 +1058,12 @@ function renderReposiciones(inicial) {
     const notaHtml = r.nota
       ? `<div class="meta gasto-nota">📝 ${escapeHtml(r.nota)}</div>`
       : "";
+    // El saldo inicial no lo cargó nadie (viene del campo viejo, ver
+    // migrarMontoInicialCaja), así que no se le inventa un autor ni se
+    // muestra la fecha del día en que se migró, que no significa nada.
+    const meta = r.esInicial
+      ? "Lo que ya había en la caja"
+      : `${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · Cargó ${escapeHtml(r.repuestoPor || "?")}`;
     const li = document.createElement("li");
     li.className = "expense-item reposicion";
     // El 🗑️ va en su propia fila abajo (mismo criterio que las filas de
@@ -1065,10 +1071,10 @@ function renderReposiciones(inicial) {
     // ancho en vez de quedar apretada contra el monto y el ícono.
     li.innerHTML = `
       <div class="expense-item-top">
-        <div class="avatar" style="background:${payerColorVar(r.repuestoPor)}">${socioInitial(r.repuestoPor)}</div>
+        <div class="avatar" style="background:${r.esInicial ? NEUTRAL_VAR : payerColorVar(r.repuestoPor)}">${r.esInicial ? "💰" : socioInitial(r.repuestoPor)}</div>
         <div class="info">
-          <div class="desc">Reposición</div>
-          <div class="meta">${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · Cargó ${escapeHtml(r.repuestoPor || "?")}</div>
+          <div class="desc">${r.esInicial ? "Saldo inicial" : "Reposición"}</div>
+          <div class="meta">${meta}</div>
           ${notaHtml}
         </div>
         <div class="amount">+${money(r.monto)}</div>
@@ -1803,13 +1809,6 @@ function renderAjustesSocios() {
   $("#btn-add-colaborador-ajustes").classList.toggle("hidden", !esAdmin);
   $("#ajustes-clave-maestra-card").classList.toggle("hidden", !esAdmin);
 
-  // Caja del local: cualquier admin (Sergio, Pola o Leonel) puede
-  // editar el total repuesto — ver guardarCajaLocal(). Se precarga con
-  // el valor actual para que "incrementarla" sea directo: cambian el
-  // número y guardan.
-  $("#ajustes-caja-local-card").classList.toggle("hidden", !esAdmin);
-  if (esAdmin) $("#input-caja-local-monto").value = cajaLocalMonto || "";
-
   // Historial de logeos: escondido para todos salvo Sergio, aunque Pola y
   // Leonel también sean admin (ver registrarLogin/cargarHistorialLogins).
   const esSergio = usuarioActual === "Sergio";
@@ -1894,39 +1893,45 @@ async function toggleAdminSocio(nombre) {
   }
 }
 
-// Caja del local (Pancho): cualquier admin edita el total repuesto a mano
-// desde Ajustes (ver #ajustes-caja-local-card) — para "incrementarla" alcanza
-// con escribir el nuevo total y guardar. No hay historial de reposiciones a
-// propósito, es un solo número que se reescribe (ver cajaLocalMonto arriba).
-async function guardarCajaLocal() {
-  const monto = parseFloat($("#input-caja-local-monto").value);
-  const errEl = $("#caja-local-ajustes-error");
-  errEl.classList.add("hidden");
+// ---------- Reposiciones de la caja del local (solo admin) ----------
+// Migración de una sola vez: el "monto inicial" de la caja era un número
+// suelto en config/socios (cajaLocalMonto), de cuando todavía no existía
+// el historial. Tener dos fuentes para el mismo dato se prestaba a
+// contar la plata dos veces, así que se convierte en una reposición más
+// y el campo viejo queda en cero (ya no se edita desde ningún lado).
+//
+// Es seguro correrla de más: el documento tiene un id FIJO, así que si
+// varios celulares abren la app a la vez, todos escriben el MISMO doc
+// con el mismo monto en vez de crear reposiciones duplicadas.
+let migracionCajaHecha = false;
+async function migrarMontoInicialCaja() {
+  if (migracionCajaHecha) return;
+  migracionCajaHecha = true;
+  if (!cajaLocalMonto) return;
+  const negocio = NEGOCIOS.find(b => b.tieneCajaLocal);
+  if (!negocio) return;
 
-  if (!Number.isFinite(monto) || monto < 0) {
-    errEl.textContent = "Ingresá un monto válido.";
-    errEl.classList.remove("hidden");
-    return;
-  }
-
-  const btn = $("#btn-guardar-caja-local");
-  btn.disabled = true;
-  btn.textContent = "Guardando…";
+  const monto = cajaLocalMonto;
   try {
-    await fbSdk.updateDoc(fbSdk.doc(db, "config", "socios"), { cajaLocalMonto: monto });
-    cajaLocalMonto = monto;
-    showToast("Caja del local actualizada ✅");
+    await fbSdk.setDoc(fbSdk.doc(db, "reposiciones", `inicial-${negocio.id}`), {
+      monto,
+      nota: "Plata que ya tenía la caja antes de que existiera este historial.",
+      negocio: negocio.id,
+      esInicial: true,
+      fecha: new Date(),
+      creadoEn: fbSdk.serverTimestamp()
+    });
+    await fbSdk.updateDoc(fbSdk.doc(db, "config", "socios"), { cajaLocalMonto: 0 });
+    cajaLocalMonto = 0;
   } catch (e) {
-    console.error(e);
-    errEl.textContent = "No se pudo guardar. Revisá tu conexión.";
-    errEl.classList.remove("hidden");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = "Guardar";
+    // Si falla (ej. sin señal), se reintenta en la próxima apertura: el
+    // total no cambia mientras tanto, porque cajaLocalCalculo() sigue
+    // sumando el campo viejo hasta que la migración se complete.
+    console.error("No se pudo migrar el monto inicial de la caja:", e);
+    migracionCajaHecha = false;
   }
 }
 
-// ---------- Reposiciones de la caja del local (solo admin) ----------
 function openModalReposicion() {
   $("#input-reposicion-monto").value = "";
   $("#input-reposicion-nota").value = "";
@@ -2266,14 +2271,22 @@ async function saveGasto() {
   // Aviso suave (no bloquea) si este gasto deja la Caja del local en
   // negativo — para pescar errores de carga (elegir "Caja del local" por
   // error, o un importe mal tipeado) sin impedir guardarlo si realmente
-  // se gastó de más y después se repone (ver guardarCajaLocal()). Al
+  // se gastó de más y después se repone. Al
   // editar un gasto que YA era "caja", se excluye su monto viejo del
   // cálculo para no descontarlo dos veces.
   if (selectedFormaPago === "caja") {
-    const gastadoCajaOtros = gastosDelNegocio()
-      .filter(g => g.formaPago === "caja" && g.id !== editingGastoId)
-      .reduce((sum, g) => sum + (Number(g.importe) || 0), 0);
-    const saldoResultante = cajaLocalMonto - gastadoCajaOtros - importe;
+    // El saldo sale de cajaLocalCalculo() y no de un cálculo propio, para
+    // que este aviso cuente lo mismo que las 3 vistas de la caja (antes
+    // usaba solo el monto inicial e ignoraba las reposiciones, así que
+    // avisaba de un rojo inexistente en cuanto se reponía plata).
+    // Al editar un gasto que YA era "caja", se le devuelve su monto viejo
+    // al saldo para no descontarlo dos veces.
+    const { queda } = cajaLocalCalculo();
+    const gastoViejo = editingGastoId
+      ? gastosDelNegocio().find(g => g.id === editingGastoId && g.formaPago === "caja")
+      : null;
+    const saldoSinEste = queda + (gastoViejo ? Number(gastoViejo.importe) || 0 : 0);
+    const saldoResultante = saldoSinEste - importe;
     if (saldoResultante < 0) {
       const saldoTexto = (saldoResultante < 0 ? "-" : "") + money(Math.abs(saldoResultante));
       if (!confirm(`Ojo: esto deja la Caja del local en ${saldoTexto}. ¿Guardar igual?`)) return;
@@ -3055,7 +3068,6 @@ function wireEvents() {
   });
 
   $("#btn-guardar-clave-maestra").addEventListener("click", guardarClaveMaestra);
-  $("#btn-guardar-caja-local").addEventListener("click", guardarCajaLocal);
 
   // Agregar colaborador nuevo desde Ajustes (botón oculto para no-admin).
   $("#btn-add-colaborador-ajustes").addEventListener("click", () => openModalColaborador());

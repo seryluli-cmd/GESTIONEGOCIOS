@@ -280,17 +280,9 @@
         <button type="button" id="btn-guardar-clave-maestra" class="btn-secondary">Guardar</button>
       </div>
 
-      <div class="card hidden" id="ajustes-caja-local-card">
-        <h2>💰 Caja del local (Pancho)</h2>
-        <p class="muted small">Plata que tiene KIARA en Digital/Efectivo para pagar Gastos de la pancheria.</p>
-        <p class="muted small"><b>Para agregarle plata no uses este campo</b>: andá a Gastos → Caja del local → Detalle → "Registrar reposición", así queda el historial de cuánto le fuiste dando y cuándo. Este número es solo el monto con el que arrancó, antes de que existiera ese historial.</p>
-        <div class="field">
-          <label for="input-caja-local-monto">Monto inicial</label>
-          <input type="number" id="input-caja-local-monto" inputmode="decimal" placeholder="600000" min="0" step="0.01">
-        </div>
-        <p id="caja-local-ajustes-error" class="error-text hidden"></p>
-        <button type="button" id="btn-guardar-caja-local" class="btn-secondary">Guardar</button>
-      </div>
+      <!-- La caja del local ya no se edita desde acá: se maneja entera
+           desde Gastos → Caja del local → Detalle, donde cada reposición
+           queda registrada con monto, nota y autor. -->
 
       <div class="card">
         <h2>Estado de conexión</h2>
@@ -490,7 +482,6 @@
       </div>
 
       <h3 class="section-title">Reposiciones</h3>
-      <p class="muted small" id="caja-local-inicial-linea">Monto inicial: <span id="caja-local-detalle-inicial">$0</span></p>
       <ul id="caja-local-reposiciones-list" class="expenses-list"></ul>
       <p id="caja-local-reposiciones-empty" class="muted small hidden">Todavía no se cargó ninguna reposición.</p>
       <!-- Solo admin — ver renderCajaLocalDetalle() en app.js. -->

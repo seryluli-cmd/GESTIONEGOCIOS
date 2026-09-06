@@ -84,21 +84,24 @@ seguridad que exigen autenticación anónima.
   `tieneCajaLocal` en `NEGOCIOS`). Si un gasto "caja" deja el saldo en
   negativo, `saveGasto()` avisa con un `confirm()` (no bloquea, por si
   realmente se gastó de más y después se repone).
-  - ⚠️ **El total repuesto son DOS cosas sumadas**, por historia:
-    `cajaLocalMonto` (un solo número en `config/socios`, que es como
-    funcionaba antes) **más** la colección `reposiciones`. Cuando se agregó
-    el historial se decidió **no migrar** el número viejo sino dejarlo como
-    "monto inicial", así lo ya cargado siguió contando sin tocar nada a mano
-    ni arriesgar que la caja apareciera en cero. Por eso la tarjeta de
-    Ajustes ahora dice explícitamente que para agregar plata **no** se use
-    ese campo: si se reescribe el total acumulado ahí *y* además se cargan
-    reposiciones, la plata se cuenta dos veces.
-  - **`reposiciones`** (colección) — un doc por reposición:
-    `{ monto, nota, negocio, repuestoPor, fecha, creadoEn }`. Mismo patrón
-    que `gastos`/`facturacion` (se filtra en memoria con
+  - **`reposiciones`** (colección) — **la única fuente de lo repuesto**. Un
+    doc por reposición: `{ monto, nota, negocio, repuestoPor, fecha, creadoEn }`,
+    mismo patrón que `gastos`/`facturacion` (se filtra en memoria con
     `reposicionesDelNegocio()`). Registrarlas y borrarlas es **solo para
-    admin**, igual que editar el monto inicial. La `nota` es opcional y
-    sirve para aclarar de dónde salió la plata.
+    admin**. La `nota` es opcional y sirve para aclarar de dónde salió la
+    plata. **No se edita nada de la caja desde Ajustes** — esa tarjeta se
+    eliminó justamente para no tener dos lugares donde cargar lo mismo.
+  - **Saldo inicial y el campo `cajaLocalMonto` (obsoleto)**: antes del
+    historial, lo repuesto era un solo número en `config/socios` que un
+    admin reescribía. `migrarMontoInicialCaja()` lo convierte, una sola vez,
+    en una reposición con `esInicial: true` y deja el campo en cero. Usa un
+    **id de documento fijo** (`inicial-<negocio>`) para que sea idempotente:
+    si varios celulares abren la app a la vez, todos escriben el mismo doc en
+    vez de duplicar la plata. `cajaLocalCalculo()` sigue sumando
+    `cajaLocalMonto` a propósito, para que el total no se caiga a cero en el
+    rato previo a que la migración corra o en un celular con la config vieja
+    en caché; una vez migrado siempre vale 0. La fila del saldo inicial se
+    muestra distinta (sin autor, siempre última) porque no la cargó nadie.
   - **Card en Gastos + pantalla de Detalle**: además de Resumen mensual,
     la pestaña Gastos muestra la misma card de "queda" (para no tener
     que ir a otra pantalla), con un botón **"Detalle"** que abre
