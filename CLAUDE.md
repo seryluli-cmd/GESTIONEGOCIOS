@@ -21,6 +21,10 @@ En concreto, antes de escribir código:
    explicar las decisiones no obvias y las trampas. Mantenerla: es lo que hace
    que un cambio futuro no rompa algo por desconocimiento.
 
+Las 15 reglas completas, con el ejemplo real de esta app que originó cada
+una, están en **[REGLAS.md](REGLAS.md)**. Aplican también a los otros
+proyectos web del dueño (CyberBIOS, FRWEB). Leelo antes de un cambio grande.
+
 ## Qué es el proyecto
 
 PWA en JavaScript vanilla (sin build, sin npm, sin frameworks) para que 3
