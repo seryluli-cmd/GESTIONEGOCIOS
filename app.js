@@ -2163,13 +2163,11 @@ function setDefaultFechaFact() {
   $("#input-fecha-fact").value = fechaLocalISO(fechaSugeridaCierre());
 }
 
-// Aviso "Caja faltante" (ver renderFacturado): quien carga el cierre no
-// siempre lo hace la mañana siguiente al turno (a veces recién al otro
-// día) — pedirlo ya a las 5am del día siguiente era muy poco margen y
-// tiraba el aviso en falso con el negocio recién cerrando. Por eso el
-// día que se chequea es el ANTEPENÚLTIMO (hoy menos 2), no ayer: para
-// un turno del jueves, el aviso recién puede aparecer el sábado a
-// partir de las 5am — les da todo el viernes de margen. OJO: a
+// Aviso "Caja faltante" (ver renderFacturado): la regla, tal como la
+// pidieron, es con ejemplo concreto — turno del día 1: si a las 5hs
+// del día 2 el cierre todavía no está cargado, RECIÉN a partir de ese
+// horario se marca "Caja faltante" (ni un minuto antes). O sea: se
+// chequea el cierre de AYER (hoy menos 1 día), nunca de hoy. OJO: a
 // propósito NO reutiliza fechaSugeridaCierre() para esto (aunque las
 // dos funciones suenan parecido) — esa otra función devuelve HOY
 // pasado el mediodía, pensada para precargar la fecha al tocar "+" a
@@ -2182,7 +2180,7 @@ function cierreFaltanteHoy() {
   const hoy = new Date();
   if (hoy.getHours() < 5) return null;
   const diaEsperado = new Date(hoy);
-  diaEsperado.setDate(diaEsperado.getDate() - 2);
+  diaEsperado.setDate(diaEsperado.getDate() - 1);
   const yaCargado = facturacionesDelNegocio().some(f => {
     const fecha = fechaDeRegistro(f);
     return fecha.getFullYear() === diaEsperado.getFullYear()
