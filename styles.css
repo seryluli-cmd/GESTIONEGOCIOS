@@ -288,9 +288,14 @@ input:focus, select:focus, textarea:focus {
 /* ===== App shell ===== */
 #screen-app.active { display: flex; flex-direction: column; height: 100vh; }
 
+/* Alto total ~55px: se redujo a la mitad (antes ~109px) porque el header
+   se comía media pantalla en el celular sin aportar nada. Lo que lo
+   empujaba era el círculo de la flecha; ver .topbar-back-arrow. El
+   botón entero (.topbar-title) queda igual en 44px de alto, que es el
+   mínimo cómodo para tocar con el dedo. */
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 18px;
+  padding: 5px 18px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-1);
   font-weight: 600;
@@ -301,7 +306,7 @@ input:focus, select:focus, textarea:focus {
   gap: 8px;
   border: none;
   background: none;
-  padding: 6px 10px 6px 6px;
+  padding: 4px 10px 4px 4px;
   border-radius: 10px;
   font: inherit;
   font-weight: 600;
@@ -319,18 +324,23 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 68px;
-  height: 68px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: var(--gridline);
   color: var(--text-primary);
-  margin-right: 10px;
+  margin-right: 8px;
 }
 /* Los SVG inline se tratan como texto por default, con espacio
    reservado abajo para el "descender" de una letra como la "g" —
-   display:block lo saca, así el ícono queda centrado de verdad. */
+   display:block lo saca, así el ícono queda centrado de verdad.
+   El tamaño se fija acá y no en el atributo width/height del <svg>
+   porque el mismo markup está repetido en las 7 pantallas que tienen
+   "volver": así se cambia en un solo lugar. */
 .topbar-back-arrow svg {
   display: block;
+  width: 22px;
+  height: 22px;
 }
 
 .sync-dot {
