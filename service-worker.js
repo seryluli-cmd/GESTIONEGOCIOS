@@ -1,4 +1,9 @@
-const CACHE_NAME = "gastos-negocio-v2";
+// Subir este número borra la copia guardada en todos los celulares la
+// próxima vez que abran (ver el "activate" de abajo). Se sube cuando algún
+// celular quedó pegado a una versión vieja — pasó al publicar la Caja del
+// local. Desde la v3 la app además se actualiza sola: ver el bloque de
+// service worker en app.js.
+const CACHE_NAME = "gastos-negocio-v3";
 const APP_SHELL = [
   "./",
   "./index.html",

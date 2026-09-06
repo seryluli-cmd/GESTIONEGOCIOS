@@ -88,6 +88,14 @@ Si agregás un campo nuevo a `config/socios`, alcanza con tocar
   `fechaSugeridaCierre()` (esa devuelve *hoy* pasado el mediodía).
 - **Kiara está hardcodeada por nombre** (`usuarioActual === "Kiara"`) para
   forzarle forma de pago "caja". Es deuda técnica conocida, ver abajo.
+- **La app se actualiza sola; no rompas ese bloque.** El service worker de
+  `app.js` recarga la pantalla cuando detecta versión nueva. Dos guardas que
+  parecen de más pero no lo son: no recargar en el primer `controllerchange`
+  (es la instalación inicial) y no recargar con un modal abierto (le
+  cortarías el gasto a medio cargar a alguien). Y `controlada` tiene que
+  ser una variable que se actualiza, no una foto del momento de cargar: como
+  variable fija nunca se recarga, porque en la primera visita todavía no hay
+  service worker. Ese bug ya estuvo escrito una vez.
 - **Los PIN y los permisos son solo interfaz, no seguridad.** Cualquiera con
   la `firebaseConfig` lee y escribe todo directo en Firestore. No le prometas
   al usuario que esto protege datos.

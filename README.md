@@ -22,11 +22,21 @@ tiempo real, con soporte offline).
 - **Service worker** ([service-worker.js](service-worker.js)) — cachea el
   app shell (HTML/CSS/JS/íconos) para que abra offline; todo lo que es
   Firebase pasa siempre directo a la red, nunca se cachea. Estrategia
-  **red primero, caché como respaldo offline** (no al revés) — así cualquier
-  deploy nuevo se ve apenas hay internet, sin que el celular quede pegado a
-  una versión vieja. Si se cambia el shell y por algún motivo un celular
-  sigue viendo lo viejo, subir el número de `CACHE_NAME` fuerza un reset
-  limpio.
+  **red primero, caché como respaldo offline** (no al revés). Si algún
+  celular quedara pegado a una versión vieja, subir el número de
+  `CACHE_NAME` fuerza un reset limpio.
+- **Actualización automática** (bloque de service worker en [app.js](app.js))
+  — una PWA instalada casi nunca se cierra de verdad: se suspende y se
+  retoma, así que puede quedarse semanas corriendo código viejo aunque el
+  servidor ya tenga el nuevo (pasó de verdad: un socio siguió sin ver la
+  Caja del local mucho después de publicarla). Por eso la app pregunta si
+  hay versión nueva al abrir y **cada vez que se vuelve a ella**
+  (`visibilitychange`), y cuando el service worker nuevo toma el control
+  recarga la pantalla sola. Dos cuidados: **no recarga en la instalación
+  inicial** (el primer `controllerchange` no reemplaza nada), y **no
+  interrumpe si hay un modal abierto** — espera a que la persona termine de
+  cargar el gasto y aplica la actualización cuando vuelve. Nadie tiene que
+  cerrar la app a mano.
 - **manifest.json** — permite "Agregar a pantalla de inicio" como app nativa.
 
 ## Archivos
