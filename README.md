@@ -78,13 +78,28 @@ seguridad que exigen autenticación anónima.
   para pagar cosas sin transferirle cada vez. Es **un solo número que
   cualquier admin reescribe a mano desde Ajustes** (`guardarCajaLocal()`)
   para "reponer" la caja — a propósito no hay historial de reposiciones,
-  se prefirió simple. Lo que "queda" se calcula en `renderResumen()`:
+  se prefirió simple. Lo que "queda" se calcula en `cajaLocalCalculo()`:
   `cajaLocalMonto` menos la suma de TODOS los gastos con `formaPago: "caja"`
-  (de siempre, no solo del mes elegido) — se muestra en Resumen mensual
-  solo si `negocioTieneCajaLocal(negocioActual)` da `true` (hoy solo
-  Pancho, ver `tieneCajaLocal` en `NEGOCIOS`). Si un gasto "caja" deja el
-  saldo en negativo, `saveGasto()` avisa con un `confirm()` (no bloquea,
-  por si realmente se gastó de más y después se repone).
+  (de siempre, no solo del mes elegido) — función compartida por las 3
+  vistas que muestran este dato: la card de Resumen mensual, la card de
+  la pestaña Gastos (`renderCajaLocalCard()`) y la pantalla de detalle
+  (ver abajo). Todas se ocultan solo si `negocioTieneCajaLocal(negocioActual)`
+  da `true` (hoy solo Pancho, ver `tieneCajaLocal` en `NEGOCIOS`). Si un
+  gasto "caja" deja el saldo en negativo, `saveGasto()` avisa con un
+  `confirm()` (no bloquea, por si realmente se gastó de más y después se
+  repone).
+  - **Card en Gastos + pantalla de Detalle**: además de Resumen mensual,
+    la pestaña Gastos muestra la misma card de "queda" (para no tener
+    que ir a otra pantalla), con un botón **"Detalle"** que abre
+    `screen-caja-local` (`renderCajaLocalDetalle()`) — lista TODOS los
+    gastos "caja" del negocio, sin importar el mes, más nuevo primero.
+  - **Color diferencial**: en cualquier lista de gastos (Gastos y el
+    Detalle de Caja del local), la fila de un gasto con
+    `formaPago: "caja"` se pinta en dorado (`.expense-item.caja-local`
+    en `styles.css`) para distinguirlo de un vistazo — salvo que
+    también tenga "Falta abonar" tildado, que por ser el aviso más
+    urgente tiene prioridad visual (rojo). El armado de cada fila está
+    en `crearFilaGasto()`, compartido entre ambas listas.
 - **`facturacion`** (colección) — un doc por cierre diario:
   `{ importe, registradoPor, negocio, fecha, creadoEn }`. Mismo patrón que
   `gastos`. **Aviso "Caja faltante"**: a partir de las 5am, si no existe

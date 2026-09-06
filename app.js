@@ -827,62 +827,128 @@ function renderGastos() {
   let totalMes = 0;
 
   gastosMes.forEach(g => {
-    const fecha = fechaDeRegistro(g);
     totalMes += Number(g.importe) || 0;
-
-    const fotoBtn = g.fotoUrl
-      ? `<button type="button" class="foto-link" data-url="${escapeHtml(g.fotoUrl)}" aria-label="Ver foto de la factura">📷</button>`
-      : "";
-
-    // Editar/borrar solo para el admin — el resto solo puede cargar y ver.
-    const adminBtns = esAdmin
-      ? `<button type="button" class="icon-btn gasto-edit-btn" data-id="${g.id}" aria-label="Editar gasto">✏️</button>
-         <button type="button" class="icon-btn danger gasto-delete-btn" data-id="${g.id}" aria-label="Borrar gasto">🗑️</button>`
-      : "";
-
-    // Falta abonar: se tildó porque todavía no se le pagó a quien
-    // trajo la mercadería (ej. te dejan pagar unos días después) — la
-    // fila queda en rojo. Tocar el aviso lo marca como pagado al toque
-    // (guarda directo, sin pasar por el modal de Editar).
-    const metaFaltaAbonar = g.faltaAbonar
-      ? ` · <button type="button" class="meta-falta-abonar" data-id="${g.id}">⚠️ Falta abonar</button>`
-      : "";
-
-    // Notas largas hacían la fila del gasto muy alta en el celular — se
-    // recortan a las primeras 2 palabras y el resto se ve tocando "Ver
-    // detalle completo" (usa data-id, no el texto de la nota, para no
-    // tener que escaparla dentro de un atributo HTML — ver verDetalleGasto()).
-    const notaPalabras = g.nota ? g.nota.trim().split(/\s+/) : [];
-    const notaLarga = notaPalabras.length > 2;
-    const notaCorta = notaPalabras.slice(0, 2).join(" ");
-    const notaHtml = g.nota
-      ? `<div class="meta gasto-nota">📝 ${escapeHtml(notaCorta)}${notaLarga ? `… <button type="button" class="ver-detalle-btn" data-id="${g.id}">Ver detalle completo</button>` : ""}</div>`
-      : "";
-
-    const li = document.createElement("li");
-    li.className = "expense-item" + (g.faltaAbonar ? " falta-abonar" : "");
-    // Foto/editar/borrar van en su propia fila abajo (ver .expense-item-actions
-    // en styles.css) — así el texto de arriba usa todo el ancho disponible
-    // en vez de competir con los íconos cuando la descripción/nota es larga.
-    const acciones = (fotoBtn || adminBtns)
-      ? `<div class="expense-item-actions">${fotoBtn}${adminBtns}</div>`
-      : "";
-    li.innerHTML = `
-      <div class="expense-item-top">
-        <div class="avatar" style="background:${payerColorVar(g.pagadoPor)}">${socioInitial(g.pagadoPor)}</div>
-        <div class="info">
-          <div class="desc">${escapeHtml(g.descripcion || "Sin descripción")}</div>
-          <div class="meta">${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · ${escapeHtml(g.categoria || "Otros")} · Pagó ${escapeHtml(g.pagadoPor || "?")} · ${formaPagoLabel(g)}${metaFaltaAbonar}</div>
-          ${notaHtml}
-        </div>
-        <div class="amount">${money(g.importe)}</div>
-      </div>
-      ${acciones}
-    `;
-    list.appendChild(li);
+    list.appendChild(crearFilaGasto(g));
   });
 
   $("#total-mes").textContent = money(totalMes);
+  renderCajaLocalCard();
+}
+
+// Arma la fila <li> de un gasto — extraído de renderGastos() para
+// reusarlo tal cual en el detalle de Caja del local (renderCajaLocalDetalle),
+// que lista TODOS los gastos "caja" del negocio sin importar el mes.
+function crearFilaGasto(g) {
+  const fecha = fechaDeRegistro(g);
+
+  const fotoBtn = g.fotoUrl
+    ? `<button type="button" class="foto-link" data-url="${escapeHtml(g.fotoUrl)}" aria-label="Ver foto de la factura">📷</button>`
+    : "";
+
+  // Editar/borrar solo para el admin — el resto solo puede cargar y ver.
+  const adminBtns = esAdmin
+    ? `<button type="button" class="icon-btn gasto-edit-btn" data-id="${g.id}" aria-label="Editar gasto">✏️</button>
+       <button type="button" class="icon-btn danger gasto-delete-btn" data-id="${g.id}" aria-label="Borrar gasto">🗑️</button>`
+    : "";
+
+  // Falta abonar: se tildó porque todavía no se le pagó a quien
+  // trajo la mercadería (ej. te dejan pagar unos días después) — la
+  // fila queda en rojo. Tocar el aviso lo marca como pagado al toque
+  // (guarda directo, sin pasar por el modal de Editar).
+  const metaFaltaAbonar = g.faltaAbonar
+    ? ` · <button type="button" class="meta-falta-abonar" data-id="${g.id}">⚠️ Falta abonar</button>`
+    : "";
+
+  // Notas largas hacían la fila del gasto muy alta en el celular — se
+  // recortan a las primeras 2 palabras y el resto se ve tocando "Ver
+  // detalle completo" (usa data-id, no el texto de la nota, para no
+  // tener que escaparla dentro de un atributo HTML — ver verDetalleGasto()).
+  const notaPalabras = g.nota ? g.nota.trim().split(/\s+/) : [];
+  const notaLarga = notaPalabras.length > 2;
+  const notaCorta = notaPalabras.slice(0, 2).join(" ");
+  const notaHtml = g.nota
+    ? `<div class="meta gasto-nota">📝 ${escapeHtml(notaCorta)}${notaLarga ? `… <button type="button" class="ver-detalle-btn" data-id="${g.id}">Ver detalle completo</button>` : ""}</div>`
+    : "";
+
+  const li = document.createElement("li");
+  // "Caja del local" se destaca en dorado para verla de un vistazo en la
+  // lista (ver .expense-item.caja-local en styles.css) — salvo que
+  // además tenga "Falta abonar" tildado, que por ser el aviso más
+  // urgente de los dos tiene prioridad visual (rojo).
+  li.className = "expense-item"
+    + (g.faltaAbonar ? " falta-abonar" : (g.formaPago === "caja" ? " caja-local" : ""));
+  // Foto/editar/borrar van en su propia fila abajo (ver .expense-item-actions
+  // en styles.css) — así el texto de arriba usa todo el ancho disponible
+  // en vez de competir con los íconos cuando la descripción/nota es larga.
+  const acciones = (fotoBtn || adminBtns)
+    ? `<div class="expense-item-actions">${fotoBtn}${adminBtns}</div>`
+    : "";
+  li.innerHTML = `
+    <div class="expense-item-top">
+      <div class="avatar" style="background:${payerColorVar(g.pagadoPor)}">${socioInitial(g.pagadoPor)}</div>
+      <div class="info">
+        <div class="desc">${escapeHtml(g.descripcion || "Sin descripción")}</div>
+        <div class="meta">${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · ${escapeHtml(g.categoria || "Otros")} · Pagó ${escapeHtml(g.pagadoPor || "?")} · ${formaPagoLabel(g)}${metaFaltaAbonar}</div>
+        ${notaHtml}
+      </div>
+      <div class="amount">${money(g.importe)}</div>
+    </div>
+    ${acciones}
+  `;
+  return li;
+}
+
+// Repuesto total (cajaLocalMonto) menos TODOS los gastos "caja" del
+// negocio actual, de siempre (no solo del mes elegido) — mismo cálculo
+// que usan la card de Resumen mensual, la card nueva de Gastos y el
+// detalle de Caja del local, para no repetirlo 3 veces.
+function cajaLocalCalculo() {
+  const gastado = gastosDelNegocio()
+    .filter(g => g.formaPago === "caja")
+    .reduce((sum, g) => sum + (Number(g.importe) || 0), 0);
+  return { repuesto: cajaLocalMonto, gastado, queda: cajaLocalMonto - gastado };
+}
+
+// Card "Caja del local" en la pestaña Gastos (además de la que ya
+// existía en Resumen mensual) — mismo dato, para no tener que ir a
+// Resumen solo para ver cuánto queda. Se llama desde renderGastos()
+// para que se actualice cada vez que cambian los gastos o el negocio.
+function renderCajaLocalCard() {
+  const wrap = $("#gastos-caja-local-wrap");
+  if (!negocioTieneCajaLocal(negocioActual)) {
+    wrap.classList.add("hidden");
+    return;
+  }
+  wrap.classList.remove("hidden");
+  const { repuesto, queda } = cajaLocalCalculo();
+  const quedaEl = $("#gastos-caja-local-queda");
+  quedaEl.textContent = (queda < 0 ? "-" : "") + money(Math.abs(queda));
+  quedaEl.style.color = queda < 0 ? "var(--critical)" : "var(--text-primary)";
+  $("#gastos-caja-local-repuesto").textContent = money(repuesto);
+}
+
+// Pantalla "Caja del local — Detalle" (botón "Detalle" de la card de
+// arriba): lista TODOS los gastos "caja" del negocio actual, sin
+// importar el mes — mismo criterio que cajaLocalCalculo() (no es un
+// gasto mensual, es un pozo que se va vaciando desde que se repuso).
+function renderCajaLocalDetalle() {
+  const list = $("#caja-local-detalle-list");
+  const empty = $("#caja-local-detalle-empty");
+  list.innerHTML = "";
+
+  const items = gastosDelNegocio()
+    .filter(g => g.formaPago === "caja")
+    .slice()
+    .sort((a, b) => fechaDeRegistro(b) - fechaDeRegistro(a));
+
+  empty.classList.toggle("hidden", items.length > 0);
+  items.forEach(g => list.appendChild(crearFilaGasto(g)));
+
+  const { repuesto, queda } = cajaLocalCalculo();
+  const quedaEl = $("#caja-local-detalle-queda");
+  quedaEl.textContent = (queda < 0 ? "-" : "") + money(Math.abs(queda));
+  quedaEl.style.color = queda < 0 ? "var(--critical)" : "var(--text-primary)";
+  $("#caja-local-detalle-repuesto").textContent = money(repuesto);
 }
 
 // Gastos cargados antes de que existiera "forma de pago" no tienen el
@@ -1251,14 +1317,11 @@ function renderResumen() {
   const cajaLocalWrap = $("#resumen-caja-local-wrap");
   if (negocioTieneCajaLocal(negocioActual)) {
     cajaLocalWrap.classList.remove("hidden");
-    const gastadoCaja = gastosDelNegocio()
-      .filter(g => g.formaPago === "caja")
-      .reduce((sum, g) => sum + (Number(g.importe) || 0), 0);
-    const quedaCaja = cajaLocalMonto - gastadoCaja;
+    const { repuesto, queda: quedaCaja } = cajaLocalCalculo();
     const quedaCajaEl = $("#resumen-caja-local-queda");
     quedaCajaEl.textContent = (quedaCaja < 0 ? "-" : "") + money(Math.abs(quedaCaja));
     quedaCajaEl.style.color = quedaCaja < 0 ? "var(--critical)" : "var(--text-primary)";
-    $("#resumen-caja-local-repuesto").textContent = money(cajaLocalMonto);
+    $("#resumen-caja-local-repuesto").textContent = money(repuesto);
   } else {
     cajaLocalWrap.classList.add("hidden");
   }
@@ -2731,8 +2794,10 @@ function wireEvents() {
   });
   $("#btn-quitar-foto-fact").addEventListener("click", resetFotoFieldFact);
 
-  // Foto, editar y borrar de un gasto ya cargado (delegado, la lista se re-dibuja seguido)
-  $("#expenses-list").addEventListener("click", (e) => {
+  // Foto, editar y borrar de un gasto ya cargado (delegado, la lista se
+  // re-dibuja seguido) — misma lógica para la lista normal de Gastos y
+  // para el detalle de Caja del local, que también son filas de gasto.
+  const handleGastoListClick = (e) => {
     const fotoBtn = e.target.closest(".foto-link");
     if (fotoBtn) { window.open(fotoBtn.dataset.url, "_blank", "noopener"); return; }
     const editBtn = e.target.closest(".gasto-edit-btn");
@@ -2747,7 +2812,9 @@ function wireEvents() {
     if (abonarBtn) { marcarAbonado(abonarBtn.dataset.id); return; }
     const verDetalleBtn = e.target.closest(".ver-detalle-btn");
     if (verDetalleBtn) verDetalleGasto(verDetalleBtn.dataset.id);
-  });
+  };
+  $("#expenses-list").addEventListener("click", handleGastoListClick);
+  $("#caja-local-detalle-list").addEventListener("click", handleGastoListClick);
 
   // Editar y borrar de un cierre ya cargado (delegado, admin)
   $("#facturado-list").addEventListener("click", (e) => {
@@ -2763,6 +2830,16 @@ function wireEvents() {
     if (delBtn) { deleteCierre(delBtn.dataset.id); return; }
     const cargarBtn = e.target.closest(".btn-cargar-faltante");
     if (cargarBtn) openModalFacturado(null, new Date(cargarBtn.dataset.fecha + "T12:00:00"));
+  });
+
+  // Pantalla "Caja del local — Detalle" (botón en la card de Gastos)
+  $("#btn-ver-caja-local").addEventListener("click", () => {
+    renderCajaLocalDetalle();
+    showScreen("screen-caja-local");
+  });
+  $("#btn-back-from-caja-local").addEventListener("click", () => {
+    switchTab("gastos");
+    showScreen("screen-app");
   });
 
   // Pantalla "Fotos guardadas"

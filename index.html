@@ -213,6 +213,15 @@
         <div class="stat-hero-value" id="total-mes">$0</div>
       </div>
 
+      <!-- Solo visible en negocios con Caja del local (hoy, Pancho) —
+           ver negocioTieneCajaLocal() en app.js. -->
+      <div class="stat-hero hidden" id="gastos-caja-local-wrap">
+        <div class="stat-hero-label">💰 Caja del local</div>
+        <div class="stat-hero-value" id="gastos-caja-local-queda">$0</div>
+        <div class="stat-hero-sub">Queda de <span id="gastos-caja-local-repuesto">$0</span> repuestos en total</div>
+        <button type="button" class="btn-secondary" id="btn-ver-caja-local" style="margin-top:10px;">Detalle</button>
+      </div>
+
       <div id="expenses-empty" class="empty-state hidden">
         <p>Todavía no hay gastos cargados.</p>
         <p class="muted small">Tocá el botón + para agregar el primero.</p>
@@ -450,6 +459,37 @@
       <h3 class="section-title">Gastos por categoría</h3>
       <div id="resumen-categorias" class="socios-totales"></div>
       <p id="resumen-categorias-empty" class="muted small hidden">No hay gastos cargados este mes.</p>
+    </section>
+
+  </div>
+
+  <!-- ===== PANTALLA: DETALLE CAJA DEL LOCAL ===== -->
+  <!-- Se abre con el botón "Detalle" de la card de Caja del local en
+       Gastos. Lista TODOS los gastos "caja" del negocio actual, sin
+       importar el mes — mismo criterio que el cálculo de "queda"
+       (ver cajaLocalCalculo() en app.js). -->
+  <div id="screen-caja-local" class="screen">
+
+    <header class="topbar">
+      <button id="btn-back-from-caja-local" class="topbar-title" aria-label="Volver a Gastos">
+        <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
+        <span class="logo-badge small">💰</span>
+        <span>Caja del local — Detalle</span>
+      </button>
+    </header>
+
+    <section class="tab active">
+      <div class="stat-hero">
+        <div class="stat-hero-label">Queda</div>
+        <div class="stat-hero-value" id="caja-local-detalle-queda">$0</div>
+        <div class="stat-hero-sub">De <span id="caja-local-detalle-repuesto">$0</span> repuestos en total (no es solo de este mes)</div>
+      </div>
+
+      <div id="caja-local-detalle-empty" class="empty-state hidden">
+        <p>Todavía no se cargó ningún gasto de la Caja del local.</p>
+      </div>
+
+      <ul id="caja-local-detalle-list" class="expenses-list"></ul>
     </section>
 
   </div>

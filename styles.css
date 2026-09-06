@@ -21,6 +21,8 @@
   --good: #0ca30c;
   --critical: #d03b3b;
   --critical-bg: #fbe9e9;
+  --caja-local: #a8790a;
+  --caja-local-bg: #fbf1da;
 
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
@@ -48,6 +50,8 @@
     --good: #0ca30c;
     --critical: #e66767;
     --critical-bg: #3a2323;
+    --caja-local: #dba53f;
+    --caja-local-bg: #362c17;
   }
 }
 
@@ -418,6 +422,12 @@ input:focus, select:focus, textarea:focus {
    después). Ver checkbox #input-falta-abonar y campo faltaAbonar. */
 .expense-item.falta-abonar { background: var(--critical-bg); border-color: var(--critical); }
 .expense-item.falta-abonar .amount { color: var(--critical); }
+/* Gasto pagado con "Caja del local" (formaPago: "caja") — se destaca en
+   dorado para identificarlo de un vistazo en la lista general de
+   Gastos. No se aplica junto con "Falta abonar": ese aviso (rojo) es el
+   más urgente de los dos y tiene prioridad (ver crearFilaGasto en app.js). */
+.expense-item.caja-local { background: var(--caja-local-bg); border-color: var(--caja-local); }
+.expense-item.caja-local .amount { color: var(--caja-local); }
 /* Aviso "Caja faltante" en Cierre de Turno (ver cierreFaltanteHoy) —
    reusa el mismo rojo de falta-abonar, solo agrega el tamaño del botón. */
 .expense-item.falta-abonar .btn-cargar-faltante { width: auto; flex-shrink: 0; padding: 8px 14px; font-size: 14px; }
