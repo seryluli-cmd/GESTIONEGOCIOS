@@ -2163,25 +2163,26 @@ function setDefaultFechaFact() {
   $("#input-fecha-fact").value = fechaLocalISO(fechaSugeridaCierre());
 }
 
-// Aviso "Caja faltante" (ver renderFacturado): a partir de las 5am,
-// margen de sobra sobre las 3am que dijeron que a veces cierran, se
-// considera que ya debería estar cargado el cierre de AYER (el día que
-// terminó). OJO: a propósito NO reutiliza fechaSugeridaCierre() para
-// esto (aunque las dos funciones suenan parecido) — esa otra función
-// devuelve HOY pasado el mediodía, pensada para precargar la fecha al
-// tocar "+" a mano. Si este aviso usara esa misma función, pasado el
-// mediodía "diaEsperado" saltaría a hoy: mostraría "Caja faltante" de
-// un día que todavía ni terminó (bug real que pasaba) y de paso dejaba
-// de avisar si ayer de verdad seguía sin cargarse. Acá el día a
-// chequear es siempre el calendario de ayer, sin importar la hora. Si
-// todavía no existe un cierre con esa fecha para el negocio actual,
-// devuelve esa fecha; si ya se cargó o todavía no son las 5am, devuelve
-// null (no hay nada que avisar).
+// Aviso "Caja faltante" (ver renderFacturado): quien carga el cierre no
+// siempre lo hace la mañana siguiente al turno (a veces recién al otro
+// día) — pedirlo ya a las 5am del día siguiente era muy poco margen y
+// tiraba el aviso en falso con el negocio recién cerrando. Por eso el
+// día que se chequea es el ANTEPENÚLTIMO (hoy menos 2), no ayer: para
+// un turno del jueves, el aviso recién puede aparecer el sábado a
+// partir de las 5am — les da todo el viernes de margen. OJO: a
+// propósito NO reutiliza fechaSugeridaCierre() para esto (aunque las
+// dos funciones suenan parecido) — esa otra función devuelve HOY
+// pasado el mediodía, pensada para precargar la fecha al tocar "+" a
+// mano; si este aviso la reutilizara, pasado el mediodía "diaEsperado"
+// saltaría a hoy: mostraría "Caja faltante" de un día que todavía ni
+// terminó (bug real que pasaba). Si todavía no existe un cierre con
+// esa fecha para el negocio actual, devuelve esa fecha; si ya se cargó
+// o todavía no son las 5am, devuelve null (no hay nada que avisar).
 function cierreFaltanteHoy() {
   const hoy = new Date();
   if (hoy.getHours() < 5) return null;
   const diaEsperado = new Date(hoy);
-  diaEsperado.setDate(diaEsperado.getDate() - 1);
+  diaEsperado.setDate(diaEsperado.getDate() - 2);
   const yaCargado = facturacionesDelNegocio().some(f => {
     const fecha = fechaDeRegistro(f);
     return fecha.getFullYear() === diaEsperado.getFullYear()
