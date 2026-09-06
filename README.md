@@ -63,16 +63,21 @@ seguridad que exigen autenticación anónima.
   negocios comparten la misma colección**, se filtran en memoria con
   `gastosDelNegocio()`. `formaPago` es `"efectivo"`, `"digital"`, `"mixto"`
   (con `montoEfectivo`/`montoDigital` propios) o `"caja"` — este último solo
-  existe en negocios con Caja del local, ver más abajo. **Se elige solo,
-  sin que haga falta tocarlo, pero solo para Kiara** (encargada de
+  existe en negocios con Caja del local, ver más abajo. **La auto-selección
+  (sin que haga falta tocar nada) es solo para Kiara** (encargada de
   compras de Pancho — chequeo por nombre exacto, no "cualquier
   colaborador", porque el resto del equipo podría no manejar esa caja):
   si quien carga un gasto NUEVO es ella, `openModal()` fuerza
   `formaPago: "caja"` y esconde el selector entero (queda un aviso en su
-  lugar). Al EDITAR un gasto ya cargado (admin-only) el selector
-  completo sigue disponible por si hay que corregirlo. Un gasto "caja" suma a
-  Total Gastos y Rentabilidad como cualquier otro — no tiene ningún trato
-  especial salvo restarse de `cajaLocalMonto` en el cálculo de "queda".
+  lugar) — no tiene que tildar ningún checkbox ni confirmar nada, queda
+  forzado solo. Al EDITAR un gasto ya cargado (admin-only) el selector
+  completo sigue disponible por si hay que corregirlo. **Para el resto de
+  las personas la opción "Caja del local" sigue disponible como un chip más
+  del selector normal** (`#chip-forma-caja`, visible siempre que el negocio
+  tenga caja local) — cualquiera puede elegirla a mano, no es exclusiva de
+  Kiara; a ella simplemente se la eligen automáticamente. Un gasto "caja"
+  suma a Total Gastos y Rentabilidad como cualquier otro — no tiene ningún
+  trato especial salvo restarse en el cálculo de "queda" de la caja.
 - **Caja del local** — el efectivo físico que tiene la encargada de Pancho
   para pagar cosas sin transferirle cada vez. Lo que "queda" se calcula en
   `cajaLocalCalculo()`: **total repuesto menos** la suma de TODOS los gastos
