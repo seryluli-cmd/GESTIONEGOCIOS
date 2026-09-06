@@ -88,11 +88,17 @@ seguridad que exigen autenticación anónima.
 - **`facturacion`** (colección) — un doc por cierre diario:
   `{ importe, registradoPor, negocio, fecha, creadoEn }`. Mismo patrón que
   `gastos`. **Aviso "Caja faltante"**: a partir de las 5am, si no existe
-  un cierre fechado el día que `fechaSugeridaCierre()` considera "de
-  ayer" (ver `cierreFaltanteHoy()`), `renderFacturado()` muestra un
-  cartel rojo (reusa el mismo estilo de "Falta abonar" de Gastos) con un
-  botón "Cargar" que abre el modal con esa fecha precargada — solo se
-  muestra mirando el mes actual, no al navegar meses viejos.
+  un cierre fechado ayer (el día calendario anterior al actual, sin
+  importar la hora — ver `cierreFaltanteHoy()`), `renderFacturado()`
+  muestra un cartel rojo (reusa el mismo estilo de "Falta abonar" de
+  Gastos) con un botón "Cargar" que abre el modal con esa fecha
+  precargada — solo se muestra mirando el mes actual, no al navegar
+  meses viejos. **Ojo, no confundir con `fechaSugeridaCierre()`**: esa
+  otra función (usada solo para precargar la fecha al tocar "+" a mano)
+  devuelve hoy pasado el mediodía; si `cierreFaltanteHoy()` la
+  reutilizara tal cual, pasado el mediodía el aviso pasaría a exigir el
+  cierre de HOY —un día que todavía no terminó— en vez de seguir
+  avisando por ayer (bug real que hubo, corregido).
 - **`ideas`** (colección) — un doc por idea: `{ texto, estado, votos, propuestoPor, creadoEn }`.
   **A propósito NO tiene campo `negocio`** — son compartidas entre Pancho Recreo
   y Heladería Pablo, porque los 3 socios son dueños de ambos. `estado` es

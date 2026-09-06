@@ -2165,16 +2165,23 @@ function setDefaultFechaFact() {
 
 // Aviso "Caja faltante" (ver renderFacturado): a partir de las 5am,
 // margen de sobra sobre las 3am que dijeron que a veces cierran, se
-// considera que ya debería estar cargado el cierre del día que terminó
-// (mismo día que propone fechaSugeridaCierre — antes del mediodía,
-// siempre ayer; esa función no se toca, solo se reutiliza acá). Si
+// considera que ya debería estar cargado el cierre de AYER (el día que
+// terminó). OJO: a propósito NO reutiliza fechaSugeridaCierre() para
+// esto (aunque las dos funciones suenan parecido) — esa otra función
+// devuelve HOY pasado el mediodía, pensada para precargar la fecha al
+// tocar "+" a mano. Si este aviso usara esa misma función, pasado el
+// mediodía "diaEsperado" saltaría a hoy: mostraría "Caja faltante" de
+// un día que todavía ni terminó (bug real que pasaba) y de paso dejaba
+// de avisar si ayer de verdad seguía sin cargarse. Acá el día a
+// chequear es siempre el calendario de ayer, sin importar la hora. Si
 // todavía no existe un cierre con esa fecha para el negocio actual,
 // devuelve esa fecha; si ya se cargó o todavía no son las 5am, devuelve
 // null (no hay nada que avisar).
 function cierreFaltanteHoy() {
   const hoy = new Date();
   if (hoy.getHours() < 5) return null;
-  const diaEsperado = fechaSugeridaCierre();
+  const diaEsperado = new Date(hoy);
+  diaEsperado.setDate(diaEsperado.getDate() - 1);
   const yaCargado = facturacionesDelNegocio().some(f => {
     const fecha = fechaDeRegistro(f);
     return fecha.getFullYear() === diaEsperado.getFullYear()
