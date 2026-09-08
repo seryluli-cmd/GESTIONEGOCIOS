@@ -41,6 +41,7 @@ async function loadFirebaseSdk() {
     getDocs: fsMod.getDocs,
     setDoc: fsMod.setDoc,
     updateDoc: fsMod.updateDoc,
+    writeBatch: fsMod.writeBatch,
     increment: fsMod.increment,
     deleteField: fsMod.deleteField,
     arrayUnion: fsMod.arrayUnion,
@@ -126,11 +127,14 @@ let cajaLocalMonto = 0;     // OBSOLETO: era el total repuesto de la caja del lo
                              // manejaba con un solo número editable desde Ajustes. Ahora eso vive
                              // en la colección "reposiciones" y este campo lo migra a cero
                              // migrarMontoInicialCaja(). No se edita desde ningún lado; se sigue
-                             // leyendo solo para que el total no se caiga a cero en el rato previo
-                             // a que la migración corra (ver cajaLocalCalculo()).
+                             // sumando en cajaLocalCalculo() solo por si todavía no se migró (o un
+                             // celular tiene la config vieja en caché) — es plata real pendiente de
+                             // pasar a "reposiciones", no un parche para tapar una carga lenta (eso
+                             // lo maneja reposicionesCargadas).
 let gastos = [];           // TODOS los gastos, de los 2 negocios — [{id, importe, descripcion, categoria, pagadoPor, fecha, negocio}]
 let facturaciones = [];    // TODOS los cierres diarios, de los 2 negocios — [{id, importe, registradoPor, fecha, negocio}]
 let reposiciones = [];     // TODAS las reposiciones de la caja del local, de los 2 negocios — [{id, monto, nota, negocio, repuestoPor, fecha}], filtradas por reposicionesDelNegocio()
+let reposicionesCargadas = false; // false hasta el primer snapshot de listenReposiciones() — antes de eso, reposiciones=[] no significa "caja vacía", significa "todavía no sabemos". Ver cajaLocalCalculo().
 let ideas = [];            // TODAS las ideas de mejora, de los 2 negocios — [{id, texto, estado, propuestoPor, negocio, creadoEn}], filtradas por ideasDelNegocio()
 let negocioActual = null;  // "pancho" | "heladeria"
 let seccionActual = null;  // "gastos" | "facturado" | "resumen"
@@ -158,6 +162,13 @@ function money(n) {
   return "$" + v.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
+// `null` es "todavía no sabemos" (ver cajaLocalCalculo/reposicionesCargadas),
+// no "cero" — money(null) daría "$0", un monto falso. Único lugar que
+// distingue ambos casos al pintar un monto de la caja del local.
+function montoOCargando(n) {
+  return n === null ? "…" : money(n);
+}
+
 // Inputs de plata (Importe, Efectivo, Digital, Cierre, Caja del local): se
 // muestran con punto de miles mientras se tipea (ej. "100.000"), igual que
 // money() ya las muestra una vez guardadas — así se nota de un vistazo si
@@ -166,7 +177,9 @@ function money(n) {
 // interpretaría como separador decimal). parseMoneyInput()/
 // formatMoneyValue() traducen entre el string que ve el usuario (miles con
 // ".", decimal con "," — estilo es-AR, igual que money()) y el number con
-// el que trabaja el resto del código.
+// el que trabaja el resto del código. El valor que llega acá siempre viene
+// ya normalizado a "," por formatMoneyInputMientrasTipea, aunque la
+// persona haya tipeado "." como decimal (ver esa función).
 function parseMoneyInput(str) {
   if (str == null) return NaN;
   const limpio = String(str).trim().replace(/\./g, "").replace(",", ".");
@@ -177,21 +190,50 @@ function formatMoneyValue(n) {
   return Number.isFinite(n) ? n.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : "";
 }
 
-// Filtra lo que se tipea (solo dígitos y una coma decimal) y agrega los
-// puntos de miles a medida que se escribe — con "input" (cada tecla), a
-// propósito distinto del cálculo cruzado entre campos (calcularCampoMixto
-// Faltante / calcularCampoFaltanteFacturado), que va con "change" para no
-// calcular a medio tipear. Acá sí tiene que ser instantáneo: si no, el
-// punto de miles no se vería mientras se escribe.
+// Filtra lo que se tipea (solo dígitos y un separador decimal) y agrega
+// los puntos de miles a medida que se escribe — con "input" (cada
+// tecla), a propósito distinto del cálculo cruzado entre campos
+// (calcularCampoMixtoFaltante / calcularCampoFaltanteFacturado), que va
+// con "change" para no calcular a medio tipear. Acá sí tiene que ser
+// instantáneo: si no, el punto de miles no se vería mientras se escribe.
+//
+// Acepta "," O "." como separador decimal tipeado: todo iPhone (sea cual
+// sea el idioma del celular) solo tiene "." en el teclado numérico, así
+// que tratarlo siempre como separador de miles hacía que "1500.50"
+// terminara guardado como $150.050 (bug real que hubo). Para decidir
+// cuál es cuál: el ÚLTIMO "," o "." tipeado cuenta como decimal solo si
+// tiene 2 dígitos o menos después — un "." seguido de 3 dígitos es el
+// separador de miles que esta misma función ya insertó antes.
+//
+// El cursor se reubica contando cuántos dígitos había antes de él y
+// buscando esa misma posición en el valor ya formateado, en vez de
+// mandarlo siempre al final — así corregir un dígito a mitad del monto
+// no hace saltar el cursor (bug real que hubo).
 function formatMoneyInputMientrasTipea(e) {
   const el = e.target;
-  const cursorAlFinal = el.selectionEnd === el.value.length;
-  const comaIdx = el.value.indexOf(",");
-  let enteros = (comaIdx === -1 ? el.value : el.value.slice(0, comaIdx)).replace(/\D/g, "");
-  const decimales = comaIdx === -1 ? "" : "," + el.value.slice(comaIdx + 1).replace(/\D/g, "").slice(0, 2);
+  const digitosAntesDelCursor = el.value.slice(0, el.selectionStart).replace(/\D/g, "").length;
+
+  const idxDecimal = Math.max(el.value.lastIndexOf(","), el.value.lastIndexOf("."));
+  const digitosDespues = idxDecimal === -1 ? Infinity : el.value.length - idxDecimal - 1;
+  const hayDecimal = idxDecimal !== -1 && digitosDespues <= 2;
+
+  let enteros = (hayDecimal ? el.value.slice(0, idxDecimal) : el.value).replace(/\D/g, "");
+  const decimales = hayDecimal ? "," + el.value.slice(idxDecimal + 1).replace(/\D/g, "").slice(0, 2) : "";
   enteros = enteros.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   el.value = enteros + decimales;
-  if (cursorAlFinal) el.setSelectionRange(el.value.length, el.value.length);
+
+  let nuevaPos = 0;
+  if (digitosAntesDelCursor > 0) {
+    nuevaPos = el.value.length;
+    let vistos = 0;
+    for (let i = 0; i < el.value.length; i++) {
+      if (/\d/.test(el.value[i])) {
+        vistos++;
+        if (vistos === digitosAntesDelCursor) { nuevaPos = i + 1; break; }
+      }
+    }
+  }
+  el.setSelectionRange(nuevaPos, nuevaPos);
 }
 
 function wireMoneyInput(id) {
@@ -391,6 +433,13 @@ function bootApp() {
   renderPagadorChipsFacturado();
   renderAjustesSocios();
   renderNegocioCards();
+  // Los 5 listen*() de abajo redibujan TODAS las pantallas (Gastos, Balance,
+  // Resumen, Detalle de caja) en cada cambio, no solo la que se está
+  // mirando — es a propósito, no un descuido: así cualquier pantalla que
+  // se abra después ya está al día, sin tener que acordarse de refrescarla
+  // al entrar. Evaluado y decidido no optimizar (volumen real del negocio
+  // lo hace imperceptible) — ver "Trampas conocidas" en CLAUDE.md antes de
+  // "arreglarlo".
   listenGastos();
   listenFacturacion();
   listenReposiciones();
@@ -754,6 +803,11 @@ function selectSeccion(id) {
     renderFacturado();
     showScreen("screen-facturado");
   } else if (id === "resumen") {
+    // Resumen mensual es solo para socios (ver esSocio() y el comentario
+    // en renderSeccionCards) — la tarjeta ya está escondida para un
+    // colaborador, esto es además una segunda puerta por si algo llega a
+    // llamar selectSeccion("resumen") directo.
+    if (!esSocio()) return;
     resumenMesOffset = 0;
     renderResumen();
     showScreen("screen-resumen");
@@ -786,9 +840,12 @@ function facturacionesDelNegocio() {
 // viejas, creadas antes de este cambio, no tienen "negocio" guardado —
 // se siguen mostrando en los dos negocios (en vez de desaparecer) hasta
 // que alguien las recargue como nuevas, ya con negocio asignado.
-// Reposiciones de la caja del negocio actualmente seleccionado.
+// Reposiciones de la caja del negocio actualmente seleccionado. Mismo
+// criterio que ideasDelNegocio(): si algún doc quedara sin "negocio"
+// (no debería pasar, pero un import viejo o manual podría hacerlo), se
+// sigue mostrando en los dos negocios en vez de desaparecer sin aviso.
 function reposicionesDelNegocio() {
-  return reposiciones.filter(r => r.negocio === negocioActual);
+  return reposiciones.filter(r => r.negocio === negocioActual || !r.negocio);
 }
 
 function ideasDelNegocio() {
@@ -824,6 +881,11 @@ function listenGastos() {
     gastos = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     renderGastos();
     renderBalance();
+    // La pantalla "Caja del local — Detalle" también lista gastos (los
+    // "caja"), no solo reposiciones — si no se refresca acá, editar o
+    // borrar uno desde esa pantalla la dejaba con datos viejos hasta que
+    // cambiara algo de reposiciones (bug real que hubo).
+    renderCajaLocalDetalle();
     if (negocioActual) renderResumen();
     setSyncOffline(false);
     if (!fotosLimpiezaHecha) {
@@ -857,6 +919,7 @@ function listenReposiciones() {
   const q = fbSdk.query(fbSdk.collection(db, "reposiciones"), fbSdk.orderBy("fecha", "desc"));
   fbSdk.onSnapshot(q, (snapshot) => {
     reposiciones = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    reposicionesCargadas = true;
     renderGastos();          // la card de Caja del local vive en la pestaña Gastos
     renderCajaLocalDetalle();
     if (negocioActual) renderResumen();
@@ -943,6 +1006,34 @@ function renderGastos() {
   renderCajaLocalCard();
 }
 
+// Arma el <li> genérico de una fila tipo "expense-item" (avatar + info +
+// monto + acciones abajo) — lo usan tanto los gastos (crearFilaGasto) como
+// las reposiciones de la caja del local (crearFilaReposicion). Antes cada
+// una tenía su propia copia del mismo template HTML (ver CLAUDE.md regla 1);
+// ahora cambiar el layout de una fila (ej. dónde van los íconos) se hace acá
+// una sola vez y se ve en las dos listas.
+//
+// Foto/editar/borrar van en su propia fila abajo (`accionesHtml`, ver
+// .expense-item-actions en styles.css) en vez de competir con el texto de
+// arriba cuando la descripción/nota es larga.
+function crearFilaExpenseItem({ claseExtra, avatarBg, avatarContent, desc, meta, notaHtml, amountText, accionesHtml }) {
+  const li = document.createElement("li");
+  li.className = "expense-item" + (claseExtra ? ` ${claseExtra}` : "");
+  li.innerHTML = `
+    <div class="expense-item-top">
+      <div class="avatar" style="background:${avatarBg}">${avatarContent}</div>
+      <div class="info">
+        <div class="desc">${desc}</div>
+        <div class="meta">${meta}</div>
+        ${notaHtml || ""}
+      </div>
+      <div class="amount">${amountText}</div>
+    </div>
+    ${accionesHtml ? `<div class="expense-item-actions">${accionesHtml}</div>` : ""}
+  `;
+  return li;
+}
+
 // Arma la fila <li> de un gasto — extraído de renderGastos() para
 // reusarlo tal cual en el detalle de Caja del local (renderCajaLocalDetalle),
 // que lista TODOS los gastos "caja" del negocio sin importar el mes.
@@ -978,32 +1069,42 @@ function crearFilaGasto(g) {
     ? `<div class="meta gasto-nota">📝 ${escapeHtml(notaCorta)}${notaLarga ? `… <button type="button" class="ver-detalle-btn" data-id="${g.id}">Ver detalle completo</button>` : ""}</div>`
     : "";
 
-  const li = document.createElement("li");
   // "Caja del local" se destaca en dorado para verla de un vistazo en la
   // lista (ver .expense-item.caja-local en styles.css) — salvo que
   // además tenga "Falta abonar" tildado, que por ser el aviso más
   // urgente de los dos tiene prioridad visual (rojo).
-  li.className = "expense-item"
-    + (g.faltaAbonar ? " falta-abonar" : (g.formaPago === "caja" ? " caja-local" : ""));
-  // Foto/editar/borrar van en su propia fila abajo (ver .expense-item-actions
-  // en styles.css) — así el texto de arriba usa todo el ancho disponible
-  // en vez de competir con los íconos cuando la descripción/nota es larga.
-  const acciones = (fotoBtn || adminBtns)
-    ? `<div class="expense-item-actions">${fotoBtn}${adminBtns}</div>`
-    : "";
-  li.innerHTML = `
-    <div class="expense-item-top">
-      <div class="avatar" style="background:${payerColorVar(g.pagadoPor)}">${socioInitial(g.pagadoPor)}</div>
-      <div class="info">
-        <div class="desc">${escapeHtml(g.descripcion || "Sin descripción")}</div>
-        <div class="meta">${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · ${escapeHtml(g.categoria || "Otros")} · Pagó ${escapeHtml(g.pagadoPor || "?")} · ${formaPagoLabel(g)}${metaFaltaAbonar}</div>
-        ${notaHtml}
-      </div>
-      <div class="amount">${money(g.importe)}</div>
-    </div>
-    ${acciones}
-  `;
-  return li;
+  const claseExtra = g.faltaAbonar ? "falta-abonar" : (esGastoCaja(g) ? "caja-local" : "");
+
+  return crearFilaExpenseItem({
+    claseExtra,
+    avatarBg: payerColorVar(g.pagadoPor),
+    avatarContent: socioInitial(g.pagadoPor),
+    desc: escapeHtml(g.descripcion || "Sin descripción"),
+    meta: `${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · ${escapeHtml(g.categoria || "Otros")} · Pagó ${escapeHtml(g.pagadoPor || "?")} · ${formaPagoLabel(g)}${metaFaltaAbonar}`,
+    notaHtml,
+    amountText: money(g.importe),
+    accionesHtml: fotoBtn + adminBtns
+  });
+}
+
+// ¿Este gasto salió de la Caja del local? Único lugar que lo pregunta
+// (ver CLAUDE.md regla 3: nada de condiciones sueltas comparando
+// strings desparramadas por el código).
+function esGastoCaja(g) {
+  return g.formaPago === "caja";
+}
+
+// Pinta un monto de "queda" con signo y color crítico si es negativo —
+// único lugar que arma este template (ver CLAUDE.md regla 1). Usado en
+// la card de Gastos, el Detalle de Caja del local y el Resumen mensual.
+function pintarQueda(el, queda) {
+  if (queda === null) {
+    el.textContent = "…";
+    el.style.color = "var(--text-primary)";
+    return;
+  }
+  el.textContent = (queda < 0 ? "-" : "") + money(Math.abs(queda));
+  el.style.color = queda < 0 ? "var(--critical)" : "var(--text-primary)";
 }
 
 // Cuánto se le puso a la caja y cuánto se gastó, de siempre (no solo
@@ -1014,16 +1115,34 @@ function crearFilaGasto(g) {
 // saldo inicial es una más, ver migrarMontoInicialCaja). Igual se le
 // suma `cajaLocalMonto` porque es el campo viejo: vale 0 apenas la
 // migración corre, pero mientras no haya corrido —o si un celular
-// todavía tiene la config vieja en caché— así el total no se cae a cero
-// ni por un segundo. No se edita desde ningún lado.
+// todavía tiene la config vieja en caché— es plata real que todavía no
+// se pasó a `reposiciones`. No se edita desde ningún lado.
+//
+// `cajaLocalMonto` es GLOBAL (un solo número en config/socios, no uno
+// por negocio) y solo puede pertenecer al negocio que hoy tiene caja
+// local — sumarlo sin importar cuál es negocioActual lo contaría también
+// para cualquier otro negocio que en el futuro tenga su propia caja.
+//
+// Devuelve todo en `null` mientras `reposiciones` no cargó su primer
+// snapshot (reposicionesCargadas): un array vacío por-no-cargado-todavía
+// no es lo mismo que "esta caja no tiene reposiciones", y sumar sobre un
+// [] vacío daría un "queda" negativo falso apenas se abre la app (antes
+// esto quedaba tapado de pura casualidad porque cajaLocalMonto se leía
+// aparte y llegaba antes; dejó de tapar nada el día que ese campo se
+// migró a 0 para siempre).
 function cajaLocalCalculo() {
+  if (!reposicionesCargadas) {
+    return { repuesto: null, gastado: null, queda: null, cargando: true };
+  }
   const gastado = gastosDelNegocio()
-    .filter(g => g.formaPago === "caja")
+    .filter(esGastoCaja)
     .reduce((sum, g) => sum + (Number(g.importe) || 0), 0);
   const sumaReposiciones = reposicionesDelNegocio()
     .reduce((sum, r) => sum + (Number(r.monto) || 0), 0);
-  const repuesto = cajaLocalMonto + sumaReposiciones;
-  return { repuesto, gastado, queda: repuesto - gastado };
+  const negocioDeCajaVieja = NEGOCIOS.find(b => b.tieneCajaLocal);
+  const legacy = (negocioDeCajaVieja && negocioDeCajaVieja.id === negocioActual) ? cajaLocalMonto : 0;
+  const repuesto = legacy + sumaReposiciones;
+  return { repuesto, gastado, queda: repuesto - gastado, cargando: false };
 }
 
 // Card "Caja del local" en la pestaña Gastos (además de la que ya
@@ -1038,23 +1157,36 @@ function renderCajaLocalCard() {
   }
   wrap.classList.remove("hidden");
   const { repuesto, queda } = cajaLocalCalculo();
-  const quedaEl = $("#gastos-caja-local-queda");
-  quedaEl.textContent = (queda < 0 ? "-" : "") + money(Math.abs(queda));
-  quedaEl.style.color = queda < 0 ? "var(--critical)" : "var(--text-primary)";
-  $("#gastos-caja-local-repuesto").textContent = money(repuesto);
+  pintarQueda($("#gastos-caja-local-queda"), queda);
+  $("#gastos-caja-local-repuesto").textContent = montoOCargando(repuesto);
 }
 
 // Pantalla "Caja del local — Detalle" (botón "Detalle" de la card de
 // arriba): lista TODOS los gastos "caja" del negocio actual, sin
 // importar el mes — mismo criterio que cajaLocalCalculo() (no es un
 // gasto mensual, es un pozo que se va vaciando desde que se repuso).
+//
+// Se llama también desde listenGastos() (no solo desde listenReposiciones()),
+// porque esta pantalla lista gastos: si se edita/borra uno "caja" con la
+// pantalla abierta, tiene que reflejarse al toque y no quedar vieja hasta
+// que cambie algo de reposiciones.
 function renderCajaLocalDetalle() {
   const list = $("#caja-local-detalle-list");
   const empty = $("#caja-local-detalle-empty");
   list.innerHTML = "";
 
+  // Mismo guard que renderCajaLocalCard(): esta función la llaman los
+  // listeners de gastos/reposiciones sin importar qué negocio está
+  // seleccionado, así que si el actual no tiene caja local no hay nada
+  // que mostrar (evita calcular/pintar números de un negocio sin caja).
+  if (!negocioTieneCajaLocal(negocioActual)) {
+    empty.classList.add("hidden");
+    $("#caja-local-reposiciones-list").innerHTML = "";
+    return;
+  }
+
   const items = gastosDelNegocio()
-    .filter(g => g.formaPago === "caja")
+    .filter(esGastoCaja)
     .slice()
     .sort((a, b) => fechaDeRegistro(b) - fechaDeRegistro(a));
 
@@ -1065,13 +1197,46 @@ function renderCajaLocalDetalle() {
   // pantalla existe justamente para responder "en qué se fue yendo la
   // caja", así que el total gastado va arriba y el desglose, abajo.
   const { repuesto, gastado, queda } = cajaLocalCalculo();
-  const quedaEl = $("#caja-local-detalle-queda");
-  quedaEl.textContent = (queda < 0 ? "-" : "") + money(Math.abs(queda));
-  quedaEl.style.color = queda < 0 ? "var(--critical)" : "var(--text-primary)";
-  $("#caja-local-detalle-gastado").textContent = money(gastado);
-  $("#caja-local-detalle-repuesto").textContent = money(repuesto);
+  pintarQueda($("#caja-local-detalle-queda"), queda);
+  $("#caja-local-detalle-gastado").textContent = montoOCargando(gastado);
+  $("#caja-local-detalle-repuesto").textContent = montoOCargando(repuesto);
 
   renderReposiciones();
+}
+
+// Arma la fila <li> de una reposición — extraído de renderReposiciones()
+// para compartir el mismo template que crearFilaGasto() vía
+// crearFilaExpenseItem() (antes eran dos copias del mismo HTML, ver
+// CLAUDE.md regla 1).
+function crearFilaReposicion(r) {
+  const fecha = fechaDeRegistro(r);
+  // El saldo inicial no se puede borrar desde acá: es un hecho histórico
+  // migrado (ver migrarMontoInicialCaja), no algo que alguien cargó por
+  // error — borrarlo haría desaparecer esa plata de "queda" para siempre,
+  // sin forma de recuperarla (ver también el guard en deleteReposicion()).
+  const borrarBtn = (esAdmin && !r.esInicial)
+    ? `<button type="button" class="icon-btn danger reposicion-delete-btn" data-id="${r.id}" aria-label="Borrar reposición">🗑️</button>`
+    : "";
+  const notaHtml = r.nota
+    ? `<div class="meta gasto-nota">📝 ${escapeHtml(r.nota)}</div>`
+    : "";
+  // El saldo inicial no lo cargó nadie (viene del campo viejo, ver
+  // migrarMontoInicialCaja), así que no se le inventa un autor ni se
+  // muestra la fecha del día en que se migró, que no significa nada.
+  const meta = r.esInicial
+    ? "Lo que ya había en la caja"
+    : `${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · Cargó ${escapeHtml(r.repuestoPor || "?")}`;
+
+  return crearFilaExpenseItem({
+    claseExtra: "reposicion",
+    avatarBg: r.esInicial ? NEUTRAL_VAR : payerColorVar(r.repuestoPor),
+    avatarContent: r.esInicial ? "💰" : socioInitial(r.repuestoPor),
+    desc: r.esInicial ? "Saldo inicial" : "Reposición",
+    meta,
+    notaHtml,
+    amountText: `+${money(r.monto)}`,
+    accionesHtml: borrarBtn
+  });
 }
 
 // Historial de reposiciones: la otra mitad del movimiento de la caja (lo
@@ -1094,39 +1259,7 @@ function renderReposiciones() {
   // Registrar y borrar reposiciones es solo para admin.
   $("#btn-add-reposicion").classList.toggle("hidden", !esAdmin);
 
-  items.forEach(r => {
-    const fecha = fechaDeRegistro(r);
-    const borrarBtn = esAdmin
-      ? `<button type="button" class="icon-btn danger reposicion-delete-btn" data-id="${r.id}" aria-label="Borrar reposición">🗑️</button>`
-      : "";
-    const notaHtml = r.nota
-      ? `<div class="meta gasto-nota">📝 ${escapeHtml(r.nota)}</div>`
-      : "";
-    // El saldo inicial no lo cargó nadie (viene del campo viejo, ver
-    // migrarMontoInicialCaja), así que no se le inventa un autor ni se
-    // muestra la fecha del día en que se migró, que no significa nada.
-    const meta = r.esInicial
-      ? "Lo que ya había en la caja"
-      : `${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })} · Cargó ${escapeHtml(r.repuestoPor || "?")}`;
-    const li = document.createElement("li");
-    li.className = "expense-item reposicion";
-    // El 🗑️ va en su propia fila abajo (mismo criterio que las filas de
-    // gasto, ver crearFilaGasto): si la nota es larga, así usa todo el
-    // ancho en vez de quedar apretada contra el monto y el ícono.
-    li.innerHTML = `
-      <div class="expense-item-top">
-        <div class="avatar" style="background:${r.esInicial ? NEUTRAL_VAR : payerColorVar(r.repuestoPor)}">${r.esInicial ? "💰" : socioInitial(r.repuestoPor)}</div>
-        <div class="info">
-          <div class="desc">${r.esInicial ? "Saldo inicial" : "Reposición"}</div>
-          <div class="meta">${meta}</div>
-          ${notaHtml}
-        </div>
-        <div class="amount">+${money(r.monto)}</div>
-      </div>
-      ${borrarBtn ? `<div class="expense-item-actions">${borrarBtn}</div>` : ""}
-    `;
-    list.appendChild(li);
-  });
+  items.forEach(r => list.appendChild(crearFilaReposicion(r)));
 }
 
 // Gastos cargados antes de que existiera "forma de pago" no tienen el
@@ -1134,7 +1267,7 @@ function renderReposiciones() {
 function formaPagoLabel(g) {
   if (g.formaPago === "digital") return "💳 Digital";
   if (g.formaPago === "mixto") return `🔀 ${money(g.montoDigital)} digital · ${money(g.montoEfectivo)} efectivo`;
-  if (g.formaPago === "caja") return "💰 Caja del local";
+  if (esGastoCaja(g)) return "💰 Caja del local";
   return "💵 Efectivo";
 }
 
@@ -1487,19 +1620,17 @@ function renderResumen() {
   rentabilidadEl.textContent = (rentabilidad < 0 ? "-" : "") + money(Math.abs(rentabilidad));
   rentabilidadEl.style.color = rentabilidad < 0 ? "var(--critical)" : "var(--good)";
 
-  // Caja del local (hoy solo Pancho): "queda" = total repuesto a mano
-  // desde Ajustes (cajaLocalMonto) menos TODOS los gastos con formaPago
-  // "caja" (de siempre, no solo del mes elegido — es un pozo que se va
-  // vaciando, no un gasto mensual). Esos gastos igual ya están sumados
-  // arriba en Total Gastos como cualquier otro, sin excepción.
+  // Caja del local (hoy solo Pancho): "queda" = total repuesto (colección
+  // `reposiciones`, ver cajaLocalCalculo) menos TODOS los gastos con
+  // formaPago "caja" (de siempre, no solo del mes elegido — es un pozo
+  // que se va vaciando, no un gasto mensual). Esos gastos igual ya están
+  // sumados arriba en Total Gastos como cualquier otro, sin excepción.
   const cajaLocalWrap = $("#resumen-caja-local-wrap");
   if (negocioTieneCajaLocal(negocioActual)) {
     cajaLocalWrap.classList.remove("hidden");
     const { repuesto, queda: quedaCaja } = cajaLocalCalculo();
-    const quedaCajaEl = $("#resumen-caja-local-queda");
-    quedaCajaEl.textContent = (quedaCaja < 0 ? "-" : "") + money(Math.abs(quedaCaja));
-    quedaCajaEl.style.color = quedaCaja < 0 ? "var(--critical)" : "var(--text-primary)";
-    $("#resumen-caja-local-repuesto").textContent = money(repuesto);
+    pintarQueda($("#resumen-caja-local-queda"), quedaCaja);
+    $("#resumen-caja-local-repuesto").textContent = montoOCargando(repuesto);
   } else {
     cajaLocalWrap.classList.add("hidden");
   }
@@ -1626,6 +1757,20 @@ function renderFotosGuardadas() {
 
 // ---------- Render: Balance ----------
 function renderBalance() {
+  // La pestaña Balance está escondida para un colaborador (ver
+  // aplicarPermisosDeVista()), pero esta función se llama igual desde
+  // selectSeccion("gastos")/listenGastos()/listenSocios() sin preguntar
+  // quién está mirando — sin este guard, la plata entre socios quedaba
+  // igual calculada y pintada en el DOM (visible por "Ver código fuente"
+  // aunque el botón de la pestaña no se vea). Se vacía en vez de solo no
+  // actualizar, para no dejar pegado un balance de otro socio en un
+  // celular compartido.
+  if (!esSocio()) {
+    $("#total-historico").textContent = "";
+    $("#socios-totales").innerHTML = "";
+    $("#settlements").innerHTML = "";
+    return;
+  }
   if (!socios.length) return;
 
   const gastosNegocio = gastosDelNegocio();
@@ -1947,6 +2092,14 @@ async function toggleAdminSocio(nombre) {
 // Es seguro correrla de más: el documento tiene un id FIJO, así que si
 // varios celulares abren la app a la vez, todos escriben el MISMO doc
 // con el mismo monto en vez de crear reposiciones duplicadas.
+//
+// Las dos escrituras (crear la reposición inicial y poner cajaLocalMonto
+// en 0) van en un solo writeBatch, no una atrás de la otra: si fueran
+// dos await separados, un onSnapshot de listenReposiciones() podía
+// llegar justo entre medio y ver la reposición nueva SUMADA a un
+// cajaLocalMonto que todavía no se había puesto en 0 — la caja se
+// mostraba con el doble de plata por un instante (bug real que hubo).
+// El batch hace que las dos escrituras se vean juntas o ninguna.
 let migracionCajaHecha = false;
 async function migrarMontoInicialCaja() {
   if (migracionCajaHecha) return;
@@ -1957,7 +2110,8 @@ async function migrarMontoInicialCaja() {
 
   const monto = cajaLocalMonto;
   try {
-    await fbSdk.setDoc(fbSdk.doc(db, "reposiciones", `inicial-${negocio.id}`), {
+    const batch = fbSdk.writeBatch(db);
+    batch.set(fbSdk.doc(db, "reposiciones", `inicial-${negocio.id}`), {
       monto,
       nota: "Plata que ya tenía la caja antes de que existiera este historial.",
       negocio: negocio.id,
@@ -1965,7 +2119,8 @@ async function migrarMontoInicialCaja() {
       fecha: new Date(),
       creadoEn: fbSdk.serverTimestamp()
     });
-    await fbSdk.updateDoc(fbSdk.doc(db, "config", "socios"), { cajaLocalMonto: 0 });
+    batch.update(fbSdk.doc(db, "config", "socios"), { cajaLocalMonto: 0 });
+    await batch.commit();
     cajaLocalMonto = 0;
   } catch (e) {
     // Si falla (ej. sin señal), se reintenta en la próxima apertura: el
@@ -2032,6 +2187,15 @@ async function saveReposicion() {
 // Solo admin (ver botón 🗑️ en renderReposiciones). Borrar una reposición
 // baja el total repuesto, así que "queda" se recalcula solo.
 async function deleteReposicion(id) {
+  // Defensa extra: aunque renderReposiciones() ya no muestra el botón
+  // para el saldo inicial, esta función no depende de la UI para
+  // protegerlo — no se puede borrar, es plata que ya estaba, no una
+  // reposición cualquiera.
+  const r = reposiciones.find(x => x.id === id);
+  if (r && r.esInicial) {
+    showToast("El saldo inicial no se puede borrar.");
+    return;
+  }
   if (!confirm("¿Borrar esta reposición? La caja va a quedar con menos plata cargada.")) return;
   try {
     await fbSdk.deleteDoc(fbSdk.doc(db, "reposiciones", id));
@@ -2329,15 +2493,21 @@ async function saveGasto() {
     // avisaba de un rojo inexistente en cuanto se reponía plata).
     // Al editar un gasto que YA era "caja", se le devuelve su monto viejo
     // al saldo para no descontarlo dos veces.
-    const { queda } = cajaLocalCalculo();
-    const gastoViejo = editingGastoId
-      ? gastosDelNegocio().find(g => g.id === editingGastoId && g.formaPago === "caja")
-      : null;
-    const saldoSinEste = queda + (gastoViejo ? Number(gastoViejo.importe) || 0 : 0);
-    const saldoResultante = saldoSinEste - importe;
-    if (saldoResultante < 0) {
-      const saldoTexto = (saldoResultante < 0 ? "-" : "") + money(Math.abs(saldoResultante));
-      if (!confirm(`Ojo: esto deja la Caja del local en ${saldoTexto}. ¿Guardar igual?`)) return;
+    //
+    // Si todavía no cargó `reposiciones` (cargando: true, apenas se abrió
+    // la app), no hay saldo real con qué comparar — mejor no avisar nada
+    // que avisar un rojo falso calculado sobre una caja "vacía" a medias.
+    const { queda, cargando } = cajaLocalCalculo();
+    if (!cargando) {
+      const gastoViejo = editingGastoId
+        ? gastosDelNegocio().find(g => g.id === editingGastoId && esGastoCaja(g))
+        : null;
+      const saldoSinEste = queda + (gastoViejo ? Number(gastoViejo.importe) || 0 : 0);
+      const saldoResultante = saldoSinEste - importe;
+      if (saldoResultante < 0) {
+        const saldoTexto = (saldoResultante < 0 ? "-" : "") + money(Math.abs(saldoResultante));
+        if (!confirm(`Ojo: esto deja la Caja del local en ${saldoTexto}. ¿Guardar igual?`)) return;
+      }
     }
   }
 

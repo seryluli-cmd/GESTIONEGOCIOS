@@ -91,6 +91,15 @@ Si agregás un campo nuevo a `config/socios`, alcanza con tocar
 - **Los PIN y los permisos son solo interfaz, no seguridad.** Cualquiera con
   la `firebaseConfig` lee y escribe todo directo en Firestore. No le prometas
   al usuario que esto protege datos.
+- **Cada cambio en Firestore redibuja TODAS las pantallas, no solo la que se
+  está mirando** (ver los `listen*()` llamados desde `bootApp()`). Es a
+  propósito: así cualquier pantalla que se abra después ya está al día, sin
+  tener que acordarse de refrescarla al entrar. Se evaluó cambiarlo (solo
+  redibujar la pantalla visible, o pasar a `docChanges()` para actualizar
+  fila por fila) y se decidió que no vale el riesgo: al volumen real de este
+  negocio (pocos movimientos por día) el redibujado completo tarda
+  milisegundos. Si el día de mañana el volumen crece mucho, ahí sí conviene
+  revisar esto — mientras tanto, no lo "optimices" sin que alguien lo pida.
 
 ## Deuda técnica y rumbo
 
