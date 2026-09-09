@@ -610,16 +610,13 @@
       </div>
 
       <div class="field">
-        <label>Foto de la factura <span class="muted small">(opcional)</span></label>
-        <input type="file" id="input-foto" accept="image/*" class="hidden">
+        <label>Fotos de la factura <span class="muted small">(opcional, hasta 5 — para facturas de varias hojas)</span></label>
+        <input type="file" id="input-foto" accept="image/*" multiple class="hidden">
         <div id="foto-btns-row" class="foto-btns-row">
           <button type="button" id="btn-tomar-foto" class="btn-secondary">📷 Tomar foto</button>
           <button type="button" id="btn-elegir-foto" class="btn-secondary">🖼️ Elegir de galería</button>
         </div>
-        <div id="foto-preview-wrap" class="foto-preview-wrap hidden">
-          <img id="foto-preview-img" class="foto-preview-img" alt="Vista previa de la factura">
-          <button type="button" id="btn-quitar-foto" class="foto-remove-btn" aria-label="Quitar foto">×</button>
-        </div>
+        <div id="foto-strip" class="foto-strip"></div>
         <p class="muted small" style="margin-top:6px;">Las fotos se guardan durante 4 meses y después se borran solas para no ocupar espacio (el gasto en sí queda para siempre).</p>
       </div>
 
@@ -670,13 +667,29 @@
         <div class="detalle-gasto-nota-texto" id="detalle-gasto-nota-texto"></div>
       </div>
 
-      <a href="#" target="_blank" rel="noopener" class="detalle-gasto-foto hidden" id="detalle-gasto-foto-link">
+      <button type="button" class="detalle-gasto-foto hidden" id="detalle-gasto-foto-btn">
         <img id="detalle-gasto-foto-img" alt="Foto del gasto">
-        <span>Ver foto completa</span>
-      </a>
+        <span id="detalle-gasto-foto-label">Ver foto completa</span>
+      </button>
 
       <div class="modal-actions">
         <button type="button" id="btn-cerrar-detalle-gasto" class="btn-secondary">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: VISOR DE FOTOS (una o varias, del mismo gasto) ===== -->
+  <div id="modal-visor-fotos" class="modal-overlay">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <img id="visor-fotos-img" class="visor-fotos-img" alt="Foto de la factura">
+      <div class="visor-fotos-nav">
+        <button type="button" id="btn-visor-anterior" class="btn-secondary">‹ Anterior</button>
+        <span id="visor-fotos-contador" class="visor-fotos-contador">1 / 1</span>
+        <button type="button" id="btn-visor-siguiente" class="btn-secondary">Siguiente ›</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="btn-cerrar-visor-fotos" class="btn-secondary">Cerrar</button>
       </div>
     </div>
   </div>

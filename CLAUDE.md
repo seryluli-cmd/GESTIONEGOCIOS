@@ -68,6 +68,8 @@ cambiás una regla de negocio, actualizá el README.
 | `negocioTieneCajaLocal(id)` | se pregunta si un negocio tiene caja del local |
 | `escapeHtml(str)` | pasa todo texto de Firestore antes de ir a `innerHTML` |
 | `fechaLocalISO(date)` | se arma una fecha `AAAA-MM-DD` local |
+| `fotosDeGasto(g)` | se leen las fotos de un gasto (entiende el formato viejo de una sola foto y el nuevo, hasta 5) |
+| `payerColorVar(name)` | se decide el color de un socio o colaborador (para que no se repitan entre sí) |
 
 Si agregás algo que necesita uno de esos datos, **usá la función existente**.
 Si agregás un campo nuevo a `config/socios`, alcanza con tocar

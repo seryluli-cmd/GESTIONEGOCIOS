@@ -15,6 +15,14 @@
   --series-2: #eb6834; /* socio 2 - naranja */
   --series-3: #1baf7a; /* socio 3 - aqua */
 
+  /* Colores de colaboradores (empleados, no socios): a propósito en
+     tonos que no aparecen en --series-* ni --biz-* ni en --good/
+     --critical/--caja-local, para que un puntito de color no se
+     confunda con el de un socio ni con un aviso de la app. */
+  --colab-1: #8b6cd6; /* violeta */
+  --colab-2: #1f8fa3; /* turquesa */
+  --colab-3: #8a8c1f; /* oliva */
+
   --biz-pancho:     #eb6834; /* naranja — Panchería */
   --biz-heladeria:  #e87ba4; /* magenta — Heladería */
 
@@ -43,6 +51,10 @@
     --series-1: #3987e5;
     --series-2: #d95926;
     --series-3: #199e70;
+
+    --colab-1: #a98ee0;
+    --colab-2: #29b6cf;
+    --colab-3: #a3b52e;
 
     --biz-pancho:     #d95926;
     --biz-heladeria:  #d55181;
@@ -699,6 +711,9 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
   color: var(--series-1);
   font-weight: 600;
   font-size: 14px;
+  width: 100%;
+  font-family: inherit;
+  cursor: pointer;
 }
 .detalle-gasto-foto img { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; }
 
@@ -738,11 +753,16 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
 /* ===== Foto de factura (modal Nuevo gasto) ===== */
 .foto-btns-row { display: flex; gap: 10px; }
 .foto-btns-row .btn-secondary { width: auto; flex: 1; }
+/* Varias fotos (hasta MAX_FOTOS_GASTO) en fila, para una factura de
+   varias hojas — cada una es un .foto-preview-wrap con su propia × */
+.foto-strip { display: flex; flex-wrap: wrap; gap: 10px; }
+.foto-strip:not(:empty) { margin-top: 10px; }
 .foto-preview-wrap {
   position: relative;
   width: 90px;
   margin-top: 10px;
 }
+.foto-strip .foto-preview-wrap { margin-top: 0; }
 .foto-preview-img {
   width: 90px; height: 90px;
   object-fit: cover;
@@ -783,7 +803,13 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
-.foto-thumb-link { display: block; }
+.foto-thumb-link {
+  display: block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
 .foto-thumb {
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -792,6 +818,25 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
   border: 1px solid var(--border);
   display: block;
 }
+
+/* ===== Modal: visor de fotos (una o varias, de un mismo gasto) ===== */
+.visor-fotos-img {
+  width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 12px;
+  background: var(--page-plane);
+  display: block;
+}
+.visor-fotos-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+.visor-fotos-nav .btn-secondary { width: auto; flex: 1; }
+.visor-fotos-contador { font-weight: 600; color: var(--text-secondary); font-size: 14px; white-space: nowrap; }
 
 /* ===== Ideas ===== */
 .ideas-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 4px; }

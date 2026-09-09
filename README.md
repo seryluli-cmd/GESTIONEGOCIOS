@@ -68,7 +68,12 @@ seguridad que exigen autenticación anónima.
   un campo nuevo al doc (como pasó con `cajaLocalMonto`), alcanza con
   tocar esa función, no los 3 lugares.
 - **`gastos`** (colección) — un doc por gasto:
-  `{ importe, descripcion, categoria, pagadoPor, formaPago, negocio, fecha, creadoEn, fotoUrl?, fotoPath? }`.
+  `{ importe, descripcion, categoria, pagadoPor, formaPago, negocio, fecha, creadoEn, fotos? }`.
+  `fotos` es una lista de hasta 5 `{url, path}` (una factura puede tener
+  varias hojas) — único lugar que la lee es `fotosDeGasto(g)`, que también
+  entiende el formato viejo de una sola foto (`fotoUrl`/`fotoPath`, gastos
+  cargados antes de este cambio) sin necesidad de migrarlos: se pasan solos
+  al formato nuevo la próxima vez que se editan y guardan.
   `negocio` es `"pancho"` o `"heladeria"` (ver `NEGOCIOS` en app.js) — **ambos
   negocios comparten la misma colección**, se filtran en memoria con
   `gastosDelNegocio()`. `formaPago` es `"efectivo"`, `"digital"`, `"mixto"`

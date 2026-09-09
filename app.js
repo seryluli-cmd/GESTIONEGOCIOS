@@ -63,6 +63,7 @@ const LS_SOCIOS_CACHE = "gn_socios_cache";
 const LS_COLAB_CACHE = "gn_colaboradores_cache";
 const LS_USER_KEY = "gn_current_user"; // quién está identificado en este celular
 const SERIES_VARS = ["--series-1", "--series-2", "--series-3"];
+const COLAB_VARS = ["--colab-1", "--colab-2", "--colab-3"];
 const NEUTRAL_VAR = "var(--text-muted)";
 
 // Los 2 negocios. Cada gasto queda etiquetado con uno de estos "id",
@@ -108,8 +109,10 @@ const PORCENTAJE_SOCIO = {
 };
 
 let fbApp = null, auth = null, db = null, storage = null;
-let selectedFotoBlob = null; // foto comprimida, lista para subir (modal Nuevo gasto)
-let selectedFotoFacturadoBlob = null; // ídem, para el modal de Cierre de Turno
+const MAX_FOTOS_GASTO = 5; // una factura de varias hojas puede necesitar más de una foto — ver fotosDeGasto()
+let fotosGastoModal = []; // fotos del gasto que se está cargando/editando, en el orden del modal — cada una { tipo:"existente", url, path } (ya estaba guardada) o { tipo:"nueva", blob, previewUrl } (recién elegida, falta subir)
+let fotosGastoABorrar = []; // paths de Storage de fotos existentes que se sacaron en este modal — se borran recién si se confirma "Guardar" (cancelar el modal no borra nada)
+let selectedFotoFacturadoBlob = null; // foto comprimida, lista para subir (modal de Cierre de Turno — sigue siendo una sola, no forma parte de este cambio)
 const FOTO_RETENCION_DIAS = 120; // ~4 meses — pasado esto, se borra sola la foto (no el gasto)
 let fotosLimpiezaHecha = false;
 let socios = [];           // ["Sergio", "Ana", "Marcos"] — los 3 socios, entran en el reparto
@@ -336,13 +339,23 @@ function socioColorVar(index) {
   return `var(${SERIES_VARS[index % SERIES_VARS.length]})`;
 }
 
+function colaboradorColorVar(index) {
+  return `var(${COLAB_VARS[index % COLAB_VARS.length]})`;
+}
+
 // Color de identidad para cualquier "pagador": los 3 socios tienen su color
-// categórico propio; cualquier otra persona (colaboradores) usa un color
-// neutro, porque no participan del reparto y no deben leerse como una
-// cuarta "serie" en el balance.
+// categórico propio (SERIES_VARS); los colaboradores tienen el suyo aparte
+// (COLAB_VARS, paleta distinta a propósito — ver el comentario en
+// styles.css) para que se los distinga entre sí sin que un colaborador se
+// confunda visualmente con un socio. Si el nombre no es ni socio ni
+// colaborador actual (ej. alguien que ya no está en config/socios pero
+// quedó en el historial de logeos), cae al gris neutro.
 function payerColorVar(name) {
-  const idx = socios.indexOf(name);
-  return idx !== -1 ? socioColorVar(idx) : NEUTRAL_VAR;
+  const idxSocio = socios.indexOf(name);
+  if (idxSocio !== -1) return socioColorVar(idxSocio);
+  const idxColab = colaboradores.indexOf(name);
+  if (idxColab !== -1) return colaboradorColorVar(idxColab);
+  return NEUTRAL_VAR;
 }
 
 function socioInitial(name) {
@@ -509,7 +522,7 @@ async function cargarHistorialLogins() {
     filas.forEach(f => {
       const row = document.createElement("div");
       row.className = "ajustes-socio-row";
-      row.innerHTML = `<span class="socio-dot" style="background:${NEUTRAL_VAR}"></span> ${escapeHtml(f.nombre)}
+      row.innerHTML = `<span class="socio-dot" style="background:${payerColorVar(f.nombre)}"></span> ${escapeHtml(f.nombre)}
         <span class="muted small" style="margin-left:auto;">${f.veces} ${f.veces === 1 ? "vez" : "veces"}</span>`;
       wrap.appendChild(row);
     });
@@ -1034,14 +1047,58 @@ function crearFilaExpenseItem({ claseExtra, avatarBg, avatarContent, desc, meta,
   return li;
 }
 
+// Fotos de un gasto, siempre como lista — único lugar que lo calcula
+// (CLAUDE.md regla 1). Entiende dos formatos: el nuevo (`fotos: [{url,
+// path}, ...]`, hasta MAX_FOTOS_GASTO) y el viejo, de un solo campo
+// fotoUrl/fotoPath (gastos cargados antes de este cambio). No hay
+// migración en bloque: un gasto viejo se pasa solo al formato nuevo la
+// próxima vez que se edita y se guarda (ver saveGasto()).
+function fotosDeGasto(g) {
+  if (Array.isArray(g.fotos) && g.fotos.length) return g.fotos;
+  if (g.fotoUrl) return [{ url: g.fotoUrl, path: g.fotoPath || null }];
+  return [];
+}
+
+// ---------- Visor de fotos (una o varias, del mismo gasto) ----------
+let visorFotosLista = [];
+let visorFotosIndex = 0;
+
+function abrirVisorFotos(fotos, indexInicial = 0) {
+  if (!fotos.length) return;
+  visorFotosLista = fotos;
+  visorFotosIndex = indexInicial;
+  renderVisorFotos();
+  $("#modal-visor-fotos").classList.add("active");
+}
+
+function renderVisorFotos() {
+  const foto = visorFotosLista[visorFotosIndex];
+  $("#visor-fotos-img").src = foto.url;
+  const varias = visorFotosLista.length > 1;
+  $("#visor-fotos-contador").textContent = `${visorFotosIndex + 1} / ${visorFotosLista.length}`;
+  $("#visor-fotos-contador").classList.toggle("hidden", !varias);
+  $("#btn-visor-anterior").classList.toggle("hidden", !varias);
+  $("#btn-visor-siguiente").classList.toggle("hidden", !varias);
+}
+
+function visorFotosMover(delta) {
+  const n = visorFotosLista.length;
+  visorFotosIndex = (visorFotosIndex + delta + n) % n;
+  renderVisorFotos();
+}
+
+function closeModalVisorFotos() {
+  $("#modal-visor-fotos").classList.remove("active");
+}
+
 // Arma la fila <li> de un gasto — extraído de renderGastos() para
 // reusarlo tal cual en el detalle de Caja del local (renderCajaLocalDetalle),
 // que lista TODOS los gastos "caja" del negocio sin importar el mes.
 function crearFilaGasto(g) {
   const fecha = fechaDeRegistro(g);
 
-  const fotoBtn = g.fotoUrl
-    ? `<button type="button" class="foto-link" data-url="${escapeHtml(g.fotoUrl)}" aria-label="Ver foto de la factura">📷</button>`
+  const fotoBtn = fotosDeGasto(g).length
+    ? `<button type="button" class="foto-link" data-id="${g.id}" aria-label="Ver foto de la factura">📷</button>`
     : "";
 
   // Editar/borrar solo para el admin — el resto solo puede cargar y ver.
@@ -1299,13 +1356,16 @@ function verDetalleGasto(id) {
     notaWrap.classList.add("hidden");
   }
 
-  const fotoLink = $("#detalle-gasto-foto-link");
-  if (g.fotoUrl) {
-    fotoLink.href = g.fotoUrl;
-    $("#detalle-gasto-foto-img").src = g.fotoUrl;
-    fotoLink.classList.remove("hidden");
+  const fotosG = fotosDeGasto(g);
+  const fotoBtn = $("#detalle-gasto-foto-btn");
+  if (fotosG.length) {
+    $("#detalle-gasto-foto-img").src = fotosG[0].url;
+    $("#detalle-gasto-foto-label").textContent = fotosG.length > 1 ? `Ver ${fotosG.length} fotos` : "Ver foto completa";
+    fotoBtn.onclick = () => abrirVisorFotos(fotosG);
+    fotoBtn.classList.remove("hidden");
   } else {
-    fotoLink.classList.add("hidden");
+    fotoBtn.onclick = null;
+    fotoBtn.classList.add("hidden");
   }
 
   $("#modal-detalle-gasto").classList.add("active");
@@ -1694,16 +1754,20 @@ function renderResumen() {
 // gasto en sí (importe, descripción, etc.) NUNCA se toca ni se borra.
 async function limpiarFotosVencidas() {
   const limite = Date.now() - FOTO_RETENCION_DIAS * 24 * 60 * 60 * 1000;
-  const vencidos = gastos.filter(g => g.fotoPath && fechaDeRegistro(g).getTime() < limite);
+  const vencidos = gastos.filter(g => fotosDeGasto(g).length && fechaDeRegistro(g).getTime() < limite);
 
   for (const g of vencidos) {
-    try {
-      await fbSdk.deleteObject(fbSdk.ref(storage, g.fotoPath));
-    } catch (e) {
-      console.warn("No se pudo borrar la foto vencida (puede que ya no exista):", e.message);
+    for (const f of fotosDeGasto(g)) {
+      if (!f.path) continue;
+      try {
+        await fbSdk.deleteObject(fbSdk.ref(storage, f.path));
+      } catch (e) {
+        console.warn("No se pudo borrar la foto vencida (puede que ya no exista):", e.message);
+      }
     }
     try {
       await fbSdk.updateDoc(fbSdk.doc(db, "gastos", g.id), {
+        fotos: fbSdk.deleteField(),
         fotoUrl: fbSdk.deleteField(),
         fotoPath: fbSdk.deleteField()
       });
@@ -1718,7 +1782,7 @@ async function limpiarFotosVencidas() {
 // simplemente no aparecen más, sin necesidad de filtrar por fecha acá).
 function renderFotosGuardadas() {
   const conFoto = gastosDelNegocio()
-    .filter(g => g.fotoUrl)
+    .filter(g => fotosDeGasto(g).length)
     .sort((a, b) => fechaDeRegistro(b) - fechaDeRegistro(a));
 
   const empty = $("#fotos-empty");
@@ -1739,16 +1803,24 @@ function renderFotosGuardadas() {
     grupos.get(key).items.push(g);
   });
 
+  // Una miniatura por FOTO, no por gasto — un gasto con una factura de
+  // varias hojas muestra sus varias páginas acá. Tocar cualquiera abre
+  // el visor ya parado en esa foto, con las demás del mismo gasto al lado.
   grupos.forEach(grupo => {
     const section = document.createElement("div");
     section.className = "fotos-grupo";
-    const grid = grupo.items.map(g => `
-      <a class="foto-thumb-link" href="${escapeHtml(g.fotoUrl)}" target="_blank" rel="noopener" aria-label="Ver foto: ${escapeHtml(g.descripcion || "")}">
-        <img class="foto-thumb" src="${escapeHtml(g.fotoUrl)}" alt="Factura: ${escapeHtml(g.descripcion || "")}" loading="lazy">
-      </a>
-    `).join("");
+    let totalFotos = 0;
+    const grid = grupo.items.map(g => {
+      const fotosG = fotosDeGasto(g);
+      totalFotos += fotosG.length;
+      return fotosG.map((f, idx) => `
+        <button type="button" class="foto-thumb-link" data-id="${g.id}" data-idx="${idx}" aria-label="Ver foto: ${escapeHtml(g.descripcion || "")}">
+          <img class="foto-thumb" src="${escapeHtml(f.url)}" alt="Factura: ${escapeHtml(g.descripcion || "")}" loading="lazy">
+        </button>
+      `).join("");
+    }).join("");
     section.innerHTML = `
-      <div class="fotos-grupo-titulo">${escapeHtml(grupo.label)} — ${grupo.items.length} foto${grupo.items.length === 1 ? "" : "s"}</div>
+      <div class="fotos-grupo-titulo">${escapeHtml(grupo.label)} — ${totalFotos} foto${totalFotos === 1 ? "" : "s"}</div>
       <div class="fotos-grid">${grid}</div>
     `;
     wrap.appendChild(section);
@@ -1871,15 +1943,16 @@ function renderColaboradoresTotales() {
     if (!porColaborador[idx]) return;
     const card = document.createElement("div");
     card.className = "socio-total-card";
+    const color = colaboradorColorVar(idx);
     card.innerHTML = `
       <div class="socio-total-row">
         <div class="socio-total-name">
-          <span class="socio-dot" style="background:${NEUTRAL_VAR}"></span>
+          <span class="socio-dot" style="background:${color}"></span>
           ${escapeHtml(nombre)}
         </div>
         <div class="socio-total-amount">${money(porColaborador[idx])}</div>
       </div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${NEUTRAL_VAR}"></div></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
     `;
     wrap.appendChild(card);
   });
@@ -1973,7 +2046,7 @@ function renderAjustesSocios() {
   colabWrap.innerHTML = "";
   if (colaboradores.length) {
     colabEmpty.classList.add("hidden");
-    colaboradores.forEach((nombre) => {
+    colaboradores.forEach((nombre, idx) => {
       const row = document.createElement("div");
       row.className = "ajustes-socio-row";
       const asignado = colaboradorNegocio[nombre];
@@ -1986,7 +2059,7 @@ function renderAjustesSocios() {
              ${NEGOCIOS.map(biz => `<option value="${biz.id}" ${asignado === biz.id ? "selected" : ""}>${escapeHtml(biz.nombre)}</option>`).join("")}
            </select>`
         : `<span class="muted small colaborador-negocio-tag">${asignado ? escapeHtml(NEGOCIOS.find(b => b.id === asignado)?.nombre || asignado) : "Ambos negocios"}</span>`;
-      row.innerHTML = `<span class="socio-dot" style="background:${NEUTRAL_VAR}"></span> ${escapeHtml(nombre)}`;
+      row.innerHTML = `<span class="socio-dot" style="background:${colaboradorColorVar(idx)}"></span> ${escapeHtml(nombre)}`;
       row.insertAdjacentHTML("beforeend", negocioControl);
       colabWrap.appendChild(row);
     });
@@ -2313,10 +2386,29 @@ function conTimeout(promise, ms, mensajeTimeout) {
 }
 
 function resetFotoField() {
-  selectedFotoBlob = null;
+  // Las fotos "nueva" tienen un object URL propio (URL.createObjectURL)
+  // que hay que liberar a mano o se queda en memoria — las "existente"
+  // apuntan a Storage, no hace falta nada con ellas acá.
+  fotosGastoModal.forEach(f => { if (f.tipo === "nueva") URL.revokeObjectURL(f.previewUrl); });
+  fotosGastoModal = [];
+  fotosGastoABorrar = [];
   $("#input-foto").value = "";
-  $("#foto-preview-wrap").classList.add("hidden");
-  $("#foto-btns-row").classList.remove("hidden");
+  renderFotoStrip();
+}
+
+// Único lugar que dibuja la tira de miniaturas del modal de gasto (nuevo
+// o edición) — se llama cada vez que cambia fotosGastoModal.
+function renderFotoStrip() {
+  const strip = $("#foto-strip");
+  strip.innerHTML = fotosGastoModal.map((f, idx) => `
+    <div class="foto-preview-wrap">
+      <img class="foto-preview-img" src="${escapeHtml(f.tipo === "nueva" ? f.previewUrl : f.url)}" alt="Vista previa de la factura ${idx + 1}">
+      <button type="button" class="foto-remove-btn" data-idx="${idx}" aria-label="Quitar esta foto">×</button>
+    </div>
+  `).join("");
+  // Al llegar al máximo se esconden los botones de agregar — más simple
+  // para quien carga el gasto que un mensaje de error al tocar "Tomar foto".
+  $("#foto-btns-row").classList.toggle("hidden", fotosGastoModal.length >= MAX_FOTOS_GASTO);
 }
 
 function resetFotoFieldFact() {
@@ -2425,7 +2517,14 @@ function openModal(gasto) {
   } else {
     setDefaultFecha();
   }
-  resetFotoField(); // editar un gasto no toca su foto salvo que se elija una nueva
+  resetFotoField(); // limpia la selección de una edición anterior
+  if (gasto) {
+    // Precarga las fotos que ya tenía para que se puedan ver, sacar o
+    // completar hasta el máximo — no se suben de nuevo, solo se muestran
+    // (fotosDeGasto ya entiende el formato viejo de una sola foto).
+    fotosGastoModal = fotosDeGasto(gasto).map(f => ({ tipo: "existente", url: f.url, path: f.path }));
+    renderFotoStrip();
+  }
 
   $("#modal-add-title").textContent = gasto ? "Editar gasto" : "Nuevo gasto";
   $("#btn-save-add").textContent = gasto ? "Guardar cambios" : "Guardar gasto";
@@ -2438,6 +2537,7 @@ function openModal(gasto) {
 function closeModal() {
   $("#modal-add").classList.remove("active");
   editingGastoId = null;
+  resetFotoField(); // libera los object URL de las fotos elegidas, se cancele o se haya guardado
 }
 
 async function saveGasto() {
@@ -2513,32 +2613,39 @@ async function saveGasto() {
 
   const btn = $("#btn-save-add");
   const isEdit = !!editingGastoId;
+  const fotosNuevas = fotosGastoModal.filter(f => f.tipo === "nueva");
   btn.disabled = true;
-  btn.textContent = selectedFotoBlob ? "Subiendo foto…" : "Guardando…";
+  btn.textContent = fotosNuevas.length ? "Subiendo fotos…" : "Guardando…";
 
   try {
-    let fotoUrl = null, fotoPath = null, fotoFallo = false;
-    if (selectedFotoBlob) {
-      // Si la subida falla o tarda demasiado, no bloqueamos el gasto entero
-      // por eso — se guarda igual sin la foto y se avisa con el toast de
-      // abajo. Mejor un gasto sin foto que un gasto perdido.
+    // Cada foto se sube por separado y se tolera que alguna falle — mejor
+    // guardar el gasto con las que sí subieron que perderlo entero por una
+    // sola foto que no salió (mismo criterio que antes con una sola foto).
+    let fotosFallidas = 0;
+    const fotosSubidas = [];
+    for (const f of fotosNuevas) {
       try {
-        fotoPath = `recibos/${negocioActual}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-        const storageRef = fbSdk.ref(storage, fotoPath);
-        const TIMEOUT_MSG = "La subida de la foto tardó demasiado.";
+        const path = `recibos/${negocioActual}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+        const storageRef = fbSdk.ref(storage, path);
+        const TIMEOUT_MSG = "La subida de una foto tardó demasiado.";
         await conTimeout(
-          fbSdk.uploadBytes(storageRef, selectedFotoBlob, { contentType: "image/jpeg" }),
+          fbSdk.uploadBytes(storageRef, f.blob, { contentType: "image/jpeg" }),
           25000,
           TIMEOUT_MSG
         );
-        fotoUrl = await conTimeout(fbSdk.getDownloadURL(storageRef), 15000, TIMEOUT_MSG);
+        const url = await conTimeout(fbSdk.getDownloadURL(storageRef), 15000, TIMEOUT_MSG);
+        fotosSubidas.push({ url, path });
       } catch (fotoErr) {
-        console.error("No se pudo subir la foto, se guarda el gasto sin ella:", fotoErr);
-        fotoFallo = true;
-        fotoPath = null;
+        console.error("No se pudo subir una foto, se guarda el gasto sin ella:", fotoErr);
+        fotosFallidas++;
       }
-      btn.textContent = "Guardando…";
     }
+    if (fotosNuevas.length) btn.textContent = "Guardando…";
+
+    const fotosExistentesConservadas = fotosGastoModal
+      .filter(f => f.tipo === "existente")
+      .map(f => ({ url: f.url, path: f.path }));
+    const fotosFinales = fotosExistentesConservadas.concat(fotosSubidas);
 
     const gastoData = {
       importe,
@@ -2562,12 +2669,21 @@ async function saveGasto() {
       gastoData.montoEfectivo = fbSdk.deleteField();
       gastoData.montoDigital = fbSdk.deleteField();
     }
-    // Solo se tocan fotoUrl/fotoPath si se eligió una foto nueva — al editar,
-    // updateDoc no toca los campos que no se le pasan, así que la foto
-    // existente queda intacta si no se cambia.
-    if (fotoUrl) {
-      gastoData.fotoUrl = fotoUrl;
-      gastoData.fotoPath = fotoPath;
+    // `fotos` reemplaza al formato viejo (fotoUrl/fotoPath, una sola
+    // foto) — se escribe cada vez que el gasto queda con alguna foto, así
+    // un gasto viejo editado migra solo al formato nuevo, sin necesidad
+    // de una migración aparte (ver fotosDeGasto()).
+    if (fotosFinales.length) {
+      gastoData.fotos = fotosFinales;
+      if (isEdit) {
+        gastoData.fotoUrl = fbSdk.deleteField();
+        gastoData.fotoPath = fbSdk.deleteField();
+      }
+    } else if (isEdit && fotosGastoABorrar.length) {
+      // Se sacaron todas las fotos que tenía, sin agregar ninguna nueva.
+      gastoData.fotos = fbSdk.deleteField();
+      gastoData.fotoUrl = fbSdk.deleteField();
+      gastoData.fotoPath = fbSdk.deleteField();
     }
 
     if (isEdit) {
@@ -2576,9 +2692,23 @@ async function saveGasto() {
       gastoData.creadoEn = fbSdk.serverTimestamp();
       await fbSdk.addDoc(fbSdk.collection(db, "gastos"), gastoData);
     }
+
+    // Recién ahora que el gasto quedó guardado se borran del Storage las
+    // fotos que se sacaron en este modal — si algo de arriba falla antes
+    // de llegar acá, no se pierde ninguna foto todavía referenciada.
+    for (const path of fotosGastoABorrar) {
+      try {
+        await fbSdk.deleteObject(fbSdk.ref(storage, path));
+      } catch (e) {
+        console.warn("No se pudo borrar una foto quitada:", e.message);
+      }
+    }
+
     closeModal();
-    if (fotoFallo) {
-      showToast(isEdit ? "Gasto actualizado, pero no se pudo subir la foto ⚠️" : "Gasto guardado sin la foto (no se pudo subir) ⚠️");
+    if (fotosFallidas) {
+      showToast(isEdit
+        ? `Gasto actualizado, pero ${fotosFallidas} foto${fotosFallidas === 1 ? "" : "s"} no se pudo subir ⚠️`
+        : `Gasto guardado, pero ${fotosFallidas} foto${fotosFallidas === 1 ? "" : "s"} no se pudo subir ⚠️`);
     } else {
       showToast(isEdit ? "Gasto actualizado ✅" : "Gasto guardado ✅");
     }
@@ -2599,11 +2729,14 @@ async function deleteGasto(id) {
   if (!confirm("¿Borrar este gasto? No se puede deshacer.")) return;
   const gasto = gastos.find(g => g.id === id);
   try {
-    if (gasto && gasto.fotoPath) {
-      try {
-        await fbSdk.deleteObject(fbSdk.ref(storage, gasto.fotoPath));
-      } catch (e) {
-        console.warn("No se pudo borrar la foto del gasto:", e.message);
+    if (gasto) {
+      for (const f of fotosDeGasto(gasto)) {
+        if (!f.path) continue;
+        try {
+          await fbSdk.deleteObject(fbSdk.ref(storage, f.path));
+        } catch (e) {
+          console.warn("No se pudo borrar una foto del gasto:", e.message);
+        }
       }
     }
     await fbSdk.deleteDoc(fbSdk.doc(db, "gastos", id));
@@ -3143,6 +3276,12 @@ function wireEvents() {
   $("#modal-detalle-gasto").addEventListener("click", (e) => {
     if (e.target.id === "modal-detalle-gasto") closeModalDetalleGasto();
   });
+  $("#btn-cerrar-visor-fotos").addEventListener("click", closeModalVisorFotos);
+  $("#btn-visor-anterior").addEventListener("click", () => visorFotosMover(-1));
+  $("#btn-visor-siguiente").addEventListener("click", () => visorFotosMover(1));
+  $("#modal-visor-fotos").addEventListener("click", (e) => {
+    if (e.target.id === "modal-visor-fotos") closeModalVisorFotos();
+  });
   $$("#forma-pago-options .pagador-chip").forEach(chip => {
     chip.addEventListener("click", () => selectFormaPago(chip.dataset.forma));
   });
@@ -3243,19 +3382,37 @@ function wireEvents() {
     $("#input-foto").click();
   });
   $("#input-foto").addEventListener("change", async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      selectedFotoBlob = await compressImage(file);
-      $("#foto-preview-img").src = URL.createObjectURL(selectedFotoBlob);
-      $("#foto-preview-wrap").classList.remove("hidden");
-      $("#foto-btns-row").classList.add("hidden");
-    } catch (err) {
-      console.error(err);
-      showToast("No se pudo procesar la foto.");
+    const files = Array.from(e.target.files || []);
+    e.target.value = ""; // permite elegir el mismo archivo de nuevo más adelante si hace falta
+    if (!files.length) return;
+    const espacio = MAX_FOTOS_GASTO - fotosGastoModal.length;
+    const aProcesar = files.slice(0, Math.max(0, espacio));
+    if (files.length > aProcesar.length) {
+      showToast(`Máximo ${MAX_FOTOS_GASTO} fotos por gasto.`);
     }
+    for (const file of aProcesar) {
+      try {
+        const blob = await compressImage(file);
+        fotosGastoModal.push({ tipo: "nueva", blob, previewUrl: URL.createObjectURL(blob) });
+      } catch (err) {
+        console.error(err);
+        showToast("No se pudo procesar una de las fotos.");
+      }
+    }
+    renderFotoStrip();
   });
-  $("#btn-quitar-foto").addEventListener("click", resetFotoField);
+  // Quitar una foto de la tira (delegado — la tira se re-dibuja seguido).
+  // Si era "existente" (ya guardada), se marca para borrar del Storage
+  // recién al confirmar "Guardar" (ver saveGasto) — cancelar el modal no
+  // borra nada.
+  $("#foto-strip").addEventListener("click", (e) => {
+    const btn = e.target.closest(".foto-remove-btn");
+    if (!btn) return;
+    const [removida] = fotosGastoModal.splice(Number(btn.dataset.idx), 1);
+    if (removida.tipo === "existente" && removida.path) fotosGastoABorrar.push(removida.path);
+    if (removida.tipo === "nueva") URL.revokeObjectURL(removida.previewUrl);
+    renderFotoStrip();
+  });
 
   // Foto del cierre (modal Cierre de Turno) — mismo patrón que la de
   // Nuevo gasto, arriba, pero con sus propios elementos e input.
@@ -3287,7 +3444,11 @@ function wireEvents() {
   // para el detalle de Caja del local, que también son filas de gasto.
   const handleGastoListClick = (e) => {
     const fotoBtn = e.target.closest(".foto-link");
-    if (fotoBtn) { window.open(fotoBtn.dataset.url, "_blank", "noopener"); return; }
+    if (fotoBtn) {
+      const g = gastos.find(x => x.id === fotoBtn.dataset.id);
+      if (g) abrirVisorFotos(fotosDeGasto(g));
+      return;
+    }
     const editBtn = e.target.closest(".gasto-edit-btn");
     if (editBtn) {
       const g = gastos.find(x => x.id === editBtn.dataset.id);
@@ -3340,7 +3501,15 @@ function wireEvents() {
     if (delBtn) deleteReposicion(delBtn.dataset.id);
   });
 
-  // Pantalla "Fotos guardadas"
+  // Pantalla "Fotos guardadas" — cada miniatura es una foto puntual de un
+  // gasto; tocarla abre el visor en esa foto, con las demás del mismo
+  // gasto al lado si tenía varias.
+  $("#fotos-grupos").addEventListener("click", (e) => {
+    const thumb = e.target.closest(".foto-thumb-link");
+    if (!thumb) return;
+    const g = gastos.find(x => x.id === thumb.dataset.id);
+    if (g) abrirVisorFotos(fotosDeGasto(g), Number(thumb.dataset.idx));
+  });
   $("#btn-ver-fotos").addEventListener("click", () => {
     renderFotosGuardadas();
     showScreen("screen-fotos");
