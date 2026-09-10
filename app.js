@@ -2140,7 +2140,7 @@ function renderAjustesSocios() {
 // Agregar un colaborador nuevo DESPUÉS del setup inicial (a diferencia de
 // los que se cargan en la pantalla de configuración de la primera vez,
 // ver addColaboradorRow() más abajo) — para cuando se suma alguien
-// (ej. una empleada nueva) mientras el negocio ya está andando.
+// (ej. una colaboradora nueva) mientras el negocio ya está andando.
 function openModalColaborador() {
   $("#input-colaborador-nombre").value = "";
   $("#input-colaborador-negocio").innerHTML = `<option value="">Ambos negocios</option>` +

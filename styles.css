@@ -15,7 +15,7 @@
   --series-2: #eb6834; /* socio 2 - naranja */
   --series-3: #1baf7a; /* socio 3 - aqua */
 
-  /* Colores de colaboradores (empleados, no socios): a propósito en
+  /* Colores de colaboradores (no socios): a propósito en
      tonos que no aparecen en --series-* ni --biz-* ni en --good/
      --critical/--caja-local, para que un puntito de color no se
      confunda con el de un socio ni con un aviso de la app. */
