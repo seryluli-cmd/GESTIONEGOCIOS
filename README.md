@@ -401,8 +401,15 @@ y abrir la URL que imprima en la consola (`http://localhost:5177` con Python).
 
 ## Configurar Firebase (una vez por negocio)
 
-La guía completa está también dentro de la app (pantalla de Setup → "¿No
-sabés dónde conseguir esto?"):
+La config de Firebase de este negocio (proyecto `controlnegocios-7b552`,
+compartido por Pancho Recreo y Heladería Pablo) ya viene incluida en el
+código (`DEFAULT_FIREBASE_CONFIG` en app.js) — por eso al abrir la app por
+primera vez en un celular nuevo no hay que pegar nada, `attemptReconnect()`
+la usa sola y entra directo a "¿Quién sos?". La pantalla de pegar
+`firebaseConfig` (`screen-setup`) sigue existiendo como respaldo manual
+(botón "Configurar de nuevo" si falla la conexión) y para el caso de
+arrancar un negocio distinto desde cero. La guía completa para eso también está dentro
+de la app (pantalla de Setup → "¿No sabés dónde conseguir esto?"):
 
 1. Crear proyecto gratis en `console.firebase.google.com`.
 2. Agregar una app "Web" y copiar el objeto `firebaseConfig`.
@@ -413,5 +420,6 @@ sabés dónde conseguir esto?"):
 
 ## Estado del repo
 
-Todavía no es un repositorio git (a diferencia de la carpeta hermana
-`KIOSKO NUEVO`). Si se quiere versionar, avisar para inicializarlo.
+Repositorio git con remoto en GitHub (`seryluli-cmd/GESTIONEGOCIOS`). El
+deploy es automático: Netlify está conectado a este repo y publica solo con
+cada push a `master` — no hace falta generar ni subir ningún `.zip` a mano.

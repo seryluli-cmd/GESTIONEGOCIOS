@@ -58,6 +58,20 @@ async function loadFirebaseSdk() {
 }
 
 // ---------- Estado ----------
+// Config de Firebase de este negocio (proyecto "controlnegocios-7b552") —
+// la comparten Pancho Recreo y Heladería Pablo, es la misma para todos los
+// dispositivos (socios y colaboradores), así que viene incluida de una vez
+// y nadie tiene que pegarla a mano en el primer inicio (ver
+// attemptReconnect). Si algún día hace falta cambiar de proyecto, alcanza
+// con reemplazar este objeto.
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCxB5Rn_gtKYTo1O_iDmUrLtQP-9caVWwo",
+  authDomain: "controlnegocios-7b552.firebaseapp.com",
+  projectId: "controlnegocios-7b552",
+  storageBucket: "controlnegocios-7b552.firebasestorage.app",
+  messagingSenderId: "318057443268",
+  appId: "1:318057443268:web:5ef716519070644968fe91"
+};
 const LS_CONFIG_KEY = "gn_firebaseConfig";
 const LS_SOCIOS_CACHE = "gn_socios_cache";
 const LS_COLAB_CACHE = "gn_colaboradores_cache";
@@ -3565,7 +3579,7 @@ async function attemptReconnect() {
   const cachedSocios = localStorage.getItem(LS_SOCIOS_CACHE);
   const cachedColab = localStorage.getItem(LS_COLAB_CACHE);
 
-  if (!savedConfig) {
+  if (!savedConfig && !DEFAULT_FIREBASE_CONFIG.apiKey) {
     showScreen("screen-setup");
     return;
   }
@@ -3583,8 +3597,9 @@ async function attemptReconnect() {
   showScreen("screen-loading");
 
   try {
-    const config = JSON.parse(savedConfig);
+    const config = savedConfig ? JSON.parse(savedConfig) : DEFAULT_FIREBASE_CONFIG;
     await connectAndBoot(config, socios, colaboradores);
+    if (!savedConfig) localStorage.setItem(LS_CONFIG_KEY, JSON.stringify(config));
   } catch (e) {
     console.error("Error reconectando:", e);
     $("#loading-msg").textContent = e.message && e.message.includes("conectar")
