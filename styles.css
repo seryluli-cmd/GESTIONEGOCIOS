@@ -36,35 +36,38 @@
   --safe-top: env(safe-area-inset-top, 0px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) {
-    color-scheme: dark;
-    --surface-1:      #1a1a19;
-    --page-plane:     #0d0d0d;
-    --text-primary:   #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted:     #898781;
-    --gridline:       #2c2c2a;
-    --baseline:       #383835;
-    --border:         rgba(255,255,255,0.10);
+/* Paleta oscura — vive SOLO acá, sin @media, porque data-theme lo decide
+   siempre aplicarTema() (app.js): "Oscuro" fijo, o "Auto" copiando
+   matchMedia("prefers-color-scheme: dark") a mano. Si esto fuera un
+   @media aparte habría que repetir toda la paleta para el caso "Oscuro
+   fijo con el celular en claro", y un dato tendría dos lugares. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-1:      #1a1a19;
+  --page-plane:     #0d0d0d;
+  --text-primary:   #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted:     #898781;
+  --gridline:       #2c2c2a;
+  --baseline:       #383835;
+  --border:         rgba(255,255,255,0.10);
 
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
 
-    --colab-1: #a98ee0;
-    --colab-2: #29b6cf;
-    --colab-3: #a3b52e;
+  --colab-1: #a98ee0;
+  --colab-2: #29b6cf;
+  --colab-3: #a3b52e;
 
-    --biz-pancho:     #d95926;
-    --biz-heladeria:  #d55181;
+  --biz-pancho:     #d95926;
+  --biz-heladeria:  #d55181;
 
-    --good: #0ca30c;
-    --critical: #e66767;
-    --critical-bg: #3a2323;
-    --caja-local: #dba53f;
-    --caja-local-bg: #362c17;
-  }
+  --good: #0ca30c;
+  --critical: #e66767;
+  --critical-bg: #3a2323;
+  --caja-local: #dba53f;
+  --caja-local-bg: #362c17;
 }
 
 html, body {
@@ -240,6 +243,23 @@ input:focus, select:focus, textarea:focus {
 .btn-primary:active { opacity: 0.85; }
 .btn-secondary { background: var(--gridline); color: var(--text-primary); }
 .btn-danger { background: transparent; color: var(--critical); border: 1px solid var(--critical); }
+
+/* Selector de tema (Ajustes > Apariencia) — 3 opciones excluyentes, no
+   checkboxes ni <select>, para que se vea de un vistazo cuál está activa. */
+.tema-selector { display: flex; gap: 8px; }
+.tema-btn {
+  flex: 1;
+  padding: 10px 4px;
+  border-radius: 10px;
+  border: 1px solid var(--baseline);
+  background: var(--page-plane);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tema-btn.active { background: var(--series-1); border-color: var(--series-1); color: #fff; }
 
 .error-text {
   color: var(--critical);
@@ -603,6 +623,30 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
   line-height: 1;
 }
 .fab:active { opacity: 0.9; }
+
+/* Atajo a Ajustes desde "Elegir sección" — mismo criterio que .fab
+   (position: fixed dentro de su pantalla, así solo existe mientras
+   #screen-seccion está activa) pero arriba a la derecha, a la mitad del
+   tamaño y con fondo blanco fijo a propósito: tiene que distinguirse como
+   atajo y no mimetizarse con el resto de la tarjeta, ni en tema oscuro. */
+.fab-ajustes {
+  position: fixed;
+  top: calc(14px + var(--safe-top));
+  right: 18px;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  color: #333;
+  font-size: 15px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  cursor: pointer;
+  z-index: 10;
+}
+.fab-ajustes:active { opacity: 0.85; }
 
 /* ===== Modal ===== */
 .modal-overlay {

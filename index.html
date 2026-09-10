@@ -16,6 +16,21 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
 
+<!-- Tema (Claro/Oscuro/Auto): se decide ACÁ, sincrónico y antes de cargar
+     la hoja de estilos, para que no haya un flash del tema equivocado
+     mientras carga app.js (que es un módulo y se ejecuta recién después
+     de parsear todo el body). Misma cuenta que esOscuroSegunTema() en
+     app.js — si se cambia una, cambiar la otra. -->
+<script>
+(function () {
+  try {
+    var tema = localStorage.getItem("gn_tema") || "auto";
+    var oscuro = tema === "dark" || (tema !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.setAttribute("data-theme", oscuro ? "dark" : "light");
+  } catch (e) {}
+})();
+</script>
+
 <link rel="stylesheet" href="styles.css">
 
 <!-- Fuente manuscrita, solo para la frase debajo del selector de negocio
@@ -196,6 +211,8 @@
       <p class="muted">¿Qué querés ver?</p>
       <div id="seccion-cards" class="negocio-cards"></div>
     </div>
+
+    <button id="btn-atajo-ajustes" class="fab-ajustes" aria-label="Ajustes">⚙️</button>
   </div>
 
   <!-- ===== APP PRINCIPAL (Gastos / Balance / Ajustes) ===== -->
@@ -265,6 +282,16 @@
         <h2>Tu usuario</h2>
         <p id="ajustes-usuario-actual" class="muted small">—</p>
         <button id="btn-cambiar-usuario" class="btn-secondary" style="margin-top:10px;">Cambiar de usuario</button>
+      </div>
+
+      <div class="card">
+        <h2>Apariencia</h2>
+        <p class="muted small">"Auto" sigue la configuración del celular. Claro u Oscuro quedan fijos, sin importar esa configuración, y se guardan para la próxima vez.</p>
+        <div class="tema-selector">
+          <button type="button" class="tema-btn" data-tema="auto">Auto</button>
+          <button type="button" class="tema-btn" data-tema="light">☀️ Claro</button>
+          <button type="button" class="tema-btn" data-tema="dark">🌙 Oscuro</button>
+        </div>
       </div>
 
       <div class="card">

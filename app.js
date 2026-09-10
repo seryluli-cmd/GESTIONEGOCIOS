@@ -76,6 +76,7 @@ const LS_CONFIG_KEY = "gn_firebaseConfig";
 const LS_SOCIOS_CACHE = "gn_socios_cache";
 const LS_COLAB_CACHE = "gn_colaboradores_cache";
 const LS_USER_KEY = "gn_current_user"; // quién está identificado en este celular
+const LS_TEMA_KEY = "gn_tema"; // "auto" | "light" | "dark" — ver aplicarTema()
 const SERIES_VARS = ["--series-1", "--series-2", "--series-3"];
 const COLAB_VARS = ["--colab-1", "--colab-2", "--colab-3"];
 const NEUTRAL_VAR = "var(--text-muted)";
@@ -326,6 +327,37 @@ function showScreen(id) {
   $$(".screen").forEach(s => s.classList.remove("active"));
   $("#" + id).classList.add("active");
 }
+
+// ---------- Tema (Claro/Oscuro/Auto) ----------
+// Todo pasa por el atributo data-theme en <html>: la paleta oscura vive en
+// un solo lugar, :root[data-theme="dark"] (ver styles.css) — "Auto" no es
+// más que este mismo mecanismo, decidido acá copiando matchMedia en vez de
+// por elección del usuario. La primera aplicación (antes de que este
+// script exista) ya la hace un script sincrónico al principio de
+// index.html, para que no haya flash del tema equivocado; si se cambia la
+// cuenta de acá, cambiar también esa.
+const MQ_OSCURO = window.matchMedia("(prefers-color-scheme: dark)");
+
+function esOscuroSegunTema(tema) {
+  return tema === "dark" || (tema !== "light" && MQ_OSCURO.matches);
+}
+
+function aplicarTema(tema) {
+  document.documentElement.setAttribute("data-theme", esOscuroSegunTema(tema) ? "dark" : "light");
+  $$(".tema-btn").forEach(b => b.classList.toggle("active", b.dataset.tema === tema));
+}
+
+function elegirTema(tema) {
+  localStorage.setItem(LS_TEMA_KEY, tema);
+  aplicarTema(tema);
+}
+
+// Si la app queda abierta en "Auto" y cambia el modo del celular (ej. se
+// hace de noche y el sistema pasa a oscuro solo), hay que enterarse en el
+// momento, no recién la próxima vez que se abra.
+MQ_OSCURO.addEventListener("change", () => {
+  if ((localStorage.getItem(LS_TEMA_KEY) || "auto") === "auto") aplicarTema("auto");
+});
 
 function parseFirebaseConfig(raw) {
   if (!raw || !raw.trim()) throw new Error("Pegá la configuración de Firebase.");
@@ -848,6 +880,15 @@ function volverASeccion() {
   const biz = NEGOCIOS.find(n => n.id === negocioActual);
   if (biz) renderSeccionCards(biz);
   showScreen("screen-seccion");
+}
+
+// Atajo (⚙️) en "Elegir sección" — misma pantalla de Ajustes que la
+// pestaña de abajo en Gastos/Balance/Ajustes, sin pasar primero por
+// Gastos. No hace falta un render explícito: todas las pantallas se
+// redibujan solas con cada cambio en Firestore (ver bootApp()).
+function irAAjustesDirecto() {
+  switchTab("ajustes");
+  showScreen("screen-app");
 }
 
 // Gastos del negocio actualmente seleccionado (de la lista completa que
@@ -3269,6 +3310,9 @@ function wireEvents() {
   $("#fab-add").addEventListener("click", () => openModal());
   $("#btn-cancel-add").addEventListener("click", closeModal);
   $("#btn-cambiar-usuario").addEventListener("click", cambiarUsuario);
+  $$(".tema-btn").forEach(b => b.addEventListener("click", () => elegirTema(b.dataset.tema)));
+  $("#btn-atajo-ajustes").addEventListener("click", irAAjustesDirecto);
+  aplicarTema(localStorage.getItem(LS_TEMA_KEY) || "auto");
   $("#btn-pin-cancel").addEventListener("click", closePinModal);
   $("#btn-pin-confirm").addEventListener("click", confirmPinModal);
   $("#modal-pin").addEventListener("click", (e) => {
