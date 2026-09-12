@@ -62,7 +62,8 @@ cambiás una regla de negocio, actualizá el README.
 |---|---|
 | `aplicarConfigSocios(data)` | se vuelca el doc `config/socios` a las globales |
 | `cajaLocalCalculo()` | se calcula repuesto / gastado / queda de la caja |
-| `crearFilaGasto(g)` | se arma el `<li>` de un gasto (lista y detalle de caja) |
+| `crearFilaGasto(g)` | se arma el `<li>` de un gasto (lista, detalle de caja y Gastos S/Admin) |
+| `categoriasDelNegocio(negocioId)` | se lee la lista de categorías de gasto de un negocio |
 | `negociosPermitidos(nombre)` | se decide qué negocios ve una persona |
 | `esSocio()` / `aplicarPermisosDeVista()` | se decide qué ve un colaborador |
 | `negocioTieneCajaLocal(id)` | se pregunta si un negocio tiene caja del local |

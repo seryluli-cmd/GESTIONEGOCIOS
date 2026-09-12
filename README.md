@@ -56,20 +56,23 @@ credenciales públicas del proyecto (`firebaseConfig`), protegido por reglas de
 seguridad que exigen autenticación anónima.
 
 - **`config/socios`** (un solo documento) —
-  `{ socios: [string, string, string], colaboradores: string[], colaboradorNegocio: { [nombre]: "pancho"|"heladeria" }, admins: string[], pins: { [nombre]: "1234" }, claveMaestraAdmin: string, cajaLocalMonto: number }`.
+  `{ socios: [string, string, string], colaboradores: string[], colaboradorNegocio: { [nombre]: "pancho"|"heladeria" }, admins: string[], pins: { [nombre]: "1234" }, claveMaestraAdmin: string, cajaLocalMonto: number, categoriasGasto: { pancho: string[], heladeria: string[] } }`.
   Se crea una única vez, la primera vez que alguien conecta el negocio (ver
   `handleSetupGuardar`). El resto de los dispositivos lo leen y ya no lo
   vuelven a pedir. `admins` y `pins` se explican en la sección de abajo.
   `colaboradorNegocio` se explica en "Acceso restringido por negocio" más
   abajo — un colaborador que no aparece ahí ve los 2 negocios.
+  `categoriasGasto` se explica en "Categorías de gastos y gastos privados"
+  más abajo.
   **Los 3 lugares que leen este doc** (`connectAndBoot`, `listenSocios`,
   `handleSetupConnect`) vuelcan el resultado a las variables globales a
   través de una única función, `aplicarConfigSocios(data)` — si se agrega
   un campo nuevo al doc (como pasó con `cajaLocalMonto`), alcanza con
   tocar esa función, no los 3 lugares.
 - **`gastos`** (colección) — un doc por gasto:
-  `{ importe, descripcion, categoria, pagadoPor, formaPago, negocio, fecha, creadoEn, fotos? }`.
-  `fotos` es una lista de hasta 5 `{url, path}` (una factura puede tener
+  `{ importe, descripcion, categoria, pagadoPor, formaPago, negocio, fecha, creadoEn, soloAdmin?, fotos? }`.
+  `soloAdmin` se explica en "Categorías de gastos y gastos privados" más
+  abajo. `fotos` es una lista de hasta 5 `{url, path}` (una factura puede tener
   varias hojas) — único lugar que la lee es `fotosDeGasto(g)`, que también
   entiende el formato viejo de una sola foto (`fotoUrl`/`fotoPath`, gastos
   cargados antes de este cambio) sin necesidad de migrarlos: se pasan solos
@@ -238,6 +241,11 @@ plata de los socios ni los totales del negocio:
 | **Balance** (cuánto puso cada socio, quién le debe a quién) | ✅ | ❌ |
 | **Resumen mensual** (facturado, gastos totales, rentabilidad) | ✅ | ❌ |
 | **Exportar datos** (CSV con todo el historial del negocio) | ✅ | ❌ |
+| **Gastos S/Admin** (gastos marcados privados) | Solo admin\* | ❌ |
+
+\* "Gastos S/Admin" no se filtra por `esSocio()` como el resto de esta
+tabla, sino por `esAdmin` — ver "Categorías de gastos y gastos privados"
+más abajo. Un socio que no es admin tampoco la ve.
 
 - La pestaña **Balance** y la tarjeta **Exportar datos** de Ajustes
   (`#ajustes-export-card`) se esconden en `aplicarPermisosDeVista()`, que se
@@ -255,6 +263,48 @@ plata de los socios ni los totales del negocio:
 real. Los datos siguen estando en Firestore al alcance de cualquiera que
 tenga la `firebaseConfig` — esconder botones evita el acceso accidental o
 casual, no a alguien decidido a mirar.
+
+## Categorías de gastos y gastos privados
+
+Las categorías de gasto son **editables por un admin** desde Ajustes →
+"Categorías de gastos", en vez de estar fijas en el código — cada una es
+un simple nombre y se guardan en Firestore (`config/socios`, campo
+`categoriasGasto`, un array de strings por negocio, ver
+`categoriasDelNegocio()` en app.js). Cada negocio tiene su propia lista
+(Pancho Recreo y Heladería Pablo venden cosas distintas), así que la
+tarjeta de Ajustes siempre opera sobre `negocioActual`. Una categoría no
+tiene ninguna noción de privacidad — eso es un flag aparte, por gasto
+individual (ver debajo).
+
+**Gastos privados ("Gasto Admin")**: al cargar o editar un gasto, el admin
+(y solo el admin — quien no sea admin ni ve el campo) puede tildar el
+checkbox **"🔒 Gasto Admin"**, que guarda `soloAdmin: true` en ese gasto
+puntual — de cualquier categoría, no hace falta que la categoría sea
+especial. Queda oculto para quien no sea admin en 4 lugares: la lista de
+Gastos común (`renderGastos()`), el detalle de Caja del local
+(`renderCajaLocalDetalle()`, por si algún gasto "caja" llegara a marcarse
+privado), el CSV exportado (`exportGastosCSV()`) y el desglose "por
+categoría" de Resumen mensual (`renderResumen()`) — en los 4 casos se
+filtra por el flag `soloAdmin` del gasto, no por su categoría. Para
+cargarlos y verlos existe una pantalla aparte, **"Gastos S/Admin"**
+(`soloAdmin: true` en `SECCIONES`, misma lógica que cualquier otra
+tarjeta admin-only) — mismo formulario/lista/edición/foto que Gastos
+común, reusando `crearFilaGasto()` y el modal `openModal(gasto, { soloAdmin })`
+(ver CLAUDE.md regla 1) — no reemplaza la lista común: el admin que entra
+a "Gastos" sigue viendo también los privados mezclados (con un aviso "🔒
+Solo admin" en la fila para distinguirlos).
+
+**El total del mes en Resumen mensual SÍ suma los gastos privados para
+todos los que llegan a ver esa pantalla** (los socios, sean o no admin) —
+a diferencia del desglose por categoría de arriba, el total y la
+rentabilidad no filtran nada. Lo único que se esconde de un socio sin
+admin es el monto exacto de una categoría si tiene gastos privados mezclados
+(para no revelar, por ejemplo, el monto de un sueldo puntual), no el total
+general del mes.
+
+Borrar una categoría no toca los gastos que ya la tienen cargada (queda el
+nombre guardado tal cual en cada doc de `gastos`, ver `renderCategoriaOptions()`
+en app.js) — solo deja de poder elegirse para gastos nuevos.
 
 ## Acceso restringido por negocio (solo colaboradores)
 
@@ -289,12 +339,16 @@ en app.js oculta todas y muestra una. Jerarquía:
 
 ```
 screen-negocio (elegir Pancho / Heladería)
-  └─ screen-seccion (elegir Gastos / Facturado / Resumen mensual)
+  └─ screen-seccion (elegir Gastos / Facturado / Resumen mensual / Gastos S/Admin*)
        ├─ screen-app       (tabs: Gastos, Balance, Ajustes)
        ├─ screen-facturado
+       ├─ screen-gastos-admin (Gastos S/Admin*)
        └─ screen-resumen
 screen-ajustes → screen-fotos (fotos guardadas, solo alcanzable desde Ajustes)
 ```
+\* "Gastos S/Admin" es `soloAdmin` en `SECCIONES` — no aparece como
+tarjeta para quien no sea admin (ver "Categorías de gastos y gastos
+privados" más arriba).
 
 ⚠️ Dentro de `screen-app` hay tabs (`.tab` + `.tabbtn`) manejadas por
 `switchTab()`. Las pantallas de Facturado/Resumen/Fotos **también** usan la
