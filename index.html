@@ -317,6 +317,20 @@
         <button type="button" id="btn-guardar-clave-maestra" class="btn-secondary">Guardar</button>
       </div>
 
+      <div class="card hidden" id="ajustes-categorias-card">
+        <h2>Categorías de gastos</h2>
+        <p class="muted small">Categorías de <b id="ajustes-categorias-negocio-nombre">este negocio</b> — cada negocio tiene las suyas. Para marcar un gasto como privado (que no lo vea el resto del equipo) usá el checkbox "🔒 Gasto Admin" al cargarlo o editarlo — no hace falta una categoría aparte para eso.</p>
+        <div id="ajustes-categorias-list" class="ajustes-socios-list"></div>
+
+        <div style="margin-top:14px;">
+          <div class="field">
+            <label for="input-nueva-categoria">Nueva categoría</label>
+            <input type="text" id="input-nueva-categoria" placeholder="Ej: Impuestos" maxlength="30">
+          </div>
+          <button type="button" id="btn-agregar-categoria" class="btn-secondary" style="margin-top:10px;">+ Agregar categoría</button>
+        </div>
+      </div>
+
       <!-- La caja del local ya no se edita desde acá: se maneja entera
            desde Gastos → Caja del local → Detalle, donde cada reposición
            queda registrada con monto, nota y autor. -->
@@ -419,6 +433,43 @@
     </section>
 
     <button id="fab-add-facturado" class="fab" aria-label="Agregar cierre">+</button>
+  </div>
+
+  <!-- ===== PANTALLA: GASTOS S/ADMIN (privados, solo admin) ===== -->
+  <div id="screen-gastos-admin" class="screen">
+
+    <header class="topbar">
+      <button id="btn-back-to-seccion-gastosadmin" class="topbar-title" aria-label="Volver a la sección">
+        <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
+        <span class="logo-badge small" id="gastos-admin-icon-badge">🔒</span>
+        <span class="topbar-stack">
+          <span id="gastos-admin-titulo">Gastos S/Admin</span>
+          <span class="topbar-subtitulo">Gastos S/Admin</span>
+        </span>
+      </button>
+    </header>
+
+    <section class="tab active">
+      <div class="month-nav">
+        <button id="btn-gastos-admin-mes-anterior" class="month-nav-btn" aria-label="Mes anterior">‹</button>
+        <div class="month-nav-label" id="gastos-admin-mes-label">Mes</div>
+        <button id="btn-gastos-admin-mes-siguiente" class="month-nav-btn" aria-label="Mes siguiente">›</button>
+      </div>
+
+      <div class="stat-hero">
+        <div class="stat-hero-label">Total gastado (privado)</div>
+        <div class="stat-hero-value" id="total-mes-admin">$0</div>
+      </div>
+
+      <div id="expenses-admin-empty" class="empty-state hidden">
+        <p>Todavía no hay gastos privados cargados.</p>
+        <p class="muted small">Tocá el botón + para agregar el primero.</p>
+      </div>
+
+      <ul id="expenses-admin-list" class="expenses-list"></ul>
+    </section>
+
+    <button id="fab-add-gastos-admin" class="fab" aria-label="Agregar gasto privado">+</button>
   </div>
 
   <!-- ===== PANTALLA: RESUMEN MENSUAL ===== -->
@@ -591,15 +642,8 @@
 
       <div class="field">
         <label for="input-categoria">Categoría</label>
-        <select id="input-categoria">
-          <option value="Panchos">Panchos</option>
-          <option value="Bebidas">Bebidas</option>
-          <option value="Papelería">Papelería</option>
-          <option value="Publicidad">Publicidad</option>
-          <option value="Topping">Topping</option>
-          <option value="Sueldos">Sueldos</option>
-          <option value="Otros">Otros</option>
-        </select>
+        <!-- Opciones armadas por JS según el negocio y el contexto (ver renderCategoriaOptions en app.js) -->
+        <select id="input-categoria"></select>
       </div>
 
       <div class="field" id="campo-pagador">
@@ -609,6 +653,11 @@
 
       <div class="field">
         <label class="checkbox-label"><input type="checkbox" id="input-falta-abonar"> ⚠️ Falta abonar</label>
+      </div>
+
+      <!-- Solo visible para el admin (ver openModal en app.js) — quien no sea admin nunca puede marcar un gasto como privado. -->
+      <div class="field hidden" id="campo-gasto-admin">
+        <label class="checkbox-label"><input type="checkbox" id="input-gasto-admin"> 🔒 Gasto Admin (no lo ve el resto del equipo)</label>
       </div>
 
       <div class="field" id="campo-forma-pago">
