@@ -1234,6 +1234,7 @@ function renderVisorFotos() {
   $("#visor-fotos-contador").classList.toggle("hidden", !varias);
   $("#btn-visor-anterior").classList.toggle("hidden", !varias);
   $("#btn-visor-siguiente").classList.toggle("hidden", !varias);
+  resetVisorZoom();
 }
 
 function visorFotosMover(delta) {
@@ -1244,6 +1245,101 @@ function visorFotosMover(delta) {
 
 function closeModalVisorFotos() {
   $("#modal-visor-fotos").classList.remove("active");
+  resetVisorZoom();
+}
+
+// ---------- Zoom con pellizco del visor de fotos ----------
+// No pasa por ninguna variable compartida con el resto de la app: es
+// puramente visual y efímero (se resetea solo al cambiar de foto o cerrar
+// el visor), no hay otra pantalla que necesite leerlo.
+const VISOR_ZOOM_MAX = 4;
+let visorZoomScale = 1;
+let visorZoomPanX = 0;
+let visorZoomPanY = 0;
+let visorZoomPinchDistInicial = 0;
+let visorZoomPinchScaleInicial = 1;
+let visorZoomPaneando = false;
+let visorZoomPanStartX = 0;
+let visorZoomPanStartY = 0;
+let visorZoomPanTouchStartX = 0;
+let visorZoomPanTouchStartY = 0;
+
+function resetVisorZoom() {
+  visorZoomScale = 1;
+  visorZoomPanX = 0;
+  visorZoomPanY = 0;
+  const img = $("#visor-fotos-img");
+  if (img) img.style.transform = "";
+}
+
+// Evita que el pellizco arrastre la imagen fuera del recuadro visible —
+// el límite depende de cuánto se agrandó (a escala 1 no se puede mover).
+function clampVisorZoomPan(viewport) {
+  const maxX = Math.max(0, (visorZoomScale - 1) * viewport.offsetWidth / 2);
+  const maxY = Math.max(0, (visorZoomScale - 1) * viewport.offsetHeight / 2);
+  visorZoomPanX = Math.min(maxX, Math.max(-maxX, visorZoomPanX));
+  visorZoomPanY = Math.min(maxY, Math.max(-maxY, visorZoomPanY));
+}
+
+function aplicarVisorZoomTransform(img) {
+  img.style.transform = visorZoomScale === 1
+    ? ""
+    : `translate(${visorZoomPanX}px, ${visorZoomPanY}px) scale(${visorZoomScale})`;
+}
+
+// Se cablea una sola vez al arrancar la app (ver wireEventListeners) — el
+// visor reutiliza siempre el mismo #visor-fotos-viewport/#visor-fotos-img,
+// no hace falta recablear en cada abrirVisorFotos().
+function wireVisorFotosZoom() {
+  const viewport = $("#visor-fotos-viewport");
+  const img = $("#visor-fotos-img");
+
+  viewport.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 2) {
+      const [t1, t2] = e.touches;
+      visorZoomPinchDistInicial = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      visorZoomPinchScaleInicial = visorZoomScale;
+      visorZoomPaneando = false;
+    } else if (e.touches.length === 1 && visorZoomScale > 1) {
+      visorZoomPaneando = true;
+      visorZoomPanTouchStartX = e.touches[0].clientX;
+      visorZoomPanTouchStartY = e.touches[0].clientY;
+      visorZoomPanStartX = visorZoomPanX;
+      visorZoomPanStartY = visorZoomPanY;
+    }
+  }, { passive: true });
+
+  viewport.addEventListener("touchmove", (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const [t1, t2] = e.touches;
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      visorZoomScale = Math.min(VISOR_ZOOM_MAX, Math.max(1, visorZoomPinchScaleInicial * (dist / visorZoomPinchDistInicial)));
+      clampVisorZoomPan(viewport);
+      aplicarVisorZoomTransform(img);
+    } else if (e.touches.length === 1 && visorZoomPaneando) {
+      e.preventDefault();
+      visorZoomPanX = visorZoomPanStartX + (e.touches[0].clientX - visorZoomPanTouchStartX);
+      visorZoomPanY = visorZoomPanStartY + (e.touches[0].clientY - visorZoomPanTouchStartY);
+      clampVisorZoomPan(viewport);
+      aplicarVisorZoomTransform(img);
+    }
+  }, { passive: false });
+
+  viewport.addEventListener("touchend", (e) => {
+    if (e.touches.length === 0) {
+      visorZoomPaneando = false;
+      if (visorZoomScale <= 1) resetVisorZoom();
+    } else if (e.touches.length === 1) {
+      // Se soltó un dedo del pellizco a dos — si sigue agrandado, seguir
+      // paneando con el que queda en vez de cortar el gesto en seco.
+      visorZoomPaneando = visorZoomScale > 1;
+      visorZoomPanTouchStartX = e.touches[0].clientX;
+      visorZoomPanTouchStartY = e.touches[0].clientY;
+      visorZoomPanStartX = visorZoomPanX;
+      visorZoomPanStartY = visorZoomPanY;
+    }
+  }, { passive: true });
 }
 
 // Arma la fila <li> de un gasto — extraído de renderGastos() para
@@ -3538,6 +3634,7 @@ function wireEvents() {
   $("#modal-visor-fotos").addEventListener("click", (e) => {
     if (e.target.id === "modal-visor-fotos") closeModalVisorFotos();
   });
+  wireVisorFotosZoom();
   $$("#forma-pago-options .pagador-chip").forEach(chip => {
     chip.addEventListener("click", () => selectFormaPago(chip.dataset.forma));
   });
