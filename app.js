@@ -14,6 +14,15 @@ import {
   fbSdk, loadFirebaseSdk, fbApp, auth, db, storage,
   parseFirebaseConfig, initFirebase
 } from "./js/firebase-sdk.js";
+import {
+  negocioTieneCajaLocal, categoriasDelNegocio, aplicarConfigSocios, connectAndBoot,
+  gastosDelNegocio, facturacionesDelNegocio, reposicionesDelNegocio, ideasDelNegocio,
+  listenSocios, listenGastos, listenFacturacion, listenReposiciones, listenIdeas,
+  setSyncOffline, listenConnectivity, setClaveMaestraLocal, marcarCajaLocalMigrada,
+  categoriasGasto, categoriasGastoSembrado, socios, colaboradores, colaboradorNegocio,
+  admins, pins, claveMaestraAdmin, cajaLocalMonto, gastos, facturaciones, reposiciones,
+  reposicionesCargadas, ideas
+} from "./js/datos.js";
 
 
 // ---------- Estado ----------
@@ -31,9 +40,9 @@ const DEFAULT_FIREBASE_CONFIG = {
   messagingSenderId: "318057443268",
   appId: "1:318057443268:web:5ef716519070644968fe91"
 };
-const LS_CONFIG_KEY = "gn_firebaseConfig";
-const LS_SOCIOS_CACHE = "gn_socios_cache";
-const LS_COLAB_CACHE = "gn_colaboradores_cache";
+export const LS_CONFIG_KEY = "gn_firebaseConfig";
+export const LS_SOCIOS_CACHE = "gn_socios_cache";
+export const LS_COLAB_CACHE = "gn_colaboradores_cache";
 const LS_USER_KEY = "gn_current_user"; // quién está identificado en este celular
 const SERIES_VARS = ["--series-1", "--series-2", "--series-3"];
 const COLAB_VARS = ["--colab-1", "--colab-2", "--colab-3"];
@@ -42,43 +51,11 @@ const NEUTRAL_VAR = "var(--text-muted)";
 // Los 2 negocios. Cada gasto queda etiquetado con uno de estos "id",
 // y tanto la lista de gastos como el balance se calculan por separado
 // para cada negocio (mismos 3 socios, cuentas independientes).
-const NEGOCIOS = [
+export const NEGOCIOS = [
   { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)", tieneCajaLocal: true },
   { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false }
 ];
 
-// La Caja del local hoy es "solo de Pancho", pero en vez de repetir
-// comparaciones con el string "pancho" desparramadas en cada función que
-// la muestra/oculta (render, modal de gasto, etc.), se pregunta acá — si
-// el día de mañana Heladería también quiere una, alcanza con poner
-// tieneCajaLocal:true en su entrada de NEGOCIOS, sin tocar el resto.
-function negocioTieneCajaLocal(id) {
-  const biz = NEGOCIOS.find(b => b.id === id);
-  return !!(biz && biz.tieneCajaLocal);
-}
-
-// Categorías de gastos: distintas por negocio, porque Pancho Recreo y
-// Heladería Pablo venden cosas totalmente distintas. Son simples nombres,
-// editables por un admin desde Ajustes → "Categorías de gastos" (ver
-// renderAjustesCategorias) — sin ninguna noción de privacidad: un gasto
-// se marca como privado con el checkbox "🔒 Gasto Admin" (campo soloAdmin
-// del gasto, ver openModal), independiente de su categoría. Se guardan en
-// Firestore (config/socios, campo categoriasGasto, un array por negocio)
-// para que un admin pueda crear/borrar una categoría sin tocar código —
-// ver aplicarConfigSocios(). CATEGORIAS_GASTO_DEFAULT es la semilla para
-// instalaciones viejas que todavía no tienen ese campo (las mismas
-// categorías que antes estaban fijas en este archivo).
-const CATEGORIAS_GASTO_DEFAULT = {
-  pancho: ["Panchos", "Bebidas", "Papelería", "Publicidad", "Topping", "Sueldos", "Otros"],
-  heladeria: ["Helado", "Tortas de repostería", "Café", "Medialunas", "Fiambres",
-              "Art Limpieza", "Sueldos", "Vale $$$", "Gastos Fijos", "Gastos varios"]
-};
-let categoriasGasto = CATEGORIAS_GASTO_DEFAULT;
-let categoriasGastoSembrado = false; // evita reescribir el default más de una vez por sesión
-
-function categoriasDelNegocio(negocioId) {
-  return categoriasGasto[negocioId] || categoriasGasto.pancho || [];
-}
 
 // Reparto de gastos entre los 3 socios: NO es igualitario (1/3 cada uno)
 // — cada uno "debería" poner este % del total de lo gastado, según lo
@@ -97,32 +74,7 @@ let fotosGastoModal = []; // fotos del gasto que se está cargando/editando, en 
 let fotosGastoABorrar = []; // paths de Storage de fotos existentes que se sacaron en este modal — se borran recién si se confirma "Guardar" (cancelar el modal no borra nada)
 let selectedFotoFacturadoBlob = null; // foto comprimida, lista para subir (modal de Cierre de Turno — sigue siendo una sola, no forma parte de este cambio)
 const FOTO_RETENCION_DIAS = 120; // ~4 meses — pasado esto, se borra sola la foto (no el gasto)
-let fotosLimpiezaHecha = false;
-let socios = [];           // ["Sergio", "Ana", "Marcos"] — los 3 socios, entran en el reparto
-let colaboradores = [];    // ["Encargada"] — pueden pagar/cargar, NO entran en el reparto
-let colaboradorNegocio = {}; // { "Encargada": "pancho" | "heladeria" } — si un colaborador no
-                              // aparece acá, ve los 2 negocios (ver negociosPermitidos()). Los
-                              // 3 socios siempre ven los 2, nunca están en este mapa.
-let admins = [];           // subconjunto de nombres (normalmente socios) con permiso para editar/borrar
-let pins = {};             // { "Sergio": "1234", ... } — PIN fijo de 4 dígitos por persona (ver README: no es seguridad real, solo identificación)
-let claveMaestraAdmin = ""; // clave compartida entre los admins, solo para CREAR su PIN la primera vez
-                             // en un celular nuevo (ver openPinModal/confirmPinModal) — evita que cualquiera
-                             // tocando "Sergio" por primera vez se autoasigne el PIN de admin sin saberla.
-                             // Si no está configurada (vacía), no se pide — no es seguridad real, ver README.
-let cajaLocalMonto = 0;     // OBSOLETO: era el total repuesto de la caja del local cuando se
-                             // manejaba con un solo número editable desde Ajustes. Ahora eso vive
-                             // en la colección "reposiciones" y este campo lo migra a cero
-                             // migrarMontoInicialCaja(). No se edita desde ningún lado; se sigue
-                             // sumando en cajaLocalCalculo() solo por si todavía no se migró (o un
-                             // celular tiene la config vieja en caché) — es plata real pendiente de
-                             // pasar a "reposiciones", no un parche para tapar una carga lenta (eso
-                             // lo maneja reposicionesCargadas).
-let gastos = [];           // TODOS los gastos, de los 2 negocios — [{id, importe, descripcion, categoria, pagadoPor, fecha, negocio}]
-let facturaciones = [];    // TODOS los cierres diarios, de los 2 negocios — [{id, importe, registradoPor, fecha, negocio}]
-let reposiciones = [];     // TODAS las reposiciones de la caja del local, de los 2 negocios — [{id, monto, nota, negocio, repuestoPor, fecha}], filtradas por reposicionesDelNegocio()
-let reposicionesCargadas = false; // false hasta el primer snapshot de listenReposiciones() — antes de eso, reposiciones=[] no significa "caja vacía", significa "todavía no sabemos". Ver cajaLocalCalculo().
-let ideas = [];            // TODAS las ideas de mejora, de los 2 negocios — [{id, texto, estado, propuestoPor, negocio, creadoEn}], filtradas por ideasDelNegocio()
-let negocioActual = null;  // "pancho" | "heladeria"
+export let negocioActual = null;  // "pancho" | "heladeria"
 let seccionActual = null;  // "gastos" | "facturado" | "resumen"
 let selectedPagador = null;
 let selectedRegistrador = null;
@@ -131,8 +83,9 @@ let gastosMesOffset = 0;   // ídem, para la pantalla de Gastos — se reinicia 
 let facturadoMesOffset = 0; // ídem, para la pantalla de Facturado/Cierre de turno
 let gastosAdminMesOffset = 0; // ídem, para la pantalla de Gastos S/Admin
 let pendingFirebaseConfig = null; // config guardada entre el paso 1 y 2 del setup inicial
-let usuarioActual = null;  // nombre con el que se identificó este celular (ver resumeSession)
-let esAdmin = false;       // usuarioActual ∈ admins
+export let usuarioActual = null;  // nombre con el que se identificó este celular (ver resumeSession)
+export let esAdmin = false;       // usuarioActual ∈ admins
+export function setEsAdmin(valor) { esAdmin = valor; }
 let editingGastoId = null;      // id del gasto que se está editando en el modal, o null si es uno nuevo
 let selectedFormaPago = "efectivo"; // "efectivo" | "digital" | "mixto" — elegido en el modal de gasto
 let mixtoUltimoEditado = null;  // "efectivo" | "digital" | null — cuál de los 2 campos del desglose se tipeó a mano por última vez (el otro se recalcula solo)
@@ -173,65 +126,9 @@ function allPagadores() {
   return socios.concat(colaboradores);
 }
 
-// Vuelca el doc config/socios en las variables globales — se llama desde
-// los 3 lugares donde se lee ese doc (connectAndBoot, listenSocios,
-// handleSetupConnect) para no repetir el mismo bloque 3 veces. Si el día
-// de mañana se agrega un campo nuevo al doc (como pasó con
-// cajaLocalMonto), alcanza con tocar esta única función.
-function aplicarConfigSocios(data) {
-  socios = data.socios;
-  colaboradores = Array.isArray(data.colaboradores) ? data.colaboradores : [];
-  colaboradorNegocio = data.colaboradorNegocio && typeof data.colaboradorNegocio === "object" ? data.colaboradorNegocio : {};
-  admins = Array.isArray(data.admins) ? data.admins : [];
-  pins = data.pins && typeof data.pins === "object" ? data.pins : {};
-  claveMaestraAdmin = typeof data.claveMaestraAdmin === "string" ? data.claveMaestraAdmin : "";
-  cajaLocalMonto = Number(data.cajaLocalMonto) || 0;
-  if (data.categoriasGasto && typeof data.categoriasGasto === "object") {
-    categoriasGasto = data.categoriasGasto;
-  }
-}
-
-async function connectAndBoot(config, namesFromInput, colabFromInput) {
-  await initFirebase(config);
-  const sdk = fbSdk;
-
-  const socioDocRef = sdk.doc(db, "config", "socios");
-  const snap = await sdk.getDoc(socioDocRef);
-
-  if (snap.exists() && Array.isArray(snap.data().socios) && snap.data().socios.length === 3) {
-    const data = snap.data();
-    aplicarConfigSocios(data);
-    if (!(data.categoriasGasto && typeof data.categoriasGasto === "object")) {
-      // Instalación de antes de que existiera este campo — se siembra una
-      // sola vez con el default, para que quede persistido en Firestore.
-      categoriasGastoSembrado = true;
-      categoriasGasto = CATEGORIAS_GASTO_DEFAULT;
-      await sdk.updateDoc(socioDocRef, { categoriasGasto }).catch(() => {});
-    }
-  } else {
-    if (!namesFromInput || namesFromInput.some(n => !n.trim())) {
-      throw new Error("Completá los nombres de los 3 socios.");
-    }
-    socios = namesFromInput.map(n => n.trim());
-    colaboradores = (colabFromInput || []).map(n => n.trim()).filter(Boolean);
-    colaboradorNegocio = {};
-    admins = [];
-    pins = {};
-    claveMaestraAdmin = "llavez";
-    categoriasGasto = CATEGORIAS_GASTO_DEFAULT;
-    categoriasGastoSembrado = true;
-    await sdk.setDoc(socioDocRef, { socios, colaboradores, colaboradorNegocio, admins, pins, claveMaestraAdmin, categoriasGasto });
-  }
-
-  localStorage.setItem(LS_CONFIG_KEY, JSON.stringify(config));
-  localStorage.setItem(LS_SOCIOS_CACHE, JSON.stringify(socios));
-  localStorage.setItem(LS_COLAB_CACHE, JSON.stringify(colaboradores));
-
-  bootApp();
-}
 
 // ---------- Boot principal (ya configurado) ----------
-function bootApp() {
+export function bootApp() {
   renderPagadorChips();
   renderPagadorChipsFacturado();
   renderAjustesSocios();
@@ -350,7 +247,7 @@ function esSocio() {
 // tarjeta de sección y no una pestaña. Se llama cada vez que puede
 // cambiar quién está identificado o la lista de socios
 // (setUsuarioActual y listenSocios).
-function aplicarPermisosDeVista() {
+export function aplicarPermisosDeVista() {
   const soloSocios = !esSocio();
   $('.tabbtn[data-tab="balance"]').classList.toggle("hidden", soloSocios);
   $("#ajustes-export-card").classList.toggle("hidden", soloSocios);
@@ -498,7 +395,7 @@ async function confirmPinModal() {
 }
 
 // ---------- Selector de negocio ----------
-function renderNegocioCards() {
+export function renderNegocioCards() {
   const wrap = $("#negocio-cards");
   wrap.innerHTML = "";
   // Antes de identificarse todavía no hay a quién filtrarle la lista —
@@ -651,146 +548,6 @@ function irAAjustesDirecto() {
   showScreen("screen-app");
 }
 
-// Gastos del negocio actualmente seleccionado (de la lista completa que
-// ya sincronizamos con Firestore).
-function gastosDelNegocio() {
-  return gastos.filter(g => g.negocio === negocioActual);
-}
-
-// Cierres de facturación del negocio actualmente seleccionado.
-function facturacionesDelNegocio() {
-  return facturaciones.filter(f => f.negocio === negocioActual);
-}
-
-// Ideas/Metas del negocio actualmente seleccionado. Antes eran
-// compartidas entre los 2 negocios (sin campo "negocio"); ahora cada
-// negocio tiene las suyas, igual que gastos y facturación. Las ideas
-// viejas, creadas antes de este cambio, no tienen "negocio" guardado —
-// se siguen mostrando en los dos negocios (en vez de desaparecer) hasta
-// que alguien las recargue como nuevas, ya con negocio asignado.
-// Reposiciones de la caja del negocio actualmente seleccionado. Mismo
-// criterio que ideasDelNegocio(): si algún doc quedara sin "negocio"
-// (no debería pasar, pero un import viejo o manual podría hacerlo), se
-// sigue mostrando en los dos negocios en vez de desaparecer sin aviso.
-function reposicionesDelNegocio() {
-  return reposiciones.filter(r => r.negocio === negocioActual || !r.negocio);
-}
-
-function ideasDelNegocio() {
-  return ideas.filter(i => i.negocio === negocioActual || !i.negocio);
-}
-
-function listenSocios() {
-  const socioDocRef = fbSdk.doc(db, "config", "socios");
-  fbSdk.onSnapshot(socioDocRef, (snap) => {
-    if (snap.exists() && Array.isArray(snap.data().socios)) {
-      const data = snap.data();
-      aplicarConfigSocios(data);
-      if (!(data.categoriasGasto && typeof data.categoriasGasto === "object") && !categoriasGastoSembrado) {
-        // Instalación de antes de que existiera este campo — se siembra una
-        // sola vez con el default, para que quede persistido en Firestore.
-        categoriasGastoSembrado = true;
-        categoriasGasto = CATEGORIAS_GASTO_DEFAULT;
-        fbSdk.updateDoc(socioDocRef, { categoriasGasto }).catch(() => {});
-      }
-      localStorage.setItem(LS_SOCIOS_CACHE, JSON.stringify(socios));
-      localStorage.setItem(LS_COLAB_CACHE, JSON.stringify(colaboradores));
-      esAdmin = usuarioActual ? admins.includes(usuarioActual) : false;
-      migrarMontoInicialCaja();
-      aplicarPermisosDeVista();
-      renderPagadorChips();
-      renderPagadorChipsFacturado();
-      renderAjustesSocios();
-      renderNegocioCards();
-      renderBalance();
-      renderGastos();
-      renderGastosAdmin();
-      renderFacturado();
-      renderIdeas();
-      if (negocioActual) renderResumen();
-    }
-  });
-}
-
-function listenGastos() {
-  const q = fbSdk.query(fbSdk.collection(db, "gastos"), fbSdk.orderBy("fecha", "desc"));
-  fbSdk.onSnapshot(q, (snapshot) => {
-    gastos = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderGastos();
-    renderGastosAdmin();
-    renderBalance();
-    // La pantalla "Caja del local — Detalle" también lista gastos (los
-    // "caja"), no solo reposiciones — si no se refresca acá, editar o
-    // borrar uno desde esa pantalla la dejaba con datos viejos hasta que
-    // cambiara algo de reposiciones (bug real que hubo).
-    renderCajaLocalDetalle();
-    if (negocioActual) renderResumen();
-    setSyncOffline(false);
-    if (!fotosLimpiezaHecha) {
-      fotosLimpiezaHecha = true;
-      limpiarFotosVencidas();
-    }
-  }, (err) => {
-    console.error(err);
-    setSyncOffline(true);
-  });
-}
-
-function listenFacturacion() {
-  const q = fbSdk.query(fbSdk.collection(db, "facturacion"), fbSdk.orderBy("fecha", "desc"));
-  fbSdk.onSnapshot(q, (snapshot) => {
-    facturaciones = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderFacturado();
-    if (negocioActual) renderResumen();
-    setSyncOffline(false);
-  }, (err) => {
-    console.error(err);
-    setSyncOffline(true);
-  });
-}
-
-// Reposiciones de la caja del local (ver cajaLocalCalculo). Es una
-// colección aparte y no un número en config/socios como el monto
-// inicial, justamente para tener el historial de quién puso cuánto,
-// cuándo y por qué.
-function listenReposiciones() {
-  const q = fbSdk.query(fbSdk.collection(db, "reposiciones"), fbSdk.orderBy("fecha", "desc"));
-  fbSdk.onSnapshot(q, (snapshot) => {
-    reposiciones = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    reposicionesCargadas = true;
-    renderGastos();          // la card de Caja del local vive en la pestaña Gastos
-    renderCajaLocalDetalle();
-    if (negocioActual) renderResumen();
-    setSyncOffline(false);
-  }, (err) => {
-    console.error(err);
-    setSyncOffline(true);
-  });
-}
-
-// Compartidas entre los 2 negocios a propósito — no se filtran por "negocio".
-function listenIdeas() {
-  const q = fbSdk.query(fbSdk.collection(db, "ideas"), fbSdk.orderBy("creadoEn", "desc"));
-  fbSdk.onSnapshot(q, (snapshot) => {
-    ideas = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderIdeas();
-    setSyncOffline(false);
-  }, (err) => {
-    console.error(err);
-    setSyncOffline(true);
-  });
-}
-
-function setSyncOffline(isOffline) {
-  $$(".sync-dot").forEach(d => d.classList.toggle("offline", isOffline));
-}
-
-function listenConnectivity() {
-  const update = () => setSyncOffline(!navigator.onLine);
-  window.addEventListener("online", update);
-  window.addEventListener("offline", update);
-  update();
-}
 
 // ---------- Render: Gastos ----------
 // Fecha base del mes elegido en la pantalla de Gastos (ver
@@ -809,7 +566,7 @@ function gastosFechaBase() {
 // Ahora, igual que Resumen mensual, se ve un mes a la vez — por defecto
 // el actual (ver selectSeccion()) — con flechas para ir a uno anterior
 // si hace falta editar o borrar algo viejo.
-function renderGastos() {
+export function renderGastos() {
   const list = $("#expenses-list");
   const empty = $("#expenses-empty");
   list.innerHTML = "";
@@ -863,7 +620,7 @@ function gastosAdminFechaBase() {
   return d;
 }
 
-function renderGastosAdmin() {
+export function renderGastosAdmin() {
   const list = $("#expenses-admin-list");
   const empty = $("#expenses-admin-empty");
   list.innerHTML = "";
@@ -1204,7 +961,7 @@ function renderCajaLocalCard() {
 // porque esta pantalla lista gastos: si se edita/borra uno "caja" con la
 // pantalla abierta, tiene que reflejarse al toque y no quedar vieja hasta
 // que cambie algo de reposiciones.
-function renderCajaLocalDetalle() {
+export function renderCajaLocalDetalle() {
   const list = $("#caja-local-detalle-list");
   const empty = $("#caja-local-detalle-empty");
   list.innerHTML = "";
@@ -1366,7 +1123,7 @@ function facturadoFechaBase() {
 // Antes mostraba TODOS los cierres del negocio sin importar el mes —
 // mismo problema que tenía Gastos. Ahora se ve un mes a la vez, por
 // defecto el actual, con flechas para ir a meses anteriores.
-function renderFacturado() {
+export function renderFacturado() {
   const list = $("#facturado-list");
   const empty = $("#facturado-empty");
   list.innerHTML = "";
@@ -1447,7 +1204,7 @@ function renderFacturado() {
 }
 
 // ---------- Render: Ideas (checklist compartido) ----------
-function renderIdeas() {
+export function renderIdeas() {
   const ideasNegocio = ideasDelNegocio();
   const total = ideasNegocio.length;
   const concretadas = ideasNegocio.filter(i => i.estado === "concretada");
@@ -1601,7 +1358,7 @@ function resumenFechaBase() {
   return d;
 }
 
-function renderResumen() {
+export function renderResumen() {
   const base = resumenFechaBase();
   const targetMonth = base.getMonth();
   const targetYear = base.getFullYear();
@@ -1727,7 +1484,7 @@ function renderResumen() {
 // Se ejecuta una vez por apertura de la app (ver listenGastos). Borra del
 // Storage y del gasto la foto de cualquier gasto con más de 4 meses — el
 // gasto en sí (importe, descripción, etc.) NUNCA se toca ni se borra.
-async function limpiarFotosVencidas() {
+export async function limpiarFotosVencidas() {
   const limite = Date.now() - FOTO_RETENCION_DIAS * 24 * 60 * 60 * 1000;
   const vencidos = gastos.filter(g => fotosDeGasto(g).length && fechaDeRegistro(g).getTime() < limite);
 
@@ -1803,7 +1560,7 @@ function renderFotosGuardadas() {
 }
 
 // ---------- Render: Balance ----------
-function renderBalance() {
+export function renderBalance() {
   // La pestaña Balance está escondida para un colaborador (ver
   // aplicarPermisosDeVista()), pero esta función se llama igual desde
   // selectSeccion("gastos")/listenGastos()/listenSocios() sin preguntar
@@ -1957,7 +1714,7 @@ function computeSettlements(balances) {
 }
 
 // ---------- Render: chips de pagador (modal) ----------
-function renderPagadorChips() {
+export function renderPagadorChips() {
   const wrap = $("#pagador-options");
   wrap.innerHTML = "";
   allPagadores().forEach((nombre) => {
@@ -1975,7 +1732,7 @@ function renderPagadorChips() {
 }
 
 // Chips de "¿Quién lo cargó?" en el modal de Facturado.
-function renderPagadorChipsFacturado() {
+export function renderPagadorChipsFacturado() {
   const wrap = $("#pagador-options-fact");
   wrap.innerHTML = "";
   allPagadores().forEach((nombre) => {
@@ -1993,7 +1750,7 @@ function renderPagadorChipsFacturado() {
 }
 
 // ---------- Render: Ajustes ----------
-function renderAjustesSocios() {
+export function renderAjustesSocios() {
   const wrap = $("#ajustes-socios-list");
   wrap.innerHTML = "";
   socios.forEach((nombre, idx) => {
@@ -2210,7 +1967,7 @@ async function toggleAdminSocio(nombre) {
 // mostraba con el doble de plata por un instante (bug real que hubo).
 // El batch hace que las dos escrituras se vean juntas o ninguna.
 let migracionCajaHecha = false;
-async function migrarMontoInicialCaja() {
+export async function migrarMontoInicialCaja() {
   if (migracionCajaHecha) return;
   migracionCajaHecha = true;
   if (!cajaLocalMonto) return;
@@ -2230,7 +1987,7 @@ async function migrarMontoInicialCaja() {
     });
     batch.update(fbSdk.doc(db, "config", "socios"), { cajaLocalMonto: 0 });
     await batch.commit();
-    cajaLocalMonto = 0;
+    marcarCajaLocalMigrada();
   } catch (e) {
     // Si falla (ej. sin señal), se reintenta en la próxima apertura: el
     // total no cambia mientras tanto, porque cajaLocalCalculo() sigue
@@ -2335,7 +2092,7 @@ async function guardarClaveMaestra() {
   btn.textContent = "Guardando…";
   try {
     await fbSdk.updateDoc(fbSdk.doc(db, "config", "socios"), { claveMaestraAdmin: nueva });
-    claveMaestraAdmin = nueva;
+    setClaveMaestraLocal(nueva);
     $("#input-clave-maestra").value = "";
     showToast("Clave maestra actualizada ✅");
   } catch (e) {
@@ -3206,16 +2963,20 @@ async function handleSetupGuardar() {
   btn.disabled = true;
   try {
     const socioDocRef = fbSdk.doc(db, "config", "socios");
-    socios = names.map(n => n.trim());
-    colaboradores = colabInputs.map(c => c.nombre);
-    colaboradorNegocio = {};
-    colabInputs.forEach(c => { if (c.negocio) colaboradorNegocio[c.nombre] = c.negocio; });
-    admins = socios.filter((_, idx) => adminFlags[idx]);
-    pins = {};
+    const colaboradorNegocioNuevo = {};
+    colabInputs.forEach(c => { if (c.negocio) colaboradorNegocioNuevo[c.nombre] = c.negocio; });
+    const sociosNuevos = names.map(n => n.trim());
     // Clave compartida para que los admins creen su PIN la primera vez
     // (ver openPinModal/confirmPinModal) — cada uno la puede cambiar
     // después desde Ajustes, sin afectar los PIN ya creados.
-    claveMaestraAdmin = "llavez";
+    aplicarConfigSocios({
+      socios: sociosNuevos,
+      colaboradores: colabInputs.map(c => c.nombre),
+      colaboradorNegocio: colaboradorNegocioNuevo,
+      admins: sociosNuevos.filter((_, idx) => adminFlags[idx]),
+      pins: {},
+      claveMaestraAdmin: "llavez"
+    });
     await fbSdk.setDoc(socioDocRef, { socios, colaboradores, colaboradorNegocio, admins, pins, claveMaestraAdmin });
     await finalizeSetup(pendingFirebaseConfig);
   } catch (e) {
