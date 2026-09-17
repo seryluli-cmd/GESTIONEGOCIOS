@@ -9,11 +9,12 @@ import { $$ } from "./utilidades.js";
 import { fbSdk, db, initFirebase } from "./firebase-sdk.js";
 import {
   NEGOCIOS, LS_CONFIG_KEY, LS_SOCIOS_CACHE, LS_COLAB_CACHE,
-  bootApp, migrarMontoInicialCaja,
+  bootApp,
   renderPagadorChips, renderPagadorChipsFacturado, renderAjustesSocios,
   renderBalance, renderGastos, renderGastosAdmin, renderFacturado, renderIdeas, renderResumen,
-  renderCajaLocalDetalle, limpiarFotosVencidas
+  limpiarFotosVencidas
 } from "../app.js";
+import { migrarMontoInicialCaja, renderCajaLocalDetalle } from "./caja-local.js";
 import {
   negocioActual, usuarioActual, setEsAdmin, aplicarPermisosDeVista, renderNegocioCards
 } from "./sesion.js";
