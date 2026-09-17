@@ -270,6 +270,23 @@ function wireMoneyInput(id) {
   $(id).addEventListener("input", formatMoneyInputMientrasTipea);
 }
 
+// Devuelve una versión de `fn` que espera `ms` sin que la vuelvan a llamar
+// para recién ahí ejecutarla — se usa para el cálculo cruzado de Mixto y
+// Facturado (ver más abajo): en iPhone el "change" (dispara al perder el
+// foco el campo) a veces no llega a tiempo, o llega DESPUÉS del click de
+// "Guardar" en vez de antes (bug conocido de Safari/WebKit en iOS), y el
+// campo calculado quedaba vacío por más que los otros dos ya estuvieran
+// completos. Escuchando también "input" con este debounce, el cálculo se
+// dispara solo con que la persona deje de tipear un rato, sin depender de
+// que el foco cambie de campo.
+function debounce(fn, ms) {
+  let temporizador;
+  return (...args) => {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(() => fn(...args), ms);
+  };
+}
+
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 function mesLabel(date) {
   return `${MESES[date.getMonth()]} ${date.getFullYear()}`;
@@ -2778,7 +2795,8 @@ function selectFormaPago(forma) {
 // Importe), el otro se completa solo para que sume el Importe (mismo
 // criterio que el desglose Total/Efectivo/Digital de Facturado más abajo,
 // pero acá el "total" ya es el campo Importe que está siempre visible
-// arriba). Los listeners usan "change", no "input" — ver wireEvents().
+// arriba). Los listeners usan "change" (instantáneo) + "input" con
+// debounce (red de seguridad para iPhone) — ver wireEvents().
 function registrarEdicionMixto(campo) {
   mixtoUltimoEditado = campo;
   calcularCampoMixtoFaltante();
@@ -3689,12 +3707,20 @@ function wireEvents() {
   ["#input-importe", "#input-mixto-efectivo", "#input-mixto-digital",
    "#input-importe-fact", "#input-efectivo-fact", "#input-digital-fact",
    "#input-reposicion-monto"].forEach(wireMoneyInput);
-  // "change" (al salir del campo), no "input" (cada tecla) — si no, un
-  // solo dígito ya dispara el cálculo con el valor a medio tipear (ver
-  // calcularCampoMixtoFaltante).
+  // "change" (al salir del campo) para que el cálculo sea instantáneo
+  // apenas se puede (funciona bien en Android/desktop) + "input" con
+  // debounce (ver debounce() más arriba) como red de seguridad para
+  // iPhone, donde el "change" no siempre llega a tiempo. El debounce evita
+  // calcular con un solo dígito a medio tipear (ver calcularCampoMixtoFaltante).
+  const recalcularMixtoEfectivoDebounced = debounce(() => registrarEdicionMixto("efectivo"), 600);
+  const recalcularMixtoDigitalDebounced = debounce(() => registrarEdicionMixto("digital"), 600);
+  const recalcularMixtoImporteDebounced = debounce(calcularCampoMixtoFaltante, 600);
   $("#input-mixto-efectivo").addEventListener("change", () => registrarEdicionMixto("efectivo"));
+  $("#input-mixto-efectivo").addEventListener("input", recalcularMixtoEfectivoDebounced);
   $("#input-mixto-digital").addEventListener("change", () => registrarEdicionMixto("digital"));
+  $("#input-mixto-digital").addEventListener("input", recalcularMixtoDigitalDebounced);
   $("#input-importe").addEventListener("change", calcularCampoMixtoFaltante);
+  $("#input-importe").addEventListener("input", recalcularMixtoImporteDebounced);
   $("#btn-gastos-mes-anterior").addEventListener("click", () => {
     gastosMesOffset--;
     renderGastos();
@@ -3747,13 +3773,23 @@ function wireEvents() {
   $("#modal-add-facturado").addEventListener("click", (e) => {
     if (e.target.id === "modal-add-facturado") closeModalFacturado();
   });
-  // "change" (al salir del campo), no "input" (cada tecla) — si no,
-  // apenas se tipea el primer dígito de un campo ya calcula el tercero
-  // con ese valor a medio terminar (ej. tipear "50000" en Efectivo
-  // calculaba Digital ni bien se apretaba el "5").
+  // "change" (al salir del campo) para que el cálculo sea instantáneo
+  // apenas se puede (funciona bien en Android/desktop) + "input" con
+  // debounce (ver debounce() más arriba) como red de seguridad para
+  // iPhone: ahí el "change" de Efectivo/Digital a veces no llega antes del
+  // click de "Guardar" (bug de Safari/WebKit) y el Total quedaba sin
+  // calcularse. El debounce evita calcular con un solo dígito a medio
+  // terminar (ej. tipear "50000" en Efectivo calculando Digital ni bien se
+  // apreta el "5").
+  const recalcularFacturadoTotalDebounced = debounce(() => registrarEdicionManualFacturado("total"), 600);
+  const recalcularFacturadoEfectivoDebounced = debounce(() => registrarEdicionManualFacturado("efectivo"), 600);
+  const recalcularFacturadoDigitalDebounced = debounce(() => registrarEdicionManualFacturado("digital"), 600);
   $("#input-importe-fact").addEventListener("change", () => registrarEdicionManualFacturado("total"));
+  $("#input-importe-fact").addEventListener("input", recalcularFacturadoTotalDebounced);
   $("#input-efectivo-fact").addEventListener("change", () => registrarEdicionManualFacturado("efectivo"));
+  $("#input-efectivo-fact").addEventListener("input", recalcularFacturadoEfectivoDebounced);
   $("#input-digital-fact").addEventListener("change", () => registrarEdicionManualFacturado("digital"));
+  $("#input-digital-fact").addEventListener("input", recalcularFacturadoDigitalDebounced);
 
   $("#btn-back-from-ideas").addEventListener("click", volverASeccion);
   $("#fab-add-idea").addEventListener("click", () => openModalIdea());
