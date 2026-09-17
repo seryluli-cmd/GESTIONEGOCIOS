@@ -139,16 +139,16 @@ seguridad que exigen autenticación anónima.
     también tenga "Falta abonar" tildado, que por ser el aviso más
     urgente tiene prioridad visual (rojo). El armado de cada fila está
     en `crearFilaGasto()`, compartido entre ambas listas.
-- **`facturacion`** (colección) — un doc por cierre diario:
-  `{ importe, registradoPor, negocio, fecha, creadoEn }`. Mismo patrón que
-  `gastos`. **Aviso "Caja faltante"**: a partir de las 5am, si no existe
-  un cierre fechado ayer (el día calendario anterior al actual, sin
-  importar la hora — ver `cierreFaltanteHoy()`), `renderFacturado()`
-  muestra un cartel rojo (reusa el mismo estilo de "Falta abonar" de
-  Gastos) con un botón "Cargar" que abre el modal con esa fecha
-  precargada — solo se muestra mirando el mes actual, no al navegar
-  meses viejos. Regla pedida con ejemplo concreto: turno del día 1 → si
-  a las 5hs del día 2 el cierre todavía no está cargado, recién a
+- **`facturacion`** (colección) — un doc por cierre:
+  `{ importe, efectivo, digital, registradoPor, negocio, fecha, creadoEn, turno? }`.
+  Mismo patrón que `gastos`. **Aviso "Caja faltante"**: a partir de las
+  5am, si no existe un cierre fechado ayer (el día calendario anterior al
+  actual, sin importar la hora — ver `cierreFaltanteHoy()`),
+  `renderFacturado()` muestra un cartel rojo (reusa el mismo estilo de
+  "Falta abonar" de Gastos) con un botón "Cargar" que abre el modal con
+  esa fecha precargada — solo se muestra mirando el mes actual, no al
+  navegar meses viejos. Regla pedida con ejemplo concreto: turno del día
+  1 → si a las 5hs del día 2 el cierre todavía no está cargado, recién a
   partir de ese horario se marca "Caja faltante", ni un minuto antes.
   **Ojo, no confundir con `fechaSugeridaCierre()`**: esa otra función
   (usada solo para precargar la fecha al tocar "+" a mano) devuelve hoy
@@ -156,6 +156,26 @@ seguridad que exigen autenticación anónima.
   pasado el mediodía el aviso pasaría a exigir el cierre de HOY —un día
   que todavía no terminó— en vez de seguir avisando por ayer (bug real
   que hubo, corregido).
+  - **`turno` (solo Pancho Recreo)**: Pancho cierra la caja 2 veces por
+    día — Turno Mañana (10 a 19hs) y Turno Noche (19 a 3hs) — en vez de
+    una sola vez como Heladería Pablo. Qué negocio tiene turnos lo dice
+    `negocioTieneTurnos(id)` (mismo criterio que
+    `negocioTieneCajaLocal(id)`); los horarios y el nombre de cada turno
+    están en `TURNOS_FACTURADO`. El modal de Cierre de Turno solo muestra
+    el selector de turno para esos negocios (`openModalFacturado()`), y
+    `saveCierre()` no deja cargar 2 veces el mismo turno el mismo día
+    (si hace falta corregirlo, se edita el que ya existe). El aviso
+    "Caja faltante" para estos negocios usa `turnosFacturadoFaltantes()`
+    en vez de `cierreFaltanteHoy()` — chequea los 2 turnos por separado,
+    cada uno con su propio margen de 30 minutos después de su horario de
+    cierre (Turno Mañana avisa desde las 19:30, Turno Noche desde las
+    3:30am) — y puede mostrar los 2 avisos a la vez si ambos faltan.
+    `renderFacturado()` usa `cierresFaltantes()`, que devuelve lo que
+    corresponda según el negocio, para no repetir esa decisión en el
+    render. Cierres de Pancho cargados **antes** de que existiera este
+    campo no tienen `turno` guardado: se siguen viendo sin esa etiqueta,
+    y no cuentan como "ya cargado" para ningún turno del aviso — al
+    editarlos hay que elegirles un turno antes de poder guardarlos.
 - **`ideas`** (colección) — un doc por idea: `{ texto, estado, votos, propuestoPor, creadoEn }`.
   **A propósito NO tiene campo `negocio`** — son compartidas entre Pancho Recreo
   y Heladería Pablo, porque los 3 socios son dueños de ambos. `estado` es

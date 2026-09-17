@@ -800,6 +800,16 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
   content: "✓ ";
 }
 
+/* Chips de turno (modal Cierre de Turno): son solo 2, no 3 como el resto
+   de los .pagador-chip, y su texto (con horario incluido) es más largo —
+   con el nowrap+ellipsis de la clase base quedaba cortado. Se pisa acá,
+   scoped a este contenedor, para no afectar los demás usos de .pagador-chip. */
+#turno-options-fact .pagador-chip {
+  flex-basis: calc(50% - 4px);
+  white-space: normal;
+  line-height: 1.3;
+}
+
 .mixto-row {
   display: flex;
   gap: 10px;

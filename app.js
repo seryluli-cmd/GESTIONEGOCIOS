@@ -85,8 +85,8 @@ const NEUTRAL_VAR = "var(--text-muted)";
 // y tanto la lista de gastos como el balance se calculan por separado
 // para cada negocio (mismos 3 socios, cuentas independientes).
 const NEGOCIOS = [
-  { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)", tieneCajaLocal: true },
-  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false }
+  { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)", tieneCajaLocal: true, tieneTurnos: true },
+  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false, tieneTurnos: false }
 ];
 
 // La Caja del local hoy es "solo de Pancho", pero en vez de repetir
@@ -97,6 +97,32 @@ const NEGOCIOS = [
 function negocioTieneCajaLocal(id) {
   const biz = NEGOCIOS.find(b => b.id === id);
   return !!(biz && biz.tieneCajaLocal);
+}
+
+// Pancho Recreo cierra la caja 2 veces por día (Turno Mañana y Turno
+// Noche, ver TURNOS_FACTURADO); Heladería sigue con un solo cierre
+// diario. Mismo criterio que negocioTieneCajaLocal(): se pregunta acá en
+// vez de comparar contra "pancho" en cada lugar que necesita saberlo
+// (modal de Cierre de Turno, aviso "Caja faltante", renderFacturado).
+function negocioTieneTurnos(id) {
+  const biz = NEGOCIOS.find(b => b.id === id);
+  return !!(biz && biz.tieneTurnos);
+}
+
+// Turnos de Cierre de Turno para los negocios con negocioTieneTurnos().
+// horaFinMinutos + margenMinutos definen cuándo el aviso "Caja faltante"
+// empieza a reclamar ese turno (ver turnosFacturadoFaltantes()) — recién
+// pasado ese horario, nunca antes. crucaMedianoche indica si el turno
+// arranca un día calendario y termina de madrugada al otro (como el
+// único turno que ya existía para el resto de los negocios).
+const MARGEN_AVISO_TURNO_MINUTOS = 30;
+const TURNOS_FACTURADO = [
+  { id: "manana", nombre: "Turno Mañana", horaFinMinutos: 19 * 60, crucaMedianoche: false },
+  { id: "noche", nombre: "Turno Noche", horaFinMinutos: 3 * 60, crucaMedianoche: true },
+];
+function nombreTurnoFacturado(id) {
+  const turno = TURNOS_FACTURADO.find(t => t.id === id);
+  return turno ? turno.nombre : "";
 }
 
 // Categorías de gastos: distintas por negocio, porque Pancho Recreo y
@@ -169,6 +195,7 @@ let negocioActual = null;  // "pancho" | "heladeria"
 let seccionActual = null;  // "gastos" | "facturado" | "resumen"
 let selectedPagador = null;
 let selectedRegistrador = null;
+let selectedTurnoFacturado = null; // "manana" | "noche" | null — solo aplica a negocios con negocioTieneTurnos()
 let resumenMesOffset = 0;  // 0 = mes actual, -1 = mes anterior, etc. (Resumen mensual)
 let gastosMesOffset = 0;   // ídem, para la pantalla de Gastos — se reinicia a 0 cada vez que se entra
 let facturadoMesOffset = 0; // ídem, para la pantalla de Facturado/Cierre de turno
@@ -306,6 +333,15 @@ function fechaLocalISO(date = new Date()) {
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
+}
+
+// Compara solo año/mes/día (ignora la hora) — único lugar que lo hace,
+// usado por cierreFaltanteHoy() y turnosFacturadoFaltantes() para saber
+// si un cierre guardado corresponde al día que se está esperando.
+function esMismoDia(a, b) {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate();
 }
 
 // Redimensiona y comprime la foto en el navegador antes de subirla, para que
@@ -1697,22 +1733,26 @@ function renderFacturado() {
   }
 
   // Aviso "Caja faltante": solo tiene sentido mirando el mes actual (no
-  // al navegar meses viejos) — ver cierreFaltanteHoy().
-  const diaFaltante = esMesActual ? cierreFaltanteHoy() : null;
-  if (diaFaltante) {
+  // al navegar meses viejos) — ver cierresFaltantes(). Pancho Recreo
+  // puede mostrar hasta 2 avisos a la vez (uno por turno pendiente).
+  const faltantes = esMesActual ? cierresFaltantes() : [];
+  if (faltantes.length) {
     empty.classList.add("hidden"); // si el único "hueco" es hoy, no mostrar el cartel de "sin cierres"
-    const aviso = document.createElement("li");
-    aviso.className = "expense-item falta-abonar";
-    aviso.innerHTML = `
-      <div class="expense-item-top">
-        <div class="info">
-          <div class="desc">⚠️ Caja faltante</div>
-          <div class="meta">${diaFaltante.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })} todavía no se cargó</div>
+    faltantes.forEach(({ turno, fecha }) => {
+      const turnoTexto = turno ? ` — ${nombreTurnoFacturado(turno)}` : "";
+      const aviso = document.createElement("li");
+      aviso.className = "expense-item falta-abonar";
+      aviso.innerHTML = `
+        <div class="expense-item-top">
+          <div class="info">
+            <div class="desc">⚠️ Caja faltante${turnoTexto}</div>
+            <div class="meta">${fecha.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })} todavía no se cargó</div>
+          </div>
+          <button type="button" class="btn-secondary btn-cargar-faltante" data-fecha="${fechaLocalISO(fecha)}" data-turno="${turno || ""}">Cargar</button>
         </div>
-        <button type="button" class="btn-secondary btn-cargar-faltante" data-fecha="${fechaLocalISO(diaFaltante)}">Cargar</button>
-      </div>
-    `;
-    list.appendChild(aviso);
+      `;
+      list.appendChild(aviso);
+    });
   }
 
   let totalMes = 0;
@@ -1729,6 +1769,11 @@ function renderFacturado() {
          <button type="button" class="icon-btn danger cierre-delete-btn" data-id="${f.id}" aria-label="Borrar cierre">🗑️</button>`
       : "";
 
+    // Cierres viejos de Pancho (de antes de este campo) no tienen
+    // "turno" guardado — quedan sin esa etiqueta en vez de inventar uno
+    // (ver openModalFacturado, que obliga a elegirlo recién al editarlos).
+    const turnoTexto = f.turno ? ` — ${nombreTurnoFacturado(f.turno)}` : "";
+
     const li = document.createElement("li");
     li.className = "expense-item";
     // Acá los íconos se quedan en la misma fila que el texto (a
@@ -1738,7 +1783,7 @@ function renderFacturado() {
       <div class="expense-item-top">
         <div class="avatar" style="background:${payerColorVar(f.registradoPor)}">${socioInitial(f.registradoPor)}</div>
         <div class="info">
-          <div class="desc">${fecha.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })}</div>
+          <div class="desc">${fecha.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })}${turnoTexto}</div>
           <div class="meta">Cargado por ${escapeHtml(f.registradoPor || "?")}</div>
         </div>
         <div class="amount">${money(f.importe)}</div>
@@ -2698,13 +2743,14 @@ function exportGastosCSV() {
 }
 
 function exportFacturacionCSV() {
-  const rows = [["Fecha", "Importe", "Registrado por"]];
+  const rows = [["Fecha", "Turno", "Importe", "Registrado por"]];
   facturacionesDelNegocio()
     .slice()
     .sort((a, b) => fechaDeRegistro(a) - fechaDeRegistro(b))
     .forEach(f => {
       rows.push([
         fechaDeRegistro(f).toLocaleDateString("es-AR"),
+        f.turno ? nombreTurnoFacturado(f.turno) : "",
         Number(f.importe) || 0,
         f.registradoPor || ""
       ]);
@@ -3189,13 +3235,63 @@ function cierreFaltanteHoy() {
   if (hoy.getHours() < 5) return null;
   const diaEsperado = new Date(hoy);
   diaEsperado.setDate(diaEsperado.getDate() - 1);
-  const yaCargado = facturacionesDelNegocio().some(f => {
-    const fecha = fechaDeRegistro(f);
-    return fecha.getFullYear() === diaEsperado.getFullYear()
-      && fecha.getMonth() === diaEsperado.getMonth()
-      && fecha.getDate() === diaEsperado.getDate();
-  });
+  const yaCargado = facturacionesDelNegocio().some(f => esMismoDia(fechaDeRegistro(f), diaEsperado));
   return yaCargado ? null : diaEsperado;
+}
+
+// Misma idea que cierreFaltanteHoy() (avisar recién pasado un margen,
+// nunca antes) pero para negocios con negocioTieneTurnos(), donde cada
+// turno tiene su propio horario y hay que chequearlos por separado — acá
+// SÍ importa el campo "turno" del cierre, a diferencia de
+// cierreFaltanteHoy() que no distingue turnos.
+// - Turno Mañana no cruza la medianoche: se espera cargado el mismo día,
+//   así que el día a chequear es HOY, una vez pasada su hora de fin +
+//   margen.
+// - Turno Noche sí cruza la medianoche (empieza un día, termina de
+//   madrugada al otro) — mismo criterio que el negocio de un solo turno:
+//   el día a chequear es AYER.
+// Cierres viejos de Pancho (de antes de que existiera este campo) no
+// tienen "turno" guardado, así que no cuentan como "ya cargado" para
+// ninguno de los dos — el aviso puede marcar en falso un turno de la
+// transición, pero se resuelve solo apenas se cargue (o edite) un cierre
+// nuevo con turno asignado.
+function turnosFacturadoFaltantes() {
+  const ahora = new Date();
+  const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
+  const pendientes = [];
+  TURNOS_FACTURADO.forEach(turno => {
+    if (minutosAhora < turno.horaFinMinutos + MARGEN_AVISO_TURNO_MINUTOS) return;
+    const diaEsperado = new Date(ahora);
+    if (turno.crucaMedianoche) diaEsperado.setDate(diaEsperado.getDate() - 1);
+    const yaCargado = facturacionesDelNegocio().some(f =>
+      f.turno === turno.id && esMismoDia(fechaDeRegistro(f), diaEsperado)
+    );
+    if (!yaCargado) pendientes.push({ turno: turno.id, fecha: diaEsperado });
+  });
+  return pendientes;
+}
+
+// Punto único que usa renderFacturado() para el aviso "Caja faltante":
+// decide según el negocio si hay que chequear 1 cierre por día
+// (cierreFaltanteHoy) o los 2 turnos de Pancho (turnosFacturadoFaltantes),
+// y siempre devuelve una lista (0, 1 o 2 elementos) para que
+// renderFacturado() no necesite saber la diferencia entre negocios.
+function cierresFaltantes() {
+  if (negocioTieneTurnos(negocioActual)) return turnosFacturadoFaltantes();
+  const fecha = cierreFaltanteHoy();
+  return fecha ? [{ turno: null, fecha }] : [];
+}
+
+// Turno más probable según la hora, para precargar el chip al tocar "+" a
+// mano (sin venir de "Cargar" en el aviso ni editando uno existente) — es
+// solo un punto de partida cómodo, el usuario puede tocar el otro chip.
+function turnoFacturadoSugerido() {
+  return new Date().getHours() < 19 ? "manana" : "noche";
+}
+
+function selectTurnoFacturado(turno) {
+  selectedTurnoFacturado = turno;
+  $$("#turno-options-fact .pagador-chip").forEach(c => c.classList.toggle("selected", c.dataset.turno === turno));
 }
 
 // Cálculo cruzado Total/Efectivo/Digital: se pueden completar 2
@@ -3264,8 +3360,9 @@ function asegurarCampoFaltanteFacturadoAntesDeGuardar() {
 // Sin argumento: alta de un cierre nuevo (usa la fecha "sugerida" de
 // hoy). Con un cierre existente: edición. Con "presetFecha" (Date): alta
 // para una fecha puntual — ver botón "Cargar" del aviso "Caja faltante"
-// en renderFacturado().
-function openModalFacturado(cierre, presetFecha) {
+// en renderFacturado(). "presetTurno" viaja junto con "presetFecha" desde
+// ese mismo botón, para los negocios con negocioTieneTurnos().
+function openModalFacturado(cierre, presetFecha, presetTurno) {
   editingCierreId = cierre ? cierre.id : null;
   // Cierre nuevo: se registra directo a nombre de quien está logueado
   // (mismo criterio que "Nuevo gasto" — ver openModal()) — el selector
@@ -3273,6 +3370,16 @@ function openModalFacturado(cierre, presetFecha) {
   // por si hace falta corregir quién lo cargó en realidad.
   selectedRegistrador = cierre ? cierre.registradoPor : usuarioActual;
   $("#campo-registrador").classList.toggle("hidden", !cierre);
+
+  // El selector de turno solo existe para Pancho Recreo (ver
+  // negocioTieneTurnos()) — al editar, un cierre viejo sin turno guardado
+  // queda sin ningún chip seleccionado, así se obliga a elegirlo antes de
+  // poder guardar (ver saveCierre()), en vez de inventar uno.
+  const tieneTurnos = negocioTieneTurnos(negocioActual);
+  $("#campo-turno-fact").classList.toggle("hidden", !tieneTurnos);
+  selectTurnoFacturado(tieneTurnos
+    ? (cierre ? (cierre.turno || null) : (presetTurno || turnoFacturadoSugerido()))
+    : null);
 
   $("#input-importe-fact").value = cierre ? formatMoneyValue(cierre.importe) : "";
   // Cierres cargados ANTES de que existiera el desglose Efectivo/Digital
@@ -3356,6 +3463,27 @@ async function saveCierre() {
     errEl.classList.remove("hidden");
     return;
   }
+  if (negocioTieneTurnos(negocioActual)) {
+    if (!selectedTurnoFacturado) {
+      errEl.textContent = "Elegí qué turno estás cerrando.";
+      errEl.classList.remove("hidden");
+      return;
+    }
+    // Solo al cargar uno nuevo — al editar, se puede seguir guardando el
+    // mismo turno+fecha que ya tenía (no está "duplicándose", es el
+    // mismo cierre). Evita que alguien cargue el mismo turno 2 veces por
+    // apurado, sin impedir la corrección de un cierre ya cargado.
+    if (!editingCierreId) {
+      const yaExiste = facturacionesDelNegocio().some(f =>
+        f.turno === selectedTurnoFacturado && fechaLocalISO(fechaDeRegistro(f)) === fechaStr
+      );
+      if (yaExiste) {
+        errEl.textContent = `Ya hay un cierre de ${nombreTurnoFacturado(selectedTurnoFacturado)} cargado ese día. Para corregirlo, editalo desde la lista.`;
+        errEl.classList.remove("hidden");
+        return;
+      }
+    }
+  }
 
   const btn = $("#btn-save-facturado");
   const isEdit = !!editingCierreId;
@@ -3394,6 +3522,11 @@ async function saveCierre() {
       negocio: negocioActual,
       fecha: fechaStr ? new Date(fechaStr + "T12:00:00") : fbSdk.serverTimestamp()
     };
+    // Solo los negocios con negocioTieneTurnos() guardan este campo — el
+    // resto sigue igual que siempre (un cierre por día, sin turno).
+    if (negocioTieneTurnos(negocioActual)) {
+      data.turno = selectedTurnoFacturado;
+    }
     // Solo se tocan fotoUrl/fotoPath si se eligió una foto nueva — al
     // editar, updateDoc no toca los campos que no se le pasan, así que la
     // foto existente queda intacta si no se cambia.
@@ -3699,6 +3832,9 @@ function wireEvents() {
   $$("#forma-pago-options .pagador-chip").forEach(chip => {
     chip.addEventListener("click", () => selectFormaPago(chip.dataset.forma));
   });
+  $$("#turno-options-fact .pagador-chip").forEach(chip => {
+    chip.addEventListener("click", () => selectTurnoFacturado(chip.dataset.turno));
+  });
   // Punto de miles mientras se tipea en los 7 campos de plata de la app
   // (ver formatMoneyInputMientrasTipea) — Gastos (Importe, Mixto), Cierre
   // de Turno (Total, Efectivo, Digital) y la reposición de la Caja del
@@ -3923,7 +4059,7 @@ function wireEvents() {
     const delBtn = e.target.closest(".cierre-delete-btn");
     if (delBtn) { deleteCierre(delBtn.dataset.id); return; }
     const cargarBtn = e.target.closest(".btn-cargar-faltante");
-    if (cargarBtn) openModalFacturado(null, new Date(cargarBtn.dataset.fecha + "T12:00:00"));
+    if (cargarBtn) openModalFacturado(null, new Date(cargarBtn.dataset.fecha + "T12:00:00"), cargarBtn.dataset.turno || null);
   });
 
   // Pantalla "Caja del local — Detalle" (botón en la card de Gastos)
