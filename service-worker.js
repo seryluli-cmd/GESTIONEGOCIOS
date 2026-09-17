@@ -15,6 +15,7 @@ const APP_SHELL = [
   "./js/sesion.js",
   "./js/caja-local.js",
   "./js/gastos.js",
+  "./js/modal-gasto.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
