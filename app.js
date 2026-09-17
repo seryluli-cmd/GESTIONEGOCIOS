@@ -2799,6 +2799,27 @@ function calcularCampoMixtoFaltante() {
   }
 }
 
+// Red de seguridad para saveGasto(): en iPhone, tocar "Guardar gasto"
+// justo después de tipear el segundo campo del desglose Mixto puede
+// disparar el click del botón ANTES que el "change" de ese campo (bug
+// conocido de Safari en iOS: en algunos casos dispara el click de un
+// botón antes que el blur/change del input que tenía el foco). Si eso
+// pasa, calcularCampoMixtoFaltante() todavía no corrió y el otro campo
+// llega vacío al guardar, aunque el usuario ya haya completado los 2 que
+// tenía que completar. Se fuerza acá el mismo cálculo (nunca se duplica
+// la cuenta) si falta justo uno de los dos.
+function asegurarDesgloseMixtoAntesDeGuardar() {
+  const efectivoStr = $("#input-mixto-efectivo").value.trim();
+  const digitalStr = $("#input-mixto-digital").value.trim();
+  if (efectivoStr !== "" && digitalStr === "") {
+    mixtoUltimoEditado = "efectivo";
+    calcularCampoMixtoFaltante();
+  } else if (digitalStr !== "" && efectivoStr === "") {
+    mixtoUltimoEditado = "digital";
+    calcularCampoMixtoFaltante();
+  }
+}
+
 function openModal(gasto, opts) {
   const cantCategorias = renderCategoriaOptions(gasto ? gasto.categoria : null);
   if (!cantCategorias) {
@@ -2912,6 +2933,7 @@ async function saveGasto() {
 
   let montoEfectivo = null, montoDigital = null;
   if (selectedFormaPago === "mixto") {
+    asegurarDesgloseMixtoAntesDeGuardar();
     montoEfectivo = parseMoneyInput($("#input-mixto-efectivo").value);
     montoDigital = parseMoneyInput($("#input-mixto-digital").value);
     if (!Number.isFinite(montoEfectivo) || !Number.isFinite(montoDigital) || montoEfectivo < 0 || montoDigital < 0) {
@@ -3200,6 +3222,25 @@ function calcularCampoFaltanteFacturado() {
   $("#" + FACTURADO_CAMPO_ID[faltante]).value = formatMoneyValue(Math.round(resultado * 100) / 100);
 }
 
+// Red de seguridad para saveCierre(): en iPhone, tocar "Guardar" justo
+// después de tipear el segundo campo puede disparar el click del botón
+// ANTES que el "change" de ese campo (bug conocido de Safari en iOS: en
+// algunos casos dispara el click de un botón antes que el blur/change
+// del input que tenía el foco). Si eso pasa, calcularCampoFaltanteFacturado()
+// todavía no corrió y el tercer campo llega vacío al guardar, aunque el
+// usuario ya haya completado los 2 que tenía que completar — se veía
+// como "por más que completo 2 campos no se completa el tercero". Se
+// fuerza acá el mismo cálculo (nunca se duplica la cuenta) si falta
+// justo uno de los tres.
+function asegurarCampoFaltanteFacturadoAntesDeGuardar() {
+  const campos = ["total", "efectivo", "digital"];
+  const vacios = campos.filter(c => $("#" + FACTURADO_CAMPO_ID[c]).value.trim() === "");
+  if (vacios.length === 1) {
+    facturadoUltimosEditados = campos.filter(c => c !== vacios[0]);
+    calcularCampoFaltanteFacturado();
+  }
+}
+
 // Sin argumento: alta de un cierre nuevo. Con un cierre existente: edición
 // (solo admin, ver botón ✏️ en renderFacturado).
 // Sin argumento: alta de un cierre nuevo (usa la fecha "sugerida" de
@@ -3245,6 +3286,8 @@ function closeModalFacturado() {
 }
 
 async function saveCierre() {
+  asegurarCampoFaltanteFacturadoAntesDeGuardar();
+
   const totalStr = $("#input-importe-fact").value.trim();
   const efectivoStr = $("#input-efectivo-fact").value.trim();
   const digitalStr = $("#input-digital-fact").value.trim();
