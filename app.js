@@ -117,8 +117,8 @@ function negocioTieneTurnos(id) {
 // único turno que ya existía para el resto de los negocios).
 const MARGEN_AVISO_TURNO_MINUTOS = 30;
 const TURNOS_FACTURADO = [
-  { id: "manana", nombre: "Turno Mañana", horaFinMinutos: 19 * 60, crucaMedianoche: false },
-  { id: "noche", nombre: "Turno Noche", horaFinMinutos: 3 * 60, crucaMedianoche: true },
+  { id: "manana", nombre: "Turno Mañana", horaInicioMinutos: 10 * 60, horaFinMinutos: 19 * 60, crucaMedianoche: false },
+  { id: "noche", nombre: "Turno Noche", horaInicioMinutos: 19 * 60, horaFinMinutos: 3 * 60, crucaMedianoche: true },
 ];
 function nombreTurnoFacturado(id) {
   const turno = TURNOS_FACTURADO.find(t => t.id === id);
@@ -3282,11 +3282,21 @@ function cierresFaltantes() {
   return fecha ? [{ turno: null, fecha }] : [];
 }
 
-// Turno más probable según la hora, para precargar el chip al tocar "+" a
-// mano (sin venir de "Cargar" en el aviso ni editando uno existente) — es
-// solo un punto de partida cómodo, el usuario puede tocar el otro chip.
+// Turno que corresponde a la hora actual, para dejarlo preseleccionado al
+// tocar "+" a mano (sin venir de "Cargar" en el aviso ni editando uno
+// existente) — se puede tocar el otro chip igual, es solo el punto de
+// partida. Usa el mismo horario+margen de TURNOS_FACTURADO que ya define
+// el aviso "Caja faltante" (turnosFacturadoFaltantes()), para no repetir
+// esos números con otro criterio: dentro de la franja de Turno Mañana
+// (10 a 19hs, + margen) sugiere "manana"; el resto del día —incluida la
+// madrugada, que es cuando se cierra el Turno Noche— sugiere "noche".
 function turnoFacturadoSugerido() {
-  return new Date().getHours() < 19 ? "manana" : "noche";
+  const ahora = new Date();
+  const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
+  const manana = TURNOS_FACTURADO.find(t => t.id === "manana");
+  const dentroDeManana = minutosAhora >= manana.horaInicioMinutos
+    && minutosAhora < manana.horaFinMinutos + MARGEN_AVISO_TURNO_MINUTOS;
+  return dentroDeManana ? "manana" : "noche";
 }
 
 function selectTurnoFacturado(turno) {
