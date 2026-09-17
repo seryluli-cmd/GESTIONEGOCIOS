@@ -12,6 +12,7 @@ const APP_SHELL = [
   "./js/utilidades.js",
   "./js/firebase-sdk.js",
   "./js/datos.js",
+  "./js/sesion.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
