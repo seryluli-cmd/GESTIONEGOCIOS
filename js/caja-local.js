@@ -13,7 +13,8 @@ import {
   negocioTieneCajaLocal, marcarCajaLocalMigrada
 } from "./datos.js";
 import { negocioActual, usuarioActual, esAdmin } from "./sesion.js";
-import { NEGOCIOS, NEUTRAL_VAR, payerColorVar, socioInitial, crearFilaExpenseItem, crearFilaGasto } from "../app.js";
+import { crearFilaExpenseItem, crearFilaGasto } from "./gastos.js";
+import { NEGOCIOS, NEUTRAL_VAR, payerColorVar, socioInitial } from "../app.js";
 
 // ¿Este gasto salió de la Caja del local? Único lugar que lo pregunta
 // (ver CLAUDE.md regla 3: nada de condiciones sueltas comparando
