@@ -16,6 +16,7 @@ const APP_SHELL = [
   "./js/caja-local.js",
   "./js/gastos.js",
   "./js/modal-gasto.js",
+  "./js/facturado.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
