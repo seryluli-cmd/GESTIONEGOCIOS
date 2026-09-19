@@ -23,6 +23,7 @@ const APP_SHELL = [
   "./js/balance.js",
   "./js/ajustes.js",
   "./js/setup.js",
+  "./js/pwa.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
