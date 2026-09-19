@@ -10,13 +10,13 @@ import { socios, colaboradorNegocio, admins, pins, claveMaestraAdmin } from "./d
 import {
   NEGOCIOS, payerColorVar, socioInitial, allPagadores,
   renderAjustesSocios,
-  renderBalance,
   resetResumenMesOffset, resetGastosMesOffset, resetFacturadoMesOffset, resetGastosAdminMesOffset
 } from "../app.js";
 import { renderGastos, renderGastosAdmin } from "./gastos.js";
 import { renderFacturado } from "./facturado.js";
 import { renderIdeas } from "./ideas.js";
 import { renderResumen } from "./resumen.js";
+import { renderBalance } from "./balance.js";
 
 const LS_USER_KEY = "gn_current_user"; // quién está identificado en este celular
 
