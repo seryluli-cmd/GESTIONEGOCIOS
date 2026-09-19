@@ -40,6 +40,12 @@ export function formatMoneyValue(n) {
   return Number.isFinite(n) ? n.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : "";
 }
 
+// Evita arrastrar el error de punto flotante de restar/sumar montos (ej.
+// 10.1 - 3.3 da 6.799999999999999 en JS) antes de mostrar el resultado.
+export function redondearCentavos(n) {
+  return Math.round(n * 100) / 100;
+}
+
 // Filtra lo que se tipea (solo dígitos y un separador decimal) y agrega
 // los puntos de miles a medida que se escribe — con "input" (cada
 // tecla), a propósito distinto del cálculo cruzado entre campos
@@ -116,6 +122,20 @@ export function fechaDeRegistro(item) {
   return item.fecha && item.fecha.toDate ? item.fecha.toDate() : new Date(item.fecha || Date.now());
 }
 
+// Primer día del mes que resulta de sumarle offsetMeses al mes actual —
+// usado por los navegadores de mes de Gastos, Gastos S/Admin, Facturado y
+// Resumen mensual (cada pantalla con su propio offset independiente).
+export function fechaBaseDelMes(offsetMeses) {
+  const d = new Date();
+  d.setDate(1); // evita saltos raros de mes al sumar/restar meses
+  d.setMonth(d.getMonth() + offsetMeses);
+  return d;
+}
+
+export function esMismoMes(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
 // Fecha de un Date en formato "AAAA-MM-DD", en hora LOCAL — a propósito
 // NO se usa .toISOString() para esto: esa función siempre da la fecha en
 // UTC, así que de noche en Argentina (UTC-3), pasadas las ~21:00 ya es
@@ -129,9 +149,8 @@ export function fechaLocalISO(date = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
-// Compara solo año/mes/día (ignora la hora) — único lugar que lo hace,
-// usado por cierreFaltanteHoy() y turnosFacturadoFaltantes() para saber
-// si un cierre guardado corresponde al día que se está esperando.
+// Compara solo año/mes/día (ignora la hora) — usado por cierreFaltanteHoy()
+// para saber si un cierre guardado corresponde al día que se está esperando.
 export function esMismoDia(a, b) {
   return a.getFullYear() === b.getFullYear()
     && a.getMonth() === b.getMonth()

@@ -18,10 +18,7 @@ import {
   negocioTieneCajaLocal, categoriasDelNegocio, aplicarConfigSocios, connectAndBoot,
   gastosDelNegocio, facturacionesDelNegocio, reposicionesDelNegocio, ideasDelNegocio,
   listenSocios, listenGastos, listenFacturacion, listenReposiciones, listenIdeas,
-  setSyncOffline, listenConnectivity, setClaveMaestraLocal, marcarCajaLocalMigrada,
-  categoriasGasto, categoriasGastoSembrado, socios, colaboradores, colaboradorNegocio,
-  admins, pins, claveMaestraAdmin, cajaLocalMonto, gastos, facturaciones, reposiciones,
-  reposicionesCargadas, ideas
+  listenConnectivity, socios, colaboradores, colaboradorNegocio, gastos, facturaciones
 } from "./js/datos.js";
 import {
   resumeSession, renderNegocioCards, esSocio, cargarHistorialLogins, cambiarUsuario,

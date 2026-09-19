@@ -1,4 +1,4 @@
-import { $, money, mesLabel, fechaDeRegistro, escapeHtml, montoOCargando } from "./utilidades.js";
+import { $, money, mesLabel, fechaDeRegistro, fechaBaseDelMes, esMismoMes, escapeHtml, montoOCargando } from "./utilidades.js";
 import { fbSdk, db, storage } from "./firebase-sdk.js";
 import { gastos, gastosDelNegocio, facturacionesDelNegocio, negocioTieneCajaLocal } from "./datos.js";
 import { negocioActual, esAdmin } from "./sesion.js";
@@ -11,22 +11,14 @@ import { resumenMesOffset } from "../app.js";
 // y el total de Gastos por separado — sin restar uno del otro. No borra ni
 // mueve ningún dato: es solo una vista calculada sobre lo que ya está
 // guardado en Firestore.
-function resumenFechaBase() {
-  const d = new Date();
-  d.setDate(1); // evita saltos raros de mes al sumar/restar meses
-  d.setMonth(d.getMonth() + resumenMesOffset);
-  return d;
-}
-
 export function renderResumen() {
-  const base = resumenFechaBase();
+  const base = fechaBaseDelMes(resumenMesOffset);
   const targetMonth = base.getMonth();
   const targetYear = base.getFullYear();
 
   $("#resumen-mes-label").textContent = mesLabel(base);
 
-  const now = new Date();
-  const esMesActual = targetMonth === now.getMonth() && targetYear === now.getFullYear();
+  const esMesActual = esMismoMes(base, new Date());
   $("#btn-mes-siguiente").disabled = esMesActual;
 
   const gastosMes = gastosDelNegocio().filter(g => {

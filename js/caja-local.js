@@ -6,7 +6,7 @@
 // tenían su propia sección) porque son el mismo subsistema.
 // ============================================================
 
-import { $, $$, money, montoOCargando, parseMoneyInput, fechaLocalISO, fechaDeRegistro, escapeHtml, showToast } from "./utilidades.js";
+import { $, money, montoOCargando, parseMoneyInput, fechaLocalISO, fechaDeRegistro, escapeHtml, showToast } from "./utilidades.js";
 import { fbSdk, db } from "./firebase-sdk.js";
 import {
   gastosDelNegocio, reposicionesDelNegocio, reposiciones, reposicionesCargadas, cajaLocalMonto,

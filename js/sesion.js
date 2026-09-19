@@ -4,7 +4,7 @@
 // reasigna usuarioActual, esAdmin, negocioActual o pinFlowMode.
 // ============================================================
 
-import { $, $$, showScreen, switchTab, escapeHtml } from "./utilidades.js";
+import { $, showScreen, switchTab, escapeHtml } from "./utilidades.js";
 import { fbSdk, db } from "./firebase-sdk.js";
 import { socios, colaboradorNegocio, admins, pins, claveMaestraAdmin } from "./datos.js";
 import {

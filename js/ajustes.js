@@ -1,4 +1,4 @@
-import { $, $$, escapeHtml, showToast, fechaDeRegistro, fechaLocalISO, downloadCSV } from "./utilidades.js";
+import { $, escapeHtml, showToast, fechaDeRegistro, fechaLocalISO, downloadCSV } from "./utilidades.js";
 import { fbSdk, db, auth } from "./firebase-sdk.js";
 import {
   socios, admins, colaboradores, colaboradorNegocio, categoriasDelNegocio,

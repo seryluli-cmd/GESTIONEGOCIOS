@@ -1,4 +1,4 @@
-import { $, $$, fechaLocalISO, fechaDeRegistro, parseMoneyInput, formatMoneyValue, showToast, conTimeout, esMismoDia } from "./utilidades.js";
+import { $, $$, fechaLocalISO, fechaDeRegistro, parseMoneyInput, formatMoneyValue, redondearCentavos, showToast, conTimeout, esMismoDia } from "./utilidades.js";
 import { fbSdk, db, storage } from "./firebase-sdk.js";
 import { facturaciones, facturacionesDelNegocio, negocioTieneTurnos } from "./datos.js";
 import { negocioActual, usuarioActual } from "./sesion.js";
@@ -24,6 +24,13 @@ const TURNOS_FACTURADO = [
 export function nombreTurnoFacturado(id) {
   const turno = TURNOS_FACTURADO.find(t => t.id === id);
   return turno ? turno.nombre : "";
+}
+
+// Único lugar que decide si ya pasó la hora de fin + margen de un turno —
+// usado tanto para saber desde cuándo reclamarlo (turnosFacturadoFaltantes)
+// como para sugerir el turno actual al cargar uno a mano (turnoFacturadoSugerido).
+function turnoVencido(turno, minutosAhora) {
+  return minutosAhora >= turno.horaFinMinutos + MARGEN_AVISO_TURNO_MINUTOS;
 }
 
 // Chips de "¿Quién lo cargó?" en el modal de Facturado.
@@ -125,20 +132,27 @@ const FECHA_INICIO_TURNOS = new Date(2026, 8, 17);
 function turnosFacturadoFaltantes() {
   const ahora = new Date();
   const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
+  // Un solo filtro sobre TODOS los cierres del negocio (en vez de repetirlo
+  // por cada día que se camina hacia atrás abajo), armando de una vez el
+  // set "turno|fecha" de lo ya cargado para consultarlo en O(1).
+  const cargados = new Set(
+    facturacionesDelNegocio()
+      .filter(f => f.turno)
+      .map(f => `${f.turno}|${fechaLocalISO(fechaDeRegistro(f))}`)
+  );
   const pendientes = [];
   TURNOS_FACTURADO.forEach(turno => {
     const dia = new Date(ahora);
     if (turno.crucaMedianoche) dia.setDate(dia.getDate() - 1);
     // El día de hoy (o de ayer, si cruza medianoche) todavía no venció
     // -> arrancar a chequear recién desde el día anterior a ese.
-    if (minutosAhora < turno.horaFinMinutos + MARGEN_AVISO_TURNO_MINUTOS) {
+    if (!turnoVencido(turno, minutosAhora)) {
       dia.setDate(dia.getDate() - 1);
     }
     while (dia >= FECHA_INICIO_TURNOS) {
-      const yaCargado = facturacionesDelNegocio().some(f =>
-        f.turno === turno.id && esMismoDia(fechaDeRegistro(f), dia)
-      );
-      if (!yaCargado) pendientes.push({ turno: turno.id, fecha: new Date(dia) });
+      if (!cargados.has(`${turno.id}|${fechaLocalISO(dia)}`)) {
+        pendientes.push({ turno: turno.id, fecha: new Date(dia) });
+      }
       dia.setDate(dia.getDate() - 1);
     }
   });
@@ -162,15 +176,14 @@ export function cierresFaltantes() {
 // existente) — se puede tocar el otro chip igual, es solo el punto de
 // partida. Usa el mismo horario+margen de TURNOS_FACTURADO que ya define
 // el aviso "Caja faltante" (turnosFacturadoFaltantes()), para no repetir
-// esos números con otro criterio: dentro de la franja de Turno Mañana
-// (10 a 19hs, + margen) sugiere "manana"; el resto del día —incluida la
+// esos números con otro criterio: dentro del horario de Turno Mañana
+// (+ margen) sugiere "manana"; el resto del día —incluida la
 // madrugada, que es cuando se cierra el Turno Noche— sugiere "noche".
 function turnoFacturadoSugerido() {
   const ahora = new Date();
   const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
   const manana = TURNOS_FACTURADO.find(t => t.id === "manana");
-  const dentroDeManana = minutosAhora >= manana.horaInicioMinutos
-    && minutosAhora < manana.horaFinMinutos + MARGEN_AVISO_TURNO_MINUTOS;
+  const dentroDeManana = minutosAhora >= manana.horaInicioMinutos && !turnoVencido(manana, minutosAhora);
   return dentroDeManana ? "manana" : "noche";
 }
 
@@ -218,7 +231,7 @@ function calcularCampoFaltanteFacturado() {
   // Se muestra el resultado tal cual, incluso si da negativo (ej.
   // pusiste más Efectivo que Total) — así se nota el error a simple
   // vista en vez de desaparecer solo; saveCierre() lo bloquea al guardar.
-  $("#" + FACTURADO_CAMPO_ID[faltante]).value = formatMoneyValue(Math.round(resultado * 100) / 100);
+  $("#" + FACTURADO_CAMPO_ID[faltante]).value = formatMoneyValue(redondearCentavos(resultado));
 }
 
 // Red de seguridad para saveCierre(): en iPhone, tocar "Guardar" justo

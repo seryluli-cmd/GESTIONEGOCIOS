@@ -3,7 +3,7 @@
 // (con el desglose Mixto), fotos, guardar/borrar y marcar abonado.
 // ============================================================
 
-import { $, $$, escapeHtml, showToast, parseMoneyInput, formatMoneyValue, fechaLocalISO, fechaDeRegistro, money, conTimeout } from "./utilidades.js";
+import { $, $$, escapeHtml, showToast, parseMoneyInput, formatMoneyValue, redondearCentavos, fechaLocalISO, fechaDeRegistro, money, conTimeout } from "./utilidades.js";
 import { fbSdk, db, storage } from "./firebase-sdk.js";
 import { gastosDelNegocio, gastos, categoriasDelNegocio, negocioTieneCajaLocal } from "./datos.js";
 import { negocioActual, usuarioActual, esAdmin } from "./sesion.js";
@@ -116,11 +116,11 @@ export function calcularCampoMixtoFaltante() {
   if (mixtoUltimoEditado === "efectivo") {
     const efectivo = parseMoneyInput($("#input-mixto-efectivo").value);
     if (!Number.isFinite(efectivo)) return;
-    $("#input-mixto-digital").value = formatMoneyValue(Math.round((importe - efectivo) * 100) / 100);
+    $("#input-mixto-digital").value = formatMoneyValue(redondearCentavos(importe - efectivo));
   } else {
     const digital = parseMoneyInput($("#input-mixto-digital").value);
     if (!Number.isFinite(digital)) return;
-    $("#input-mixto-efectivo").value = formatMoneyValue(Math.round((importe - digital) * 100) / 100);
+    $("#input-mixto-efectivo").value = formatMoneyValue(redondearCentavos(importe - digital));
   }
 }
 
@@ -311,28 +311,32 @@ export async function saveGasto() {
   btn.textContent = fotosNuevas.length ? "Subiendo fotos…" : "Guardando…";
 
   try {
-    // Cada foto se sube por separado y se tolera que alguna falle — mejor
-    // guardar el gasto con las que sí subieron que perderlo entero por una
-    // sola foto que no salió (mismo criterio que antes con una sola foto).
+    // Cada foto se sube en paralelo (son independientes entre sí) y se
+    // tolera que alguna falle — mejor guardar el gasto con las que sí
+    // subieron que perderlo entero por una sola foto que no salió (mismo
+    // criterio que antes con una sola foto).
+    const resultadosSubida = await Promise.allSettled(fotosNuevas.map(async f => {
+      const path = `recibos/${negocioActual}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+      const storageRef = fbSdk.ref(storage, path);
+      const TIMEOUT_MSG = "La subida de una foto tardó demasiado.";
+      await conTimeout(
+        fbSdk.uploadBytes(storageRef, f.blob, { contentType: "image/jpeg" }),
+        25000,
+        TIMEOUT_MSG
+      );
+      const url = await conTimeout(fbSdk.getDownloadURL(storageRef), 15000, TIMEOUT_MSG);
+      return { url, path };
+    }));
     let fotosFallidas = 0;
     const fotosSubidas = [];
-    for (const f of fotosNuevas) {
-      try {
-        const path = `recibos/${negocioActual}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-        const storageRef = fbSdk.ref(storage, path);
-        const TIMEOUT_MSG = "La subida de una foto tardó demasiado.";
-        await conTimeout(
-          fbSdk.uploadBytes(storageRef, f.blob, { contentType: "image/jpeg" }),
-          25000,
-          TIMEOUT_MSG
-        );
-        const url = await conTimeout(fbSdk.getDownloadURL(storageRef), 15000, TIMEOUT_MSG);
-        fotosSubidas.push({ url, path });
-      } catch (fotoErr) {
-        console.error("No se pudo subir una foto, se guarda el gasto sin ella:", fotoErr);
+    resultadosSubida.forEach(r => {
+      if (r.status === "fulfilled") {
+        fotosSubidas.push(r.value);
+      } else {
+        console.error("No se pudo subir una foto, se guarda el gasto sin ella:", r.reason);
         fotosFallidas++;
       }
-    }
+    });
     if (fotosNuevas.length) btn.textContent = "Guardando…";
 
     const fotosExistentesConservadas = fotosGastoModal

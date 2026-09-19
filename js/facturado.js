@@ -1,19 +1,10 @@
-import { $, money, mesLabel, fechaLocalISO, escapeHtml } from "./utilidades.js";
+import { $, money, mesLabel, fechaLocalISO, fechaDeRegistro, fechaBaseDelMes, esMismoMes, escapeHtml } from "./utilidades.js";
 import { facturacionesDelNegocio } from "./datos.js";
 import { esAdmin } from "./sesion.js";
 import { facturadoMesOffset, payerColorVar, socioInitial } from "../app.js";
 import { cierresFaltantes, nombreTurnoFacturado } from "./modal-facturado.js";
 
 // ---------- Render: Facturado ----------
-// Fecha base del mes elegido en la pantalla de Facturado (ver
-// facturadoMesOffset) — mismo patrón que gastosFechaBase().
-function facturadoFechaBase() {
-  const d = new Date();
-  d.setDate(1); // evita saltos raros de mes al sumar/restar meses
-  d.setMonth(d.getMonth() + facturadoMesOffset);
-  return d;
-}
-
 // Antes mostraba TODOS los cierres del negocio sin importar el mes —
 // mismo problema que tenía Gastos. Ahora se ve un mes a la vez, por
 // defecto el actual, con flechas para ir a meses anteriores.
@@ -22,16 +13,15 @@ export function renderFacturado() {
   const empty = $("#facturado-empty");
   list.innerHTML = "";
 
-  const base = facturadoFechaBase();
+  const base = fechaBaseDelMes(facturadoMesOffset);
   const targetMonth = base.getMonth();
   const targetYear = base.getFullYear();
   $("#facturado-mes-label").textContent = mesLabel(base);
-  const now = new Date();
-  const esMesActual = targetMonth === now.getMonth() && targetYear === now.getFullYear();
+  const esMesActual = esMismoMes(base, new Date());
   $("#btn-facturado-mes-siguiente").disabled = esMesActual;
 
   const items = facturacionesDelNegocio().filter(f => {
-    const fecha = f.fecha && f.fecha.toDate ? f.fecha.toDate() : new Date(f.fecha || Date.now());
+    const fecha = fechaDeRegistro(f);
     return fecha.getMonth() === targetMonth && fecha.getFullYear() === targetYear;
   });
 
@@ -67,7 +57,7 @@ export function renderFacturado() {
   let totalMes = 0;
 
   items.forEach(f => {
-    const fecha = f.fecha && f.fecha.toDate ? f.fecha.toDate() : new Date(f.fecha || Date.now());
+    const fecha = fechaDeRegistro(f);
     totalMes += Number(f.importe) || 0;
 
     const fotoBtn = f.fotoUrl

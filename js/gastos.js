@@ -4,21 +4,11 @@
 // pellizco) y el detalle completo de un gasto.
 // ============================================================
 
-import { $, money, mesLabel, fechaDeRegistro, escapeHtml } from "./utilidades.js";
+import { $, money, mesLabel, fechaDeRegistro, fechaBaseDelMes, esMismoMes, escapeHtml } from "./utilidades.js";
 import { gastosDelNegocio, gastos } from "./datos.js";
 import { esAdmin } from "./sesion.js";
 import { renderCajaLocalCard, esGastoCaja } from "./caja-local.js";
 import { gastosMesOffset, gastosAdminMesOffset, payerColorVar, socioInitial } from "../app.js";
-
-// Fecha base del mes elegido en la pantalla de Gastos (ver
-// gastosMesOffset) — mismo patrón que resumenFechaBase() para Resumen
-// mensual, pero independiente: son dos navegadores de mes separados.
-function gastosFechaBase() {
-  const d = new Date();
-  d.setDate(1); // evita saltos raros de mes al sumar/restar meses
-  d.setMonth(d.getMonth() + gastosMesOffset);
-  return d;
-}
 
 // Antes mostraba TODOS los gastos del negocio sin importar el mes (solo
 // el total de arriba estaba filtrado por mes actual, lo cual era
@@ -31,12 +21,11 @@ export function renderGastos() {
   const empty = $("#expenses-empty");
   list.innerHTML = "";
 
-  const base = gastosFechaBase();
+  const base = fechaBaseDelMes(gastosMesOffset);
   const targetMonth = base.getMonth();
   const targetYear = base.getFullYear();
   $("#gastos-mes-label").textContent = mesLabel(base);
-  const now = new Date();
-  const esMesActual = targetMonth === now.getMonth() && targetYear === now.getFullYear();
+  const esMesActual = esMismoMes(base, new Date());
   $("#btn-gastos-mes-siguiente").disabled = esMesActual;
 
   const gastosMes = gastosDelNegocio().filter(g => {
@@ -73,24 +62,16 @@ export function renderGastos() {
 // Resumen mensual (que solo filtra el desglose por categoría, no el
 // total) — lo único que cambia acá es dónde se ve la lista y quién puede
 // verla.
-function gastosAdminFechaBase() {
-  const d = new Date();
-  d.setDate(1);
-  d.setMonth(d.getMonth() + gastosAdminMesOffset);
-  return d;
-}
-
 export function renderGastosAdmin() {
   const list = $("#expenses-admin-list");
   const empty = $("#expenses-admin-empty");
   list.innerHTML = "";
 
-  const base = gastosAdminFechaBase();
+  const base = fechaBaseDelMes(gastosAdminMesOffset);
   const targetMonth = base.getMonth();
   const targetYear = base.getFullYear();
   $("#gastos-admin-mes-label").textContent = mesLabel(base);
-  const now = new Date();
-  const esMesActual = targetMonth === now.getMonth() && targetYear === now.getFullYear();
+  const esMesActual = esMismoMes(base, new Date());
   $("#btn-gastos-admin-mes-siguiente").disabled = esMesActual;
 
   const gastosMes = gastosDelNegocio().filter(g => {

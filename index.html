@@ -241,7 +241,7 @@
       </div>
 
       <!-- Solo visible en negocios con Caja del local (hoy, Pancho) —
-           ver negocioTieneCajaLocal() en app.js. -->
+           ver negocioTieneCajaLocal() en js/datos.js. -->
       <div class="stat-hero hidden" id="gastos-caja-local-wrap">
         <div class="stat-hero-label stat-hero-label-xl stat-hero-label-caja">💰 Caja del local</div>
         <div class="stat-hero-value" id="gastos-caja-local-queda">$0</div>
@@ -340,7 +340,7 @@
         <p id="ajustes-conn-status" class="muted small"></p>
       </div>
 
-      <!-- Solo para los socios — ver aplicarPermisosDeVista() en app.js.
+      <!-- Solo para los socios — ver aplicarPermisosDeVista() en js/sesion.js.
            Baja TODO el historial del negocio en una planilla. -->
       <div class="card" id="ajustes-export-card">
         <h2>Exportar datos</h2>
@@ -565,7 +565,7 @@
        Gastos. Muestra los 2 lados del movimiento de la caja, sin
        importar el mes: las reposiciones (lo que se le fue poniendo) y
        los gastos "caja" (en qué se fue yendo) — mismo criterio que el
-       cálculo de "queda" (ver cajaLocalCalculo() en app.js). -->
+       cálculo de "queda" (ver cajaLocalCalculo() en js/caja-local.js). -->
   <div id="screen-caja-local" class="screen">
 
     <header class="topbar">
@@ -589,7 +589,7 @@
       <h3 class="section-title">Reposiciones</h3>
       <ul id="caja-local-reposiciones-list" class="expenses-list"></ul>
       <p id="caja-local-reposiciones-empty" class="muted small hidden">Todavía no se cargó ninguna reposición.</p>
-      <!-- Solo admin — ver renderCajaLocalDetalle() en app.js. -->
+      <!-- Solo admin — ver renderCajaLocalDetalle() en js/caja-local.js. -->
       <button type="button" id="btn-add-reposicion" class="btn-secondary hidden" style="margin-bottom:18px;">+ Registrar reposición</button>
 
       <h3 class="section-title">En qué se fue gastando</h3>
@@ -642,7 +642,7 @@
 
       <div class="field">
         <label for="input-categoria">Categoría</label>
-        <!-- Opciones armadas por JS según el negocio y el contexto (ver renderCategoriaOptions en app.js) -->
+        <!-- Opciones armadas por JS según el negocio y el contexto (ver renderCategoriaOptions en js/modal-gasto.js) -->
         <select id="input-categoria"></select>
       </div>
 
@@ -655,7 +655,7 @@
         <label class="checkbox-label"><input type="checkbox" id="input-falta-abonar"> ⚠️ Falta abonar</label>
       </div>
 
-      <!-- Solo visible para el admin (ver openModal en app.js) — quien no sea admin nunca puede marcar un gasto como privado. -->
+      <!-- Solo visible para el admin (ver openModal en js/modal-gasto.js) — quien no sea admin nunca puede marcar un gasto como privado. -->
       <div class="field hidden" id="campo-gasto-admin">
         <label class="checkbox-label"><input type="checkbox" id="input-gasto-admin"> 🔒 Gasto Admin (no lo ve el resto del equipo)</label>
       </div>
@@ -862,7 +862,7 @@
         <label for="input-reposicion-monto">¿Cuánto le pusiste?</label>
         <!-- type="text" y no "number", igual que el resto de los campos de
              plata: así puede mostrar el punto de miles mientras se tipea
-             (ver formatMoneyInputMientrasTipea en app.js). -->
+             (ver formatMoneyInputMientrasTipea en js/utilidades.js). -->
         <input type="text" id="input-reposicion-monto" inputmode="decimal" placeholder="0">
       </div>
 
