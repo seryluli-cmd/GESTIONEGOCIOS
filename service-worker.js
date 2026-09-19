@@ -2,8 +2,10 @@
 // próxima vez que abran (ver el "activate" de abajo). Se sube cuando algún
 // celular quedó pegado a una versión vieja — pasó al publicar la Caja del
 // local. Desde la v3 la app además se actualiza sola: ver el bloque de
-// service worker en app.js.
-const CACHE_NAME = "gastos-negocio-v3";
+// service worker en js/pwa.js. Se subió a v4 al terminar de partir
+// app.js en los módulos de js/ (mismo motivo: que ningún celular quede
+// con una mezcla vieja de archivos cacheados).
+const CACHE_NAME = "gastos-negocio-v4";
 const APP_SHELL = [
   "./",
   "./index.html",
