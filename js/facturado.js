@@ -1,7 +1,8 @@
 import { $, money, mesLabel, fechaLocalISO, escapeHtml } from "./utilidades.js";
 import { facturacionesDelNegocio } from "./datos.js";
 import { esAdmin } from "./sesion.js";
-import { facturadoMesOffset, payerColorVar, socioInitial, cierreFaltanteHoy } from "../app.js";
+import { facturadoMesOffset, payerColorVar, socioInitial } from "../app.js";
+import { cierreFaltanteHoy } from "./modal-facturado.js";
 
 // ---------- Render: Facturado ----------
 // Fecha base del mes elegido en la pantalla de Facturado (ver
