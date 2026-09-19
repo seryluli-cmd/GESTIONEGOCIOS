@@ -22,6 +22,7 @@ const APP_SHELL = [
   "./js/resumen.js",
   "./js/balance.js",
   "./js/ajustes.js",
+  "./js/setup.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
