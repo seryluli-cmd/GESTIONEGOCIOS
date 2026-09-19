@@ -91,6 +91,17 @@ export function negocioTieneCajaLocal(id) {
   return !!(biz && biz.tieneCajaLocal);
 }
 
+// Pancho Recreo cierra la caja 2 veces por día (Turno Mañana y Turno
+// Noche, ver TURNOS_FACTURADO en modal-facturado.js); Heladería sigue con
+// un solo cierre diario. Mismo criterio que negocioTieneCajaLocal(): se
+// pregunta acá en vez de comparar contra "pancho" en cada lugar que
+// necesita saberlo (modal de Cierre de Turno, aviso "Caja faltante",
+// renderFacturado).
+export function negocioTieneTurnos(id) {
+  const biz = NEGOCIOS.find(b => b.id === id);
+  return !!(biz && biz.tieneTurnos);
+}
+
 export function categoriasDelNegocio(negocioId) {
   return categoriasGasto[negocioId] || categoriasGasto.pancho || [];
 }

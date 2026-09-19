@@ -2,7 +2,7 @@ import { $, money, mesLabel, fechaLocalISO, escapeHtml } from "./utilidades.js";
 import { facturacionesDelNegocio } from "./datos.js";
 import { esAdmin } from "./sesion.js";
 import { facturadoMesOffset, payerColorVar, socioInitial } from "../app.js";
-import { cierreFaltanteHoy } from "./modal-facturado.js";
+import { cierresFaltantes, nombreTurnoFacturado } from "./modal-facturado.js";
 
 // ---------- Render: Facturado ----------
 // Fecha base del mes elegido en la pantalla de Facturado (ver
@@ -42,22 +42,26 @@ export function renderFacturado() {
   }
 
   // Aviso "Caja faltante": solo tiene sentido mirando el mes actual (no
-  // al navegar meses viejos) — ver cierreFaltanteHoy().
-  const diaFaltante = esMesActual ? cierreFaltanteHoy() : null;
-  if (diaFaltante) {
+  // al navegar meses viejos) — ver cierresFaltantes(). Pancho Recreo
+  // puede mostrar hasta 2 avisos a la vez (uno por turno pendiente).
+  const faltantes = esMesActual ? cierresFaltantes() : [];
+  if (faltantes.length) {
     empty.classList.add("hidden"); // si el único "hueco" es hoy, no mostrar el cartel de "sin cierres"
-    const aviso = document.createElement("li");
-    aviso.className = "expense-item falta-abonar";
-    aviso.innerHTML = `
-      <div class="expense-item-top">
-        <div class="info">
-          <div class="desc">⚠️ Caja faltante</div>
-          <div class="meta">${diaFaltante.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })} todavía no se cargó</div>
+    faltantes.forEach(({ turno, fecha }) => {
+      const turnoTexto = turno ? ` — ${nombreTurnoFacturado(turno)}` : "";
+      const aviso = document.createElement("li");
+      aviso.className = "expense-item falta-abonar";
+      aviso.innerHTML = `
+        <div class="expense-item-top">
+          <div class="info">
+            <div class="desc">⚠️ Caja faltante${turnoTexto}</div>
+            <div class="meta">${fecha.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })} todavía no se cargó</div>
+          </div>
+          <button type="button" class="btn-secondary btn-cargar-faltante" data-fecha="${fechaLocalISO(fecha)}" data-turno="${turno || ""}">Cargar</button>
         </div>
-        <button type="button" class="btn-secondary btn-cargar-faltante" data-fecha="${fechaLocalISO(diaFaltante)}">Cargar</button>
-      </div>
-    `;
-    list.appendChild(aviso);
+      `;
+      list.appendChild(aviso);
+    });
   }
 
   let totalMes = 0;
@@ -74,6 +78,11 @@ export function renderFacturado() {
          <button type="button" class="icon-btn danger cierre-delete-btn" data-id="${f.id}" aria-label="Borrar cierre">🗑️</button>`
       : "";
 
+    // Cierres viejos de Pancho (de antes de este campo) no tienen
+    // "turno" guardado — quedan sin esa etiqueta en vez de inventar uno
+    // (ver openModalFacturado, que obliga a elegirlo recién al editarlos).
+    const turnoTexto = f.turno ? ` — ${nombreTurnoFacturado(f.turno)}` : "";
+
     const li = document.createElement("li");
     li.className = "expense-item";
     // Acá los íconos se quedan en la misma fila que el texto (a
@@ -83,7 +92,7 @@ export function renderFacturado() {
       <div class="expense-item-top">
         <div class="avatar" style="background:${payerColorVar(f.registradoPor)}">${socioInitial(f.registradoPor)}</div>
         <div class="info">
-          <div class="desc">${fecha.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })}</div>
+          <div class="desc">${fecha.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })}${turnoTexto}</div>
           <div class="meta">Cargado por ${escapeHtml(f.registradoPor || "?")}</div>
         </div>
         <div class="amount">${money(f.importe)}</div>

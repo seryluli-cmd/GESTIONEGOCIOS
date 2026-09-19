@@ -46,7 +46,7 @@ import { renderFacturado } from "./js/facturado.js";
 import {
   renderPagadorChipsFacturado, resetFotoFieldFact, registrarEdicionManualFacturado,
   openModalFacturado, closeModalFacturado, saveCierre, deleteCierre,
-  setSelectedFotoFacturadoBlob
+  setSelectedFotoFacturadoBlob, selectTurnoFacturado
 } from "./js/modal-facturado.js";
 import {
   renderIdeas, toggleVoto, toggleIdeaEstado, deleteIdea,
@@ -90,10 +90,9 @@ export const NEUTRAL_VAR = "var(--text-muted)";
 // y tanto la lista de gastos como el balance se calculan por separado
 // para cada negocio (mismos 3 socios, cuentas independientes).
 export const NEGOCIOS = [
-  { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)", tieneCajaLocal: true },
-  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false }
+  { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)", tieneCajaLocal: true, tieneTurnos: true },
+  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false, tieneTurnos: false }
 ];
-
 
 
 export const MAX_FOTOS_GASTO = 5; // una factura de varias hojas puede necesitar más de una foto — ver fotosDeGasto()
@@ -211,6 +210,9 @@ function wireEvents() {
   wireVisorFotosZoom();
   $$("#forma-pago-options .pagador-chip").forEach(chip => {
     chip.addEventListener("click", () => selectFormaPago(chip.dataset.forma));
+  });
+  $$("#turno-options-fact .pagador-chip").forEach(chip => {
+    chip.addEventListener("click", () => selectTurnoFacturado(chip.dataset.turno));
   });
   // Punto de miles mientras se tipea en los 7 campos de plata de la app
   // (ver formatMoneyInputMientrasTipea) — Gastos (Importe, Mixto), Cierre
@@ -437,7 +439,7 @@ function wireEvents() {
     const delBtn = e.target.closest(".cierre-delete-btn");
     if (delBtn) { deleteCierre(delBtn.dataset.id); return; }
     const cargarBtn = e.target.closest(".btn-cargar-faltante");
-    if (cargarBtn) openModalFacturado(null, new Date(cargarBtn.dataset.fecha + "T12:00:00"));
+    if (cargarBtn) openModalFacturado(null, new Date(cargarBtn.dataset.fecha + "T12:00:00"), cargarBtn.dataset.turno || null);
   });
 
   // Pantalla "Caja del local — Detalle" (botón en la card de Gastos)

@@ -6,6 +6,7 @@ import {
 } from "./datos.js";
 import { esAdmin, usuarioActual, negocioActual, cargarHistorialLogins } from "./sesion.js";
 import { NEGOCIOS, socioColorVar, colaboradorColorVar, allPagadores } from "../app.js";
+import { nombreTurnoFacturado } from "./modal-facturado.js";
 
 // ---------- Render: Ajustes ----------
 export function renderAjustesSocios() {
@@ -265,13 +266,14 @@ export function exportGastosCSV() {
 }
 
 export function exportFacturacionCSV() {
-  const rows = [["Fecha", "Importe", "Registrado por"]];
+  const rows = [["Fecha", "Turno", "Importe", "Registrado por"]];
   facturacionesDelNegocio()
     .slice()
     .sort((a, b) => fechaDeRegistro(a) - fechaDeRegistro(b))
     .forEach(f => {
       rows.push([
         fechaDeRegistro(f).toLocaleDateString("es-AR"),
+        f.turno ? nombreTurnoFacturado(f.turno) : "",
         Number(f.importe) || 0,
         f.registradoPor || ""
       ]);

@@ -788,6 +788,16 @@
       <div class="modal-handle"></div>
       <h2 id="modal-fact-title">Nuevo cierre</h2>
 
+      <!-- Solo Pancho Recreo tiene 2 turnos por día — ver negocioTieneTurnos()
+           en js/datos.js, que oculta este campo para el resto de los negocios. -->
+      <div class="field" id="campo-turno-fact">
+        <label>¿Qué turno cerrás?</label>
+        <div id="turno-options-fact" class="pagador-options">
+          <div class="pagador-chip" data-turno="manana">🌞 Turno Mañana (10 a 19hs)</div>
+          <div class="pagador-chip" data-turno="noche">🌙 Turno Noche (19 a 3hs)</div>
+        </div>
+      </div>
+
       <p class="muted small">Completá 2 de los 3 campos — el que falta se calcula solo.</p>
 
       <div class="field">

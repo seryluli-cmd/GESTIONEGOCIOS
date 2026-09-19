@@ -129,6 +129,15 @@ export function fechaLocalISO(date = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
+// Compara solo año/mes/día (ignora la hora) — único lugar que lo hace,
+// usado por cierreFaltanteHoy() y turnosFacturadoFaltantes() para saber
+// si un cierre guardado corresponde al día que se está esperando.
+export function esMismoDia(a, b) {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate();
+}
+
 // ---------- Imágenes ----------
 // Redimensiona y comprime la foto en el navegador antes de subirla, para que
 // no pese varios MB (como sale de la cámara) sino unos cientos de KB.
