@@ -569,6 +569,16 @@ input:focus, select:focus, textarea:focus {
 .bar-track { height: 8px; border-radius: 4px; background: var(--gridline); overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 4px; }
 
+/* Resumen mensual > Facturado por día: el desglose por turno debajo del
+   total del día, solo en negocios con negocioTieneTurnos() (ver resumen.js). */
+.resumen-turnos-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
 .settlements { display: flex; flex-direction: column; gap: 8px; }
 .settlement-item {
   background: var(--surface-1);

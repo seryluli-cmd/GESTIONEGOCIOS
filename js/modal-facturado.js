@@ -26,6 +26,13 @@ export function nombreTurnoFacturado(id) {
   return turno ? turno.nombre : "";
 }
 
+// Ids de los turnos del negocio, en orden — usado por Resumen mensual
+// (ver renderResumen) para mostrar siempre las mismas columnas por día,
+// aunque algún turno no tenga nada cargado ese día.
+export function idsTurnosFacturado() {
+  return TURNOS_FACTURADO.map(t => t.id);
+}
+
 // Único lugar que decide si ya pasó la hora de fin + margen de un turno —
 // usado tanto para saber desde cuándo reclamarlo (turnosFacturadoFaltantes)
 // como para sugerir el turno actual al cargar uno a mano (turnoFacturadoSugerido).

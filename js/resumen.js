@@ -1,9 +1,10 @@
-import { $, money, mesLabel, fechaDeRegistro, fechaBaseDelMes, esMismoMes, escapeHtml, montoOCargando } from "./utilidades.js";
+import { $, money, mesLabel, fechaDeRegistro, fechaBaseDelMes, esMismoMes, esMismoDia, escapeHtml, montoOCargando } from "./utilidades.js";
 import { fbSdk, db, storage } from "./firebase-sdk.js";
-import { gastos, gastosDelNegocio, facturacionesDelNegocio, negocioTieneCajaLocal } from "./datos.js";
+import { gastos, gastosDelNegocio, facturacionesDelNegocio, negocioTieneCajaLocal, negocioTieneTurnos } from "./datos.js";
 import { negocioActual, esAdmin } from "./sesion.js";
 import { pintarQueda, cajaLocalCalculo } from "./caja-local.js";
 import { fotosDeGasto } from "./gastos.js";
+import { nombreTurnoFacturado, idsTurnosFacturado } from "./modal-facturado.js";
 import { resumenMesOffset } from "../app.js";
 
 // ---------- Render: Resumen mensual ----------
@@ -71,6 +72,54 @@ export function renderResumen() {
     $("#resumen-caja-local-repuesto").textContent = montoOCargando(repuesto);
   } else {
     cajaLocalWrap.classList.add("hidden");
+  }
+
+  // Agrupa los cierres del mes por día calendario, y en los negocios con
+  // negocioTieneTurnos() también por turno dentro de cada día — para ver
+  // de un vistazo cuánto se facturó cada día y cómo se repartió entre
+  // Turno Mañana / Turno Noche. Siempre se muestran todos los turnos del
+  // negocio (aunque falte alguno ese día, en $0) para que se note el
+  // hueco de un vistazo, sin depender solo del aviso "Caja faltante".
+  const tieneTurnos = negocioTieneTurnos(negocioActual);
+  const idsTurnos = tieneTurnos ? idsTurnosFacturado() : [];
+  const porDiaMap = new Map();
+  factMes.forEach(f => {
+    const fecha = fechaDeRegistro(f);
+    const key = `${fecha.getFullYear()}-${fecha.getMonth()}-${fecha.getDate()}`;
+    if (!porDiaMap.has(key)) {
+      porDiaMap.set(key, { fecha, total: 0, turnos: Object.fromEntries(idsTurnos.map(id => [id, 0])) });
+    }
+    const entry = porDiaMap.get(key);
+    const importe = Number(f.importe) || 0;
+    entry.total += importe;
+    if (tieneTurnos && idsTurnos.includes(f.turno)) entry.turnos[f.turno] += importe;
+  });
+  const dias = Array.from(porDiaMap.values()).sort((a, b) => b.fecha - a.fecha);
+
+  const diaWrap = $("#resumen-por-dia");
+  const diaEmptyEl = $("#resumen-por-dia-empty");
+  diaWrap.innerHTML = "";
+  if (!dias.length) {
+    diaEmptyEl.classList.remove("hidden");
+  } else {
+    diaEmptyEl.classList.add("hidden");
+    const hoy = new Date();
+    dias.forEach(dia => {
+      const esHoy = esMismoDia(dia.fecha, hoy);
+      const turnosHtml = tieneTurnos
+        ? `<div class="resumen-turnos-row">${idsTurnos.map(id => `<span>${nombreTurnoFacturado(id)}: ${money(dia.turnos[id])}</span>`).join("")}</div>`
+        : "";
+      const card = document.createElement("div");
+      card.className = "socio-total-card";
+      card.innerHTML = `
+        <div class="socio-total-row">
+          <div class="socio-total-name">${esHoy ? "Hoy" : dia.fecha.toLocaleDateString("es-AR", { weekday: "short", day: "2-digit", month: "short" })}</div>
+          <div class="socio-total-amount">${money(dia.total)}</div>
+        </div>
+        ${turnosHtml}
+      `;
+      diaWrap.appendChild(card);
+    });
   }
 
   // Mismo desglose Efectivo/Digital que Facturado, pero para Gastos —
