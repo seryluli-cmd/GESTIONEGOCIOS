@@ -11,7 +11,7 @@ import {
   NEGOCIOS, LS_CONFIG_KEY, LS_SOCIOS_CACHE, LS_COLAB_CACHE,
   bootApp,
   renderAjustesSocios,
-  renderBalance, renderIdeas, renderResumen,
+  renderBalance, renderResumen,
   limpiarFotosVencidas
 } from "../app.js";
 import { migrarMontoInicialCaja, renderCajaLocalDetalle } from "./caja-local.js";
@@ -19,6 +19,7 @@ import { renderGastos, renderGastosAdmin } from "./gastos.js";
 import { renderPagadorChips } from "./modal-gasto.js";
 import { renderFacturado } from "./facturado.js";
 import { renderPagadorChipsFacturado } from "./modal-facturado.js";
+import { renderIdeas } from "./ideas.js";
 import {
   negocioActual, usuarioActual, setEsAdmin, aplicarPermisosDeVista, renderNegocioCards
 } from "./sesion.js";

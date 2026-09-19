@@ -9,12 +9,13 @@ import { fbSdk, db } from "./firebase-sdk.js";
 import { socios, colaboradorNegocio, admins, pins, claveMaestraAdmin } from "./datos.js";
 import {
   NEGOCIOS, payerColorVar, socioInitial, allPagadores,
-  renderAjustesSocios, renderIdeas,
+  renderAjustesSocios,
   renderBalance, renderResumen,
   resetResumenMesOffset, resetGastosMesOffset, resetFacturadoMesOffset, resetGastosAdminMesOffset
 } from "../app.js";
 import { renderGastos, renderGastosAdmin } from "./gastos.js";
 import { renderFacturado } from "./facturado.js";
+import { renderIdeas } from "./ideas.js";
 
 const LS_USER_KEY = "gn_current_user"; // quién está identificado en este celular
 
