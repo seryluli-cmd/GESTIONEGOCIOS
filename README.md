@@ -157,7 +157,7 @@ seguridad que exigen autenticación anónima.
   que todavía no terminó— en vez de seguir avisando por ayer (bug real
   que hubo, corregido).
   - **`turno` (solo Pancho Recreo)**: Pancho cierra la caja 2 veces por
-    día — Turno Mañana (10 a 19hs) y Turno Noche (19 a 3hs) — en vez de
+    día — Turno Mañana (10 a 19:50hs) y Turno Noche (19 a 3hs) — en vez de
     una sola vez como Heladería Pablo. Qué negocio tiene turnos lo dice
     `negocioTieneTurnos(id)` (mismo criterio que
     `negocioTieneCajaLocal(id)`); los horarios y el nombre de cada turno
@@ -168,10 +168,17 @@ seguridad que exigen autenticación anónima.
     "Caja faltante" para estos negocios usa `turnosFacturadoFaltantes()`
     en vez de `cierreFaltanteHoy()` — chequea los 2 turnos por separado,
     cada uno con su propio margen de 30 minutos después de su horario de
-    cierre (Turno Mañana avisa desde las 19:30, Turno Noche desde las
-    3:30am) — y puede mostrar los 2 avisos a la vez si ambos faltan.
-    `renderFacturado()` usa `cierresFaltantes()`, que devuelve lo que
-    corresponda según el negocio, para no repetir esa decisión en el
+    cierre (Turno Mañana avisa desde las 20:20, Turno Noche desde las
+    3:30am). A diferencia de `cierreFaltanteHoy()` (que solo mira ayer),
+    `turnosFacturadoFaltantes()` camina día por día hacia atrás hasta
+    `FECHA_INICIO_TURNOS` (17/9/2026, cuando se empezaron a usar los 2
+    turnos) — así un turno que se saltea un día sigue apareciendo al día
+    siguiente y al otro, hasta que se cargue, en vez de perderse solo con
+    el cambio de día (bug real que hubo: el empleado nunca cargaba el
+    Turno Mañana y a la mañana siguiente el aviso ya no estaba). Puede
+    mostrar varios avisos a la vez, uno por cada turno de cada día sin
+    cargar. `renderFacturado()` usa `cierresFaltantes()`, que devuelve lo
+    que corresponda según el negocio, para no repetir esa decisión en el
     render. Cierres de Pancho cargados **antes** de que existiera este
     campo no tienen `turno` guardado: se siguen viendo sin esa etiqueta,
     y no cuentan como "ya cargado" para ningún turno del aviso — al

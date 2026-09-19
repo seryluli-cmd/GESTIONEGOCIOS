@@ -18,7 +18,7 @@ let editingCierreId = null;     // id del cierre que se está editando en el mod
 // único turno que ya existía para el resto de los negocios).
 const MARGEN_AVISO_TURNO_MINUTOS = 30;
 const TURNOS_FACTURADO = [
-  { id: "manana", nombre: "Turno Mañana", horaInicioMinutos: 10 * 60, horaFinMinutos: 19 * 60, crucaMedianoche: false },
+  { id: "manana", nombre: "Turno Mañana", horaInicioMinutos: 10 * 60, horaFinMinutos: 19 * 60 + 50, crucaMedianoche: false },
   { id: "noche", nombre: "Turno Noche", horaInicioMinutos: 19 * 60, horaFinMinutos: 3 * 60, crucaMedianoche: true },
 ];
 export function nombreTurnoFacturado(id) {
@@ -97,43 +97,60 @@ function cierreFaltanteHoy() {
   return yaCargado ? null : diaEsperado;
 }
 
+// Desde acá se empezaron a usar los 2 turnos en Pancho — antes de esta
+// fecha los cierres no tienen "turno" guardado, y eso NO significa que
+// falten: el campo todavía no existía. turnosFacturadoFaltantes() nunca
+// reclama para más atrás de este día.
+const FECHA_INICIO_TURNOS = new Date(2026, 8, 17);
+
 // Misma idea que cierreFaltanteHoy() (avisar recién pasado un margen,
 // nunca antes) pero para negocios con negocioTieneTurnos(), donde cada
 // turno tiene su propio horario y hay que chequearlos por separado — acá
 // SÍ importa el campo "turno" del cierre, a diferencia de
 // cierreFaltanteHoy() que no distingue turnos.
-// - Turno Mañana no cruza la medianoche: se espera cargado el mismo día,
-//   así que el día a chequear es HOY, una vez pasada su hora de fin +
-//   margen.
+// A diferencia de cierreFaltanteHoy() (que solo mira AYER), acá se
+// camina día por día hacia atrás hasta FECHA_INICIO_TURNOS, así un turno
+// que se saltea un día y no se corrige sigue apareciendo al día
+// siguiente y al otro — antes se perdía solo con el cambio de día (bug
+// real reportado: el empleado nunca cargó un solo Turno Mañana desde que
+// existen los 2 turnos, y a la mañana siguiente el aviso ya no estaba).
+// - Turno Mañana no cruza la medianoche: el primer día a chequear es HOY,
+//   una vez pasada su hora de fin + margen (antes de eso, ni se empieza).
 // - Turno Noche sí cruza la medianoche (empieza un día, termina de
 //   madrugada al otro) — mismo criterio que el negocio de un solo turno:
-//   el día a chequear es AYER.
-// Cierres viejos de Pancho (de antes de que existiera este campo) no
-// tienen "turno" guardado, así que no cuentan como "ya cargado" para
-// ninguno de los dos — el aviso puede marcar en falso un turno de la
-// transición, pero se resuelve solo apenas se cargue (o edite) un cierre
-// nuevo con turno asignado.
+//   el primer día a chequear es AYER.
+// Cierres viejos de Pancho (de antes de que existiera este campo, o de
+// antes de FECHA_INICIO_TURNOS) no tienen "turno" guardado, así que no
+// cuentan como "ya cargado" para ninguno de los dos.
 function turnosFacturadoFaltantes() {
   const ahora = new Date();
   const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
   const pendientes = [];
   TURNOS_FACTURADO.forEach(turno => {
-    if (minutosAhora < turno.horaFinMinutos + MARGEN_AVISO_TURNO_MINUTOS) return;
-    const diaEsperado = new Date(ahora);
-    if (turno.crucaMedianoche) diaEsperado.setDate(diaEsperado.getDate() - 1);
-    const yaCargado = facturacionesDelNegocio().some(f =>
-      f.turno === turno.id && esMismoDia(fechaDeRegistro(f), diaEsperado)
-    );
-    if (!yaCargado) pendientes.push({ turno: turno.id, fecha: diaEsperado });
+    const dia = new Date(ahora);
+    if (turno.crucaMedianoche) dia.setDate(dia.getDate() - 1);
+    // El día de hoy (o de ayer, si cruza medianoche) todavía no venció
+    // -> arrancar a chequear recién desde el día anterior a ese.
+    if (minutosAhora < turno.horaFinMinutos + MARGEN_AVISO_TURNO_MINUTOS) {
+      dia.setDate(dia.getDate() - 1);
+    }
+    while (dia >= FECHA_INICIO_TURNOS) {
+      const yaCargado = facturacionesDelNegocio().some(f =>
+        f.turno === turno.id && esMismoDia(fechaDeRegistro(f), dia)
+      );
+      if (!yaCargado) pendientes.push({ turno: turno.id, fecha: new Date(dia) });
+      dia.setDate(dia.getDate() - 1);
+    }
   });
   return pendientes;
 }
 
 // Punto único que usa renderFacturado() para el aviso "Caja faltante":
 // decide según el negocio si hay que chequear 1 cierre por día
-// (cierreFaltanteHoy) o los 2 turnos de Pancho (turnosFacturadoFaltantes),
-// y siempre devuelve una lista (0, 1 o 2 elementos) para que
-// renderFacturado() no necesite saber la diferencia entre negocios.
+// (cierreFaltanteHoy) o los turnos de Pancho (turnosFacturadoFaltantes),
+// y siempre devuelve una lista (puede tener varios elementos si hay
+// turnos de más de un día sin cargar) para que renderFacturado() no
+// necesite saber la diferencia entre negocios.
 export function cierresFaltantes() {
   if (negocioTieneTurnos(negocioActual)) return turnosFacturadoFaltantes();
   const fecha = cierreFaltanteHoy();
