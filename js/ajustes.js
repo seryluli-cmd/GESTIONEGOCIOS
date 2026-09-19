@@ -2,11 +2,28 @@ import { $, escapeHtml, showToast, fechaDeRegistro, fechaLocalISO, downloadCSV }
 import { fbSdk, db, auth } from "./firebase-sdk.js";
 import {
   socios, admins, colaboradores, colaboradorNegocio, categoriasDelNegocio,
-  setClaveMaestraLocal, gastosDelNegocio, facturacionesDelNegocio
+  setClaveMaestraLocal, gastosDelNegocio, facturacionesDelNegocio,
+  usaCajaLocalAutomatica
 } from "./datos.js";
 import { esAdmin, usuarioActual, negocioActual, cargarHistorialLogins } from "./sesion.js";
 import { NEGOCIOS, socioColorVar, colaboradorColorVar, allPagadores } from "../app.js";
 import { nombreTurnoFacturado } from "./modal-facturado.js";
+
+// Control de "Carga directo por Caja del local" (ver usaCajaLocalAutomatica
+// en datos.js) — un solo lugar arma este HTML, compartido entre la fila de
+// Socios y la de Otras personas (mismo criterio que crearFilaGasto: no
+// duplicar el template en los 2 lados). Reemplaza el hardcode viejo por
+// nombre ("Kiara"): ahora cualquier persona se puede marcar/desmarcar acá,
+// sin tocar código. No se muestra si ningún negocio tiene Caja del local.
+function cajaAutoControl(nombre) {
+  if (!NEGOCIOS.some(b => b.tieneCajaLocal)) return "";
+  const activo = usaCajaLocalAutomatica(nombre);
+  const badge = activo ? `<span class="admin-badge">💵 Caja auto</span>` : "";
+  const toggleBtn = esAdmin
+    ? `<button type="button" class="icon-btn caja-auto-toggle-btn" data-nombre="${escapeHtml(nombre)}" aria-label="${activo ? "Sacar carga automática por Caja del local" : "Cargar automático por Caja del local"}" title="${activo ? "Sus gastos nuevos se cargan directo como Caja del local (tocar para sacarlo)" : "Marcar para que sus gastos nuevos se carguen directo como Caja del local"}" style="margin-left:auto;">${activo ? "💵" : "➕"}</button>`
+    : "";
+  return `${badge}${toggleBtn}`;
+}
 
 // ---------- Render: Ajustes ----------
 export function renderAjustesSocios() {
@@ -23,7 +40,7 @@ export function renderAjustesSocios() {
     const adminToggleBtn = esAdmin && nombre !== usuarioActual
       ? `<button type="button" class="icon-btn admin-toggle-btn" data-nombre="${escapeHtml(nombre)}" aria-label="${esAdminSocio ? "Quitar admin" : "Hacer admin"}" title="${esAdminSocio ? "Quitar admin" : "Hacer admin"}" style="margin-left:auto;">${esAdminSocio ? "🛡️" : "🔓"}</button>`
       : "";
-    row.innerHTML = `<span class="socio-dot" style="background:${socioColorVar(idx)}"></span> ${escapeHtml(nombre)} ${badge}${adminToggleBtn}`;
+    row.innerHTML = `<span class="socio-dot" style="background:${socioColorVar(idx)}"></span> ${escapeHtml(nombre)} ${badge}${adminToggleBtn}${cajaAutoControl(nombre)}`;
     wrap.appendChild(row);
   });
 
@@ -51,7 +68,7 @@ export function renderAjustesSocios() {
            </select>`
         : `<span class="muted small colaborador-negocio-tag">${asignado ? escapeHtml(NEGOCIOS.find(b => b.id === asignado)?.nombre || asignado) : "Ambos negocios"}</span>`;
       row.innerHTML = `<span class="socio-dot" style="background:${colaboradorColorVar(idx)}"></span> ${escapeHtml(nombre)}`;
-      row.insertAdjacentHTML("beforeend", negocioControl);
+      row.insertAdjacentHTML("beforeend", negocioControl + cajaAutoControl(nombre));
       colabWrap.appendChild(row);
     });
   } else {
@@ -207,6 +224,23 @@ export async function toggleAdminSocio(nombre) {
   }
 }
 
+
+// Marca/saca a alguien de la lista de "carga directo por Caja del local"
+// (ver usaCajaLocalAutomatica en datos.js) — reemplaza el hardcode viejo
+// por nombre ("Kiara"). Cualquier admin puede tocarlo, para cualquier
+// socio o colaborador (no es exclusivo de un rol).
+export async function toggleCajaLocalAutomatica(nombre) {
+  const yaActivo = usaCajaLocalAutomatica(nombre);
+  try {
+    await fbSdk.updateDoc(fbSdk.doc(db, "config", "socios"), {
+      pagaConCajaLocal: yaActivo ? fbSdk.arrayRemove(nombre) : fbSdk.arrayUnion(nombre)
+    });
+    showToast(yaActivo ? `${nombre} ya no carga directo por Caja del local` : `${nombre} ahora carga directo por Caja del local ✅`);
+  } catch (e) {
+    console.error(e);
+    showToast("No se pudo actualizar. Revisá tu conexión.");
+  }
+}
 
 // Cambiar la clave maestra de administradores (ver claveMaestraAdmin) —
 // cualquiera de los 3 admins puede hacerlo desde acá. Solo afecta a

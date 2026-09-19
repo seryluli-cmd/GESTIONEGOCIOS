@@ -68,6 +68,7 @@ cambiás una regla de negocio, actualizá el README.
 | `esSocio()` / `aplicarPermisosDeVista()` | se decide qué ve un colaborador |
 | `negocioTieneCajaLocal(id)` | se pregunta si un negocio tiene caja del local |
 | `negocioTieneTurnos(id)` | se pregunta si un negocio cierra la caja 2 veces por día (hoy: solo Pancho) |
+| `usaCajaLocalAutomatica(nombre)` | se pregunta si a esa persona se le fuerza sola la forma de pago "Caja del local" en un gasto nuevo |
 | `cierresFaltantes()` | se decide qué avisos "Caja faltante" mostrar (1 cierre diario o los turnos de Pancho) |
 | `escapeHtml(str)` | pasa todo texto de Firestore antes de ir a `innerHTML` |
 | `fechaLocalISO(date)` | se arma una fecha `AAAA-MM-DD` local |
@@ -95,8 +96,12 @@ Si agregás un campo nuevo a `config/socios`, alcanza con tocar
 - **Aviso "Caja faltante":** turno del día 1 → recién avisa a las 5hs del día
   2. Se calcula sobre *ayer*, y a propósito **no** reutiliza
   `fechaSugeridaCierre()` (esa devuelve *hoy* pasado el mediodía).
-- **Kiara está hardcodeada por nombre** (`usuarioActual === "Kiara"`) para
-  forzarle forma de pago "caja". Es deuda técnica conocida, ver abajo.
+- **Quién carga automático por Caja del local ya no está hardcodeado por
+  nombre** — es la lista `pagaConCajaLocal` en `config/socios`, editable
+  por un admin desde Ajustes → Socios/Otras personas (botón 💵). Ver
+  `usaCajaLocalAutomatica()`/`toggleCajaLocalAutomatica()`. Si algún día
+  hace falta sumar o sacar a alguien (ej. Kiara deja el puesto), es un
+  toggle en la app, no un cambio de código.
 - **La app se actualiza sola; no rompas ese bloque.** El service worker de
   `app.js` recarga la pantalla cuando detecta versión nueva. Dos guardas que
   parecen de más pero no lo son: no recargar en el primer `controllerchange`
@@ -125,9 +130,6 @@ Si agregás un campo nuevo a `config/socios`, alcanza con tocar
   capa de datos/Firebase, utilidades, render por pantalla, modales. Mientras
   tanto, **agrupá lo nuevo por sección con su comentario de encabezado**, para
   que el día que se parta el archivo los límites ya estén dibujados.
-- **Kiara por nombre exacto** debería ser una marca por persona (ej.
-  `pagaConCajaLocal: ["Kiara"]` en `config/socios`), para no tener que tocar
-  código cuando cambie el personal.
 - **Sin tests.** Para lógica pura (fechas, cálculos, permisos) sirve replicar
   la función en un `node -e` y verificar los casos borde antes de dar por
   buena una regla; se hizo así con el aviso de "Caja faltante" y con el

@@ -53,7 +53,7 @@ import { renderResumen, limpiarFotosVencidas, renderFotosGuardadas } from "./js/
 import {
   renderAjustesSocios, agregarCategoriaDesdeAjustes, quitarCategoria,
   openModalColaborador, closeModalColaborador, saveColaborador, toggleAdminSocio,
-  guardarClaveMaestra, exportGastosCSV, exportFacturacionCSV
+  toggleCajaLocalAutomatica, guardarClaveMaestra, exportGastosCSV, exportFacturacionCSV
 } from "./js/ajustes.js";
 import {
   addColaboradorRow, handleSetupConnect, handleSetupGuardar, resetLocalConfig
@@ -497,7 +497,13 @@ function wireEvents() {
   // renderiza el <select> para el admin — ver renderAjustesSocios()).
   $("#ajustes-socios-list").addEventListener("click", (e) => {
     const adminBtn = e.target.closest(".admin-toggle-btn");
-    if (adminBtn) toggleAdminSocio(adminBtn.dataset.nombre);
+    if (adminBtn) { toggleAdminSocio(adminBtn.dataset.nombre); return; }
+    const cajaBtn = e.target.closest(".caja-auto-toggle-btn");
+    if (cajaBtn) toggleCajaLocalAutomatica(cajaBtn.dataset.nombre);
+  });
+  $("#ajustes-colaboradores-list").addEventListener("click", (e) => {
+    const cajaBtn = e.target.closest(".caja-auto-toggle-btn");
+    if (cajaBtn) toggleCajaLocalAutomatica(cajaBtn.dataset.nombre);
   });
   $("#ajustes-colaboradores-list").addEventListener("change", async (e) => {
     const select = e.target.closest(".colaborador-negocio-select");

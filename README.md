@@ -56,7 +56,7 @@ credenciales públicas del proyecto (`firebaseConfig`), protegido por reglas de
 seguridad que exigen autenticación anónima.
 
 - **`config/socios`** (un solo documento) —
-  `{ socios: [string, string, string], colaboradores: string[], colaboradorNegocio: { [nombre]: "pancho"|"heladeria" }, admins: string[], pins: { [nombre]: "1234" }, claveMaestraAdmin: string, cajaLocalMonto: number, categoriasGasto: { pancho: string[], heladeria: string[] } }`.
+  `{ socios: [string, string, string], colaboradores: string[], colaboradorNegocio: { [nombre]: "pancho"|"heladeria" }, admins: string[], pagaConCajaLocal: string[], pins: { [nombre]: "1234" }, claveMaestraAdmin: string, cajaLocalMonto: number, categoriasGasto: { pancho: string[], heladeria: string[] } }`.
   Se crea una única vez, la primera vez que alguien conecta el negocio (ver
   `handleSetupGuardar`). El resto de los dispositivos lo leen y ya no lo
   vuelven a pedir. `admins` y `pins` se explican en la sección de abajo.
@@ -82,20 +82,23 @@ seguridad que exigen autenticación anónima.
   `gastosDelNegocio()`. `formaPago` es `"efectivo"`, `"digital"`, `"mixto"`
   (con `montoEfectivo`/`montoDigital` propios) o `"caja"` — este último solo
   existe en negocios con Caja del local, ver más abajo. **La auto-selección
-  (sin que haga falta tocar nada) es solo para Kiara** (encargada de
-  compras de Pancho — chequeo por nombre exacto, no "cualquier
-  colaborador", porque el resto del equipo podría no manejar esa caja):
-  si quien carga un gasto NUEVO es ella, `openModal()` fuerza
-  `formaPago: "caja"` y esconde el selector entero (queda un aviso en su
-  lugar) — no tiene que tildar ningún checkbox ni confirmar nada, queda
-  forzado solo. Al EDITAR un gasto ya cargado (admin-only) el selector
-  completo sigue disponible por si hay que corregirlo. **Para el resto de
-  las personas la opción "Caja del local" sigue disponible como un chip más
-  del selector normal** (`#chip-forma-caja`, visible siempre que el negocio
-  tenga caja local) — cualquiera puede elegirla a mano, no es exclusiva de
-  Kiara; a ella simplemente se la eligen automáticamente. Un gasto "caja"
-  suma a Total Gastos y Rentabilidad como cualquier otro — no tiene ningún
-  trato especial salvo restarse en el cálculo de "queda" de la caja.
+  (sin que haga falta tocar nada) es para quien esté en `pagaConCajaLocal`**
+  (array de nombres en `config/socios`, ver abajo) — hoy solo Kiara,
+  encargada de compras de Pancho, pero cualquier admin puede sumar o sacar
+  gente desde Ajustes → Socios/Otras personas (botón 💵, ver
+  `usaCajaLocalAutomatica()`/`toggleCajaLocalAutomatica()` en
+  `js/datos.js`/`js/ajustes.js`) sin tocar código. Si quien carga un gasto
+  NUEVO está en esa lista, `openModal()` fuerza `formaPago: "caja"` y
+  esconde el selector entero (queda un aviso en su lugar) — no tiene que
+  tildar ningún checkbox ni confirmar nada, queda forzado solo. Al EDITAR
+  un gasto ya cargado (admin-only) el selector completo sigue disponible
+  por si hay que corregirlo. **Para el resto de las personas la opción
+  "Caja del local" sigue disponible como un chip más del selector normal**
+  (`#chip-forma-caja`, visible siempre que el negocio tenga caja local) —
+  cualquiera puede elegirla a mano, no es exclusiva de quien la tiene
+  automática. Un gasto "caja" suma a Total Gastos y Rentabilidad como
+  cualquier otro — no tiene ningún trato especial salvo restarse en el
+  cálculo de "queda" de la caja.
 - **Caja del local** — el efectivo físico que tiene la encargada de Pancho
   para pagar cosas sin transferirle cada vez. Lo que "queda" se calcula en
   `cajaLocalCalculo()`: **total repuesto menos** la suma de TODOS los gastos

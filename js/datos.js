@@ -48,6 +48,11 @@ export let colaboradorNegocio = {}; // { "Encargada": "pancho" | "heladeria" } �
                               // aparece acá, ve los 2 negocios (ver negociosPermitidos()). Los
                               // 3 socios siempre ven los 2, nunca están en este mapa.
 export let admins = [];           // subconjunto de nombres (normalmente socios) con permiso para editar/borrar
+export let pagaConCajaLocal = []; // nombres (socio o colaborador) para quienes un gasto NUEVO se carga
+                             // automático como "Caja del local", sin preguntar forma de pago —
+                             // editable por un admin desde Ajustes (ver toggleCajaLocalAutomatica()
+                             // en ajustes.js). Reemplaza el hardcode viejo por nombre ("Kiara"), ver
+                             // usaCajaLocalAutomatica() más abajo.
 export let pins = {};             // { "Sergio": "1234", ... } — PIN fijo de 4 dígitos por persona (ver README: no es seguridad real, solo identificación)
 export let claveMaestraAdmin = ""; // clave compartida entre los admins, solo para CREAR su PIN la primera vez
                              // en un celular nuevo (ver openPinModal/confirmPinModal) — evita que cualquiera
@@ -69,6 +74,7 @@ export let ideas = [];            // TODAS las ideas de mejora, de los 2 negocio
 export let categoriasGasto = CATEGORIAS_GASTO_DEFAULT;
 export let categoriasGastoSembrado = false; // evita reescribir el default más de una vez por sesión
 let fotosLimpiezaHecha = false;
+let pagaConCajaLocalMigrado = false; // evita reescribir la migración de Kiara más de una vez por sesión (mismo patrón que categoriasGastoSembrado)
 
 // Setters para el único otro código (fuera de este módulo) que necesita
 // tocar este estado sin pasar por Firestore primero: guardarClaveMaestra()
@@ -102,6 +108,16 @@ export function negocioTieneTurnos(id) {
   return !!(biz && biz.tieneTurnos);
 }
 
+// Reemplaza el hardcode viejo "usuarioActual === 'Kiara'": cualquier socio
+// o colaborador puede marcarse desde Ajustes (ver toggleCajaLocalAutomatica
+// en ajustes.js) para que sus gastos nuevos se carguen directo por la Caja
+// del local, sin tener que tocar código cuando cambie quién maneja esa
+// caja. Se pregunta acá, no comparando el nombre en cada lugar que lo
+// necesita (mismo criterio que negocioTieneCajaLocal()).
+export function usaCajaLocalAutomatica(nombre) {
+  return pagaConCajaLocal.includes(nombre);
+}
+
 export function categoriasDelNegocio(negocioId) {
   return categoriasGasto[negocioId] || categoriasGasto.pancho || [];
 }
@@ -116,6 +132,7 @@ export function aplicarConfigSocios(data) {
   colaboradores = Array.isArray(data.colaboradores) ? data.colaboradores : [];
   colaboradorNegocio = data.colaboradorNegocio && typeof data.colaboradorNegocio === "object" ? data.colaboradorNegocio : {};
   admins = Array.isArray(data.admins) ? data.admins : [];
+  pagaConCajaLocal = Array.isArray(data.pagaConCajaLocal) ? data.pagaConCajaLocal : [];
   pins = data.pins && typeof data.pins === "object" ? data.pins : {};
   claveMaestraAdmin = typeof data.claveMaestraAdmin === "string" ? data.claveMaestraAdmin : "";
   cajaLocalMonto = Number(data.cajaLocalMonto) || 0;
@@ -204,6 +221,17 @@ export function listenSocios() {
         categoriasGastoSembrado = true;
         categoriasGasto = CATEGORIAS_GASTO_DEFAULT;
         fbSdk.updateDoc(socioDocRef, { categoriasGasto }).catch(() => {});
+      }
+      // MIGRACIÓN (una sola vez): instalaciones que ya tenían el hardcode
+      // "Kiara" force-caja por nombre (antes de que existiera este campo)
+      // migran solas la primera vez que alguien con ese nombre aparece en
+      // socios o colaboradores — así nadie tiene que entrar a Ajustes a
+      // mano para que el comportamiento de antes siga funcionando igual.
+      if (!Array.isArray(data.pagaConCajaLocal) && !pagaConCajaLocalMigrado
+          && (socios.includes("Kiara") || colaboradores.includes("Kiara"))) {
+        pagaConCajaLocalMigrado = true;
+        pagaConCajaLocal = ["Kiara"];
+        fbSdk.updateDoc(socioDocRef, { pagaConCajaLocal }).catch(() => {});
       }
       localStorage.setItem(LS_SOCIOS_CACHE, JSON.stringify(socios));
       localStorage.setItem(LS_COLAB_CACHE, JSON.stringify(colaboradores));

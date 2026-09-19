@@ -5,7 +5,7 @@
 
 import { $, $$, escapeHtml, showToast, parseMoneyInput, formatMoneyValue, redondearCentavos, fechaLocalISO, fechaDeRegistro, money, conTimeout } from "./utilidades.js";
 import { fbSdk, db, storage } from "./firebase-sdk.js";
-import { gastosDelNegocio, gastos, categoriasDelNegocio, negocioTieneCajaLocal } from "./datos.js";
+import { gastosDelNegocio, gastos, categoriasDelNegocio, negocioTieneCajaLocal, usaCajaLocalAutomatica } from "./datos.js";
 import { negocioActual, usuarioActual, esAdmin } from "./sesion.js";
 import { cajaLocalCalculo, esGastoCaja } from "./caja-local.js";
 import { fotosDeGasto } from "./gastos.js";
@@ -181,21 +181,20 @@ export function openModal(gasto, opts) {
   $("#input-mixto-efectivo").value = gasto && gasto.montoEfectivo != null ? formatMoneyValue(gasto.montoEfectivo) : "";
   $("#input-mixto-digital").value = gasto && gasto.montoDigital != null ? formatMoneyValue(gasto.montoDigital) : "";
 
-  // Kiara es la encargada de compras de Pancho: todo lo que paga sale de
-  // la Caja del local, siempre — no tiene sentido pedirle que elija la
-  // forma de pago cada vez si la respuesta es siempre la misma. A
-  // propósito es específico de ella por nombre (no "cualquier
-  // colaborador"), porque el resto del equipo podría no manejar esa
-  // caja. Para un gasto NUEVO cargado por Kiara, se fuerza "caja" solo
-  // y se esconde el selector entero (con un aviso de que quedó así). Al
+  // Quien maneja la Caja del local (marcado desde Ajustes → Socios/Otras
+  // personas, ver usaCajaLocalAutomatica en datos.js) carga todo lo que
+  // paga directo de esa caja, siempre — no tiene sentido pedirle que
+  // elija la forma de pago cada vez si la respuesta es siempre la misma.
+  // Para un gasto NUEVO cargado por esa persona, se fuerza "caja" solo y
+  // se esconde el selector entero (con un aviso de que quedó así). Al
   // EDITAR un gasto ya cargado (admin-only) el selector completo sigue
   // disponible, por si hay que corregirlo a otra forma de pago.
-  const esKiaraConCaja = !gasto
-    && usuarioActual === "Kiara"
+  const cajaAutomatica = !gasto
+    && usaCajaLocalAutomatica(usuarioActual)
     && negocioTieneCajaLocal(negocioActual);
-  $("#campo-forma-pago").classList.toggle("hidden", esKiaraConCaja);
-  $("#aviso-forma-pago-auto").classList.toggle("hidden", !esKiaraConCaja);
-  if (esKiaraConCaja) {
+  $("#campo-forma-pago").classList.toggle("hidden", cajaAutomatica);
+  $("#aviso-forma-pago-auto").classList.toggle("hidden", !cajaAutomatica);
+  if (cajaAutomatica) {
     selectFormaPago("caja");
   } else {
     // "Caja del local" es una forma de pago exclusiva de los negocios con
