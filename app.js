@@ -535,11 +535,13 @@ async function attemptReconnect() {
     return;
   }
 
+  let sociosCache = socios;
+  let colaboradoresCache = colaboradores;
   if (cachedSocios) {
-    try { socios = JSON.parse(cachedSocios); } catch (_) {}
+    try { sociosCache = JSON.parse(cachedSocios); } catch (_) {}
   }
   if (cachedColab) {
-    try { colaboradores = JSON.parse(cachedColab); } catch (_) {}
+    try { colaboradoresCache = JSON.parse(cachedColab); } catch (_) {}
   }
 
   $("#loading-msg").textContent = "Cargando…";
@@ -549,7 +551,7 @@ async function attemptReconnect() {
 
   try {
     const config = savedConfig ? JSON.parse(savedConfig) : DEFAULT_FIREBASE_CONFIG;
-    await connectAndBoot(config, socios, colaboradores);
+    await connectAndBoot(config, sociosCache, colaboradoresCache);
     if (!savedConfig) localStorage.setItem(LS_CONFIG_KEY, JSON.stringify(config));
   } catch (e) {
     console.error("Error reconectando:", e);
