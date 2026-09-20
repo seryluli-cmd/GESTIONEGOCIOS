@@ -78,8 +78,8 @@ let pagaConCajaLocalMigrado = false; // evita reescribir la migración de Kiara 
 
 // Setters para el único otro código (fuera de este módulo) que necesita
 // tocar este estado sin pasar por Firestore primero: guardarClaveMaestra()
-// y migrarMontoInicialCaja() en app.js, después de que su propia
-// escritura a Firestore ya se confirmó.
+// (ajustes.js) y migrarMontoInicialCaja() (caja-local.js), después de que
+// su propia escritura a Firestore ya se confirmó.
 export function setClaveMaestraLocal(valor) {
   claveMaestraAdmin = valor;
 }

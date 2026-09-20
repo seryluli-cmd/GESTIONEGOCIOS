@@ -3,34 +3,26 @@
 // ============================================================
 
 import {
-  $, $$, money, montoOCargando, parseMoneyInput, formatMoneyValue,
-  formatMoneyInputMientrasTipea, wireMoneyInput, debounce,
-  MESES, mesLabel, fechaDeRegistro, fechaLocalISO, compressImage,
-  showToast, showScreen, LS_TEMA_KEY, MQ_OSCURO, esOscuroSegunTema,
-  aplicarTema, elegirTema, escapeHtml, csvEscape, downloadCSV,
-  conTimeout, switchTab
+  $, $$, formatMoneyInputMientrasTipea, wireMoneyInput, debounce,
+  compressImage, showToast, showScreen, LS_TEMA_KEY,
+  aplicarTema, elegirTema, switchTab
 } from "./js/utilidades.js";
+import { fbSdk, db } from "./js/firebase-sdk.js";
 import {
-  fbSdk, loadFirebaseSdk, fbApp, auth, db, storage,
-  parseFirebaseConfig, initFirebase
-} from "./js/firebase-sdk.js";
-import {
-  negocioTieneCajaLocal, categoriasDelNegocio, aplicarConfigSocios, connectAndBoot,
-  gastosDelNegocio, facturacionesDelNegocio, reposicionesDelNegocio, ideasDelNegocio,
-  listenSocios, listenGastos, listenFacturacion, listenReposiciones, listenIdeas,
-  listenConnectivity, socios, colaboradores, colaboradorNegocio, gastos, facturaciones
+  connectAndBoot, listenSocios, listenGastos, listenFacturacion, listenReposiciones,
+  listenIdeas, listenConnectivity, socios, colaboradores, colaboradorNegocio,
+  gastos, facturaciones
 } from "./js/datos.js";
 import {
-  resumeSession, renderNegocioCards, esSocio, cargarHistorialLogins, cambiarUsuario,
-  closePinModal, confirmPinModal, volverASeccion, irAAjustesDirecto,
-  usuarioActual, esAdmin, negocioActual, pinFlowMode
+  resumeSession, renderNegocioCards, cargarHistorialLogins, cambiarUsuario,
+  closePinModal, confirmPinModal, volverASeccion, irAAjustesDirecto, pinFlowMode
 } from "./js/sesion.js";
 import {
-  esGastoCaja, pintarQueda, cajaLocalCalculo, renderCajaLocalCard, renderCajaLocalDetalle,
-  openModalReposicion, closeModalReposicion, saveReposicion, deleteReposicion
+  renderCajaLocalDetalle, openModalReposicion, closeModalReposicion,
+  saveReposicion, deleteReposicion
 } from "./js/caja-local.js";
 import {
-  renderGastos, renderGastosAdmin, crearFilaExpenseItem, crearFilaGasto, fotosDeGasto,
+  renderGastos, renderGastosAdmin, fotosDeGasto,
   abrirVisorFotos, visorFotosMover, closeModalVisorFotos, wireVisorFotosZoom,
   verDetalleGasto, closeModalDetalleGasto
 } from "./js/gastos.js";
@@ -46,10 +38,10 @@ import {
   setSelectedFotoFacturadoBlob, selectTurnoFacturado
 } from "./js/modal-facturado.js";
 import {
-  renderIdeas, toggleVoto, toggleIdeaEstado, deleteIdea,
+  toggleVoto, toggleIdeaEstado, deleteIdea,
   openModalIdea, closeModalIdea, saveIdea
 } from "./js/ideas.js";
-import { renderResumen, limpiarFotosVencidas, renderFotosGuardadas } from "./js/resumen.js";
+import { renderResumen, renderFotosGuardadas } from "./js/resumen.js";
 import {
   renderAjustesSocios, agregarCategoriaDesdeAjustes, quitarCategoria,
   openModalColaborador, closeModalColaborador, saveColaborador, toggleAdminSocio,
@@ -577,4 +569,4 @@ async function start() {
   await attemptReconnect();
 }
 
-start();
+start().catch(console.error);

@@ -59,14 +59,24 @@ if ("serviceWorker" in navigator) {
     }
     recargaPendiente = true;
     recargarSiNoMolesta();
+    // Si justo hay un modal abierto, recargarSiNoMolesta() de arriba no hizo
+    // nada — y si la persona sigue usando la app sin nunca cambiar de
+    // pestaña/app (el otro momento en que se reintenta, ver visibilitychange
+    // más abajo), podría quedarse mucho tiempo en la versión vieja. Este
+    // intervalo es el respaldo para ese caso: reintenta solo mientras haya
+    // una recarga pendiente, y se apaga solo en cuanto se recarga.
+    const reintento = setInterval(() => {
+      recargarSiNoMolesta();
+      if (recargando) clearInterval(reintento);
+    }, 30000);
   });
 
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("service-worker.js").then((reg) => {
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState !== "visible") return;
-        reg.update();            // ¿hay versión nueva publicada?
-        recargarSiNoMolesta();   // ¿quedó una pendiente de antes?
+        reg.update().catch(console.warn);  // ¿hay versión nueva publicada?
+        recargarSiNoMolesta();             // ¿quedó una pendiente de antes?
       });
     }).catch(console.warn);
   });
