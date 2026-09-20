@@ -507,3 +507,5 @@ de la app (pantalla de Setup → "¿No sabés dónde conseguir esto?"):
 Repositorio git con remoto en GitHub (`seryluli-cmd/GESTIONEGOCIOS`). El
 deploy es automático: Netlify está conectado a este repo y publica solo con
 cada push a `master` — no hace falta generar ni subir ningún `.zip` a mano.
+
+**App en producción: https://gestionegocios.netlify.app**
