@@ -54,7 +54,11 @@ cambiás una regla de negocio, actualizá el README.
     filas de ejemplo. Verificar **tema claro y oscuro** (`colorScheme`).
 - **Git:** desarrollar en la rama asignada y después mergear a `master`.
   `master` es lo que Netlify publica, así que un cambio no llega a los
-  celulares hasta que esté ahí.
+  celulares hasta que esté ahí. Commitear es libre, pero **confirmar antes
+  de pushear a `master`** — cada push dispara un build de Netlify que
+  consume créditos (~15 por build); juntar varios commits y pedir
+  confirmación una sola vez antes de pushearlos juntos, en vez de push
+  automático por commit.
 
 ## Puntos únicos de verdad ya establecidos (no los eludas)
 
