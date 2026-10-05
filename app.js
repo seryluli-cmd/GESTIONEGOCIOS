@@ -55,7 +55,7 @@ import {
 import { renderResumen, limpiarFotosVencidas, renderFotosGuardadas } from "./js/resumen.js";
 import {
   renderAjustesSocios, agregarCategoriaDesdeAjustes, quitarCategoria,
-  openModalColaborador, closeModalColaborador, saveColaborador, toggleAdminSocio,
+  openModalColaborador, closeModalColaborador, saveColaborador, toggleAdmin,
   guardarClaveMaestra, exportGastosCSV, exportFacturacionCSV
 } from "./js/ajustes.js";
 import {
@@ -496,12 +496,17 @@ function wireEvents() {
     if (e.target.id === "modal-add-colaborador") closeModalColaborador();
   });
 
+  // Sumar/sacar admin, desde Ajustes → Socios u Otras personas (mismo
+  // botón 🔓/🛡️ en los dos lugares — ver adminBadgeYToggle()).
+  function onAdminToggleClick(e) {
+    const adminBtn = e.target.closest(".admin-toggle-btn");
+    if (adminBtn) toggleAdmin(adminBtn.dataset.nombre);
+  }
+  $("#ajustes-socios-list").addEventListener("click", onAdminToggleClick);
+  $("#ajustes-colaboradores-list").addEventListener("click", onAdminToggleClick);
+
   // Reasignar a qué negocio ve un colaborador, desde Ajustes (solo se
   // renderiza el <select> para el admin — ver renderAjustesSocios()).
-  $("#ajustes-socios-list").addEventListener("click", (e) => {
-    const adminBtn = e.target.closest(".admin-toggle-btn");
-    if (adminBtn) toggleAdminSocio(adminBtn.dataset.nombre);
-  });
   $("#ajustes-colaboradores-list").addEventListener("change", async (e) => {
     const select = e.target.closest(".colaborador-negocio-select");
     if (!select) return;

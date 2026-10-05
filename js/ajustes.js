@@ -8,6 +8,21 @@ import { esAdmin, usuarioActual, negocioActual, cargarHistorialLogins } from "./
 import { NEGOCIOS, socioColorVar, colaboradorColorVar, allPagadores } from "../app.js";
 import { nombreTurnoFacturado } from "./modal-facturado.js";
 
+// Badge "Admin" + botón 🔓/🛡️ para sumar/sacar admin a una persona (socio
+// o colaborador — admin ya no es solo de los 3 socios, ver toggleAdmin()).
+// Un solo lugar para este HTML: se usa en el loop de socios y en el de
+// colaboradores, para no repetir la plantilla (ver CLAUDE.md regla 1).
+// Solo lo ve otro admin, y nunca para sacarse el admin a uno mismo — así
+// nadie se queda sin ningún admin activo por accidente.
+function adminBadgeYToggle(nombre) {
+  const esAdminPersona = admins.includes(nombre);
+  const badge = esAdminPersona ? `<span class="admin-badge">Admin</span>` : "";
+  const toggleBtn = esAdmin && nombre !== usuarioActual
+    ? `<button type="button" class="icon-btn admin-toggle-btn" data-nombre="${escapeHtml(nombre)}" aria-label="${esAdminPersona ? "Quitar admin" : "Hacer admin"}" title="${esAdminPersona ? "Quitar admin" : "Hacer admin"}" style="margin-left:auto;">${esAdminPersona ? "🛡️" : "🔓"}</button>`
+    : "";
+  return badge + toggleBtn;
+}
+
 // ---------- Render: Ajustes ----------
 export function renderAjustesSocios() {
   const wrap = $("#ajustes-socios-list");
@@ -15,15 +30,7 @@ export function renderAjustesSocios() {
   socios.forEach((nombre, idx) => {
     const row = document.createElement("div");
     row.className = "ajustes-socio-row";
-    const esAdminSocio = admins.includes(nombre);
-    const badge = esAdminSocio ? `<span class="admin-badge">Admin</span>` : "";
-    // Solo un admin puede sumar/sacar admin a otro socio (ej. Leonel, que
-    // no lo era) — no a sí mismo, para que nadie se quede sin ningún
-    // admin activo por accidente.
-    const adminToggleBtn = esAdmin && nombre !== usuarioActual
-      ? `<button type="button" class="icon-btn admin-toggle-btn" data-nombre="${escapeHtml(nombre)}" aria-label="${esAdminSocio ? "Quitar admin" : "Hacer admin"}" title="${esAdminSocio ? "Quitar admin" : "Hacer admin"}" style="margin-left:auto;">${esAdminSocio ? "🛡️" : "🔓"}</button>`
-      : "";
-    row.innerHTML = `<span class="socio-dot" style="background:${socioColorVar(idx)}"></span> ${escapeHtml(nombre)} ${badge}${adminToggleBtn}`;
+    row.innerHTML = `<span class="socio-dot" style="background:${socioColorVar(idx)}"></span> ${escapeHtml(nombre)} ${adminBadgeYToggle(nombre)}`;
     wrap.appendChild(row);
   });
 
@@ -50,7 +57,7 @@ export function renderAjustesSocios() {
              ${NEGOCIOS.map(biz => `<option value="${biz.id}" ${asignado === biz.id ? "selected" : ""}>${escapeHtml(biz.nombre)}</option>`).join("")}
            </select>`
         : `<span class="muted small colaborador-negocio-tag">${asignado ? escapeHtml(NEGOCIOS.find(b => b.id === asignado)?.nombre || asignado) : "Ambos negocios"}</span>`;
-      row.innerHTML = `<span class="socio-dot" style="background:${colaboradorColorVar(idx)}"></span> ${escapeHtml(nombre)}`;
+      row.innerHTML = `<span class="socio-dot" style="background:${colaboradorColorVar(idx)}"></span> ${escapeHtml(nombre)} ${adminBadgeYToggle(nombre)}`;
       row.insertAdjacentHTML("beforeend", negocioControl);
       colabWrap.appendChild(row);
     });
@@ -189,12 +196,14 @@ export async function saveColaborador() {
   }
 }
 
-// Sumar/sacar admin a un socio (ej. Leonel, que empezó sin permiso para
-// editar/borrar gastos y cierres) — cualquier admin actual puede hacerlo
-// desde Ajustes (ver botón 🔓/🛡️ en renderAjustesSocios). No se puede
-// tocar a uno mismo (ver ese mismo render) para que nadie se quede sin
-// ningún admin activo por accidente.
-export async function toggleAdminSocio(nombre) {
+// Sumar/sacar admin a un socio o colaborador (ej. Leonel, que empezó sin
+// permiso para editar/borrar gastos y cierres) — cualquier admin actual
+// puede hacerlo desde Ajustes (ver botón 🔓/🛡️ en adminBadgeYToggle). No
+// se puede tocar a uno mismo (ver ese mismo render) para que nadie se
+// quede sin ningún admin activo por accidente. Ojo: admin también
+// destapa "Gastos S/Admin" (sueldos y gastos privados), así que sumarlo
+// a un colaborador le da esa visibilidad además de poder editar/borrar.
+export async function toggleAdmin(nombre) {
   const yaEsAdmin = admins.includes(nombre);
   try {
     await fbSdk.updateDoc(fbSdk.doc(db, "config", "socios"), {

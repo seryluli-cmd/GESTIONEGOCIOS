@@ -240,10 +240,15 @@ vez con su nombre + un PIN de 4 dígitos:
 - Una vez identificado, se recuerda en ese celular igual que la config —
   no se vuelve a pedir salvo que se use **"Cambiar de usuario"** en Ajustes
   (`cambiarUsuario()`, solo borra la identidad local, no la conexión).
-- **`admins`** (subconjunto de `socios`, elegido con los checkboxes del setup
-  inicial) puede editar y borrar gastos/cierres ya cargados — ver botones ✏️/🗑️
-  en `renderGastos()`/`renderFacturado()`, y `deleteGasto()`/`deleteCierre()`.
-  El resto de las personas solo puede cargar y ver.
+- **`admins`** puede editar y borrar gastos/cierres ya cargados — ver botones
+  ✏️/🗑️ en `renderGastos()`/`renderFacturado()`, y `deleteGasto()`/
+  `deleteCierre()`. El resto de las personas solo puede cargar y ver. Se
+  eligen al principio con los checkboxes del setup inicial (ahí solo entran
+  los 3 socios), pero después cualquier admin puede sumar o sacar admin a
+  **cualquier persona — socio o colaborador** — desde Ajustes, con el botón
+  🔓/🛡️ (`toggleAdmin()`, en la lista de Socios y en "Otras personas"). No
+  se lo puede sacar a sí mismo, para que nadie se quede sin ningún admin
+  activo por accidente.
 
 ⚠️ **Esto NO es una capa de seguridad real.** Firestore sigue aceptando
 lectura/escritura de cualquier dispositivo autenticado anónimamente (ver
@@ -268,11 +273,14 @@ plata de los socios ni los totales del negocio:
 | **Balance** (cuánto puso cada socio, quién le debe a quién) | ✅ | ❌ |
 | **Resumen mensual** (facturado, gastos totales, rentabilidad) | ✅ | ❌ |
 | **Exportar datos** (CSV con todo el historial del negocio) | ✅ | ❌ |
-| **Gastos S/Admin** (gastos marcados privados) | Solo admin\* | ❌ |
+| **Gastos S/Admin** (gastos marcados privados) | Solo admin\* | Solo admin\* |
 
 \* "Gastos S/Admin" no se filtra por `esSocio()` como el resto de esta
 tabla, sino por `esAdmin` — ver "Categorías de gastos y gastos privados"
-más abajo. Un socio que no es admin tampoco la ve.
+más abajo. Ni un socio ni un colaborador la ven si no son admin; y sí la
+ve cualquiera de los dos si lo son, porque es el mismo flag (`admins`,
+ver "Identidad y permisos" más arriba) — hacer admin a un colaborador le
+destapa esta sección además de poder editar/borrar gastos y cierres.
 
 - La pestaña **Balance** y la tarjeta **Exportar datos** de Ajustes
   (`#ajustes-export-card`) se esconden en `aplicarPermisosDeVista()`, que se
