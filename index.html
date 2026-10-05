@@ -47,7 +47,20 @@
   <!-- ===== PANTALLA DE CARGA ===== -->
   <div id="screen-loading" class="screen active">
     <div class="loading-wrap">
-      <div class="logo-badge">$</div>
+      <div class="loading-hourglass" role="img" aria-label="Cargando">
+        <svg class="hourglass" viewBox="0 0 64 64" aria-hidden="true">
+          <defs>
+            <clipPath id="hg-clip-top"><path d="M21 14H43V18C43 26 34 30 33 32H31C30 30 21 26 21 18Z"/></clipPath>
+            <clipPath id="hg-clip-bottom"><path d="M31 32H33C34 34 43 38 43 46V50H21V46C21 38 30 34 31 32Z"/></clipPath>
+          </defs>
+          <path class="hg-glass-fill" d="M21 14V18C21 26 30 30 31 32C30 34 21 38 21 46V50H43V46C43 38 34 34 33 32C34 30 43 26 43 18V14Z"/>
+          <g clip-path="url(#hg-clip-top)"><rect class="hg-sand-top" x="21" y="14" width="22" height="18"/></g>
+          <g clip-path="url(#hg-clip-bottom)"><rect class="hg-sand-bottom" x="21" y="32" width="22" height="18"/></g>
+          <line class="hg-stream" x1="32" y1="31" x2="32" y2="50"/>
+          <path class="hg-glass" d="M21 14V18C21 26 30 30 31 32C30 34 21 38 21 46V50M43 14V18C43 26 34 30 33 32C34 34 43 38 43 46V50"/>
+          <path class="hg-cap" d="M16 12H48M16 52H48"/>
+        </svg>
+      </div>
       <p class="muted" id="loading-msg">Cargando…</p>
       <button id="btn-retry-boot" class="btn-primary hidden" style="margin-top:16px;">Reintentar</button>
       <button id="btn-reconfigure-boot" class="btn-secondary hidden" style="margin-top:10px;">Configurar de nuevo</button>

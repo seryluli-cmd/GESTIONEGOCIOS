@@ -129,6 +129,46 @@ body {
   font-size: 15px;
 }
 
+/* ===== Reloj de arena (pantalla de carga) =====
+   La arena baja de la ampolla de arriba a la de abajo y, cuando se vacía,
+   el reloj se da vuelta. Es simétrico: al terminar el giro de 180° se ve
+   igual que al empezar, así el loop no tiene saltos. Vidrio y tapas usan
+   --series-1 (azul acá; violeta en las otras PWAs del dueño), la arena es
+   dorada fija en todas. */
+.loading-hourglass {
+  width: 92px; height: 92px;
+  margin: 0 auto 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--series-1) 12%, transparent);
+  display: flex; align-items: center; justify-content: center;
+}
+.hourglass { --hg-sand: #f5b301; width: 54px; height: 54px; overflow: visible; animation: hg-flip 3.4s linear infinite; }
+.hg-glass-fill { fill: color-mix(in srgb, var(--series-1) 10%, transparent); }
+.hg-glass, .hg-cap { fill: none; stroke: var(--series-1); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.hg-sand-top, .hg-sand-bottom { fill: var(--hg-sand); transform-box: fill-box; transform-origin: 50% 100%; }
+.hg-sand-top { animation: hg-drain 3.4s linear infinite; }
+.hg-sand-bottom { animation: hg-fill 3.4s linear infinite; }
+.hg-stream { stroke: var(--hg-sand); stroke-width: 1.4; stroke-linecap: round; animation: hg-stream 3.4s linear infinite; }
+
+@keyframes hg-flip {
+  0%, 82% { transform: rotate(0); animation-timing-function: cubic-bezier(.6, 0, .3, 1); }
+  100% { transform: rotate(180deg); }
+}
+@keyframes hg-drain { 0% { transform: scaleY(1); } 82%, 100% { transform: scaleY(0); } }
+@keyframes hg-fill { 0% { transform: scaleY(0); } 82%, 100% { transform: scaleY(1); } }
+@keyframes hg-stream { 0%, 3% { opacity: 0; } 8%, 78% { opacity: 1; } 82%, 100% { opacity: 0; } }
+
+/* Si falló la conexión (aparece "Reintentar"), el reloj se frena y se apaga. */
+.loading-wrap:has(#btn-retry-boot:not(.hidden)) .loading-hourglass { opacity: .45; }
+.loading-wrap:has(#btn-retry-boot:not(.hidden)) .hourglass,
+.loading-wrap:has(#btn-retry-boot:not(.hidden)) .hourglass * { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hourglass, .hg-sand-top, .hg-sand-bottom, .hg-stream { animation: none; }
+  .hg-sand-top, .hg-sand-bottom { transform: scaleY(.5); }
+  .hg-stream { opacity: 0; }
+}
+
 .card {
   background: var(--surface-1);
   border: 1px solid var(--border);
