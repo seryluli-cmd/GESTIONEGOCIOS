@@ -44,7 +44,7 @@ import {
 import { renderResumen, renderFotosGuardadas } from "./js/resumen.js";
 import {
   renderAjustesSocios, agregarCategoriaDesdeAjustes, quitarCategoria,
-  openModalColaborador, closeModalColaborador, saveColaborador, toggleAdminSocio,
+  openModalColaborador, closeModalColaborador, saveColaborador, toggleAdmin,
   toggleCajaLocalAutomatica, guardarClaveMaestra, exportGastosCSV, exportFacturacionCSV
 } from "./js/ajustes.js";
 import {
@@ -485,11 +485,18 @@ function wireEvents() {
     if (e.target.id === "modal-add-colaborador") closeModalColaborador();
   });
 
-  // Reasignar a qué negocio ve un colaborador, desde Ajustes (solo se
-  // renderiza el <select> para el admin — ver renderAjustesSocios()).
-  $("#ajustes-socios-list").addEventListener("click", (e) => {
+  // Sumar/sacar admin, desde Ajustes → Socios u Otras personas (mismo
+  // botón 🔓/🛡️ en los dos lugares — ver adminBadgeYToggle()).
+  function onAdminToggleClick(e) {
     const adminBtn = e.target.closest(".admin-toggle-btn");
-    if (adminBtn) { toggleAdminSocio(adminBtn.dataset.nombre); return; }
+    if (adminBtn) toggleAdmin(adminBtn.dataset.nombre);
+  }
+  $("#ajustes-socios-list").addEventListener("click", onAdminToggleClick);
+  $("#ajustes-colaboradores-list").addEventListener("click", onAdminToggleClick);
+
+  // Prender/apagar la caja local automática, desde Ajustes → Socios u
+  // Otras personas (ver toggleCajaLocalAutomatica()).
+  $("#ajustes-socios-list").addEventListener("click", (e) => {
     const cajaBtn = e.target.closest(".caja-auto-toggle-btn");
     if (cajaBtn) toggleCajaLocalAutomatica(cajaBtn.dataset.nombre);
   });
@@ -497,6 +504,9 @@ function wireEvents() {
     const cajaBtn = e.target.closest(".caja-auto-toggle-btn");
     if (cajaBtn) toggleCajaLocalAutomatica(cajaBtn.dataset.nombre);
   });
+
+  // Reasignar a qué negocio ve un colaborador, desde Ajustes (solo se
+  // renderiza el <select> para el admin — ver renderAjustesSocios()).
   $("#ajustes-colaboradores-list").addEventListener("change", async (e) => {
     const select = e.target.closest(".colaborador-negocio-select");
     if (!select) return;
