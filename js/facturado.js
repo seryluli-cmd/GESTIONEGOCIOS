@@ -2,7 +2,7 @@ import { $, money, mesLabel, fechaLocalISO, fechaDeRegistro, fechaBaseDelMes, es
 import { facturacionesDelNegocio } from "./datos.js";
 import { esAdmin } from "./sesion.js";
 import { facturadoMesOffset, payerColorVar, socioInitial } from "../app.js";
-import { cierresFaltantes, nombreTurnoFacturado } from "./modal-facturado.js";
+import { cierresFaltantes, nombreTurnoFacturado, nombreCortoTurnoFacturado } from "./modal-facturado.js";
 
 // ---------- Render: Facturado ----------
 // Antes mostraba TODOS los cierres del negocio sin importar el mes —
@@ -71,20 +71,27 @@ export function renderFacturado() {
     // Cierres viejos de Pancho (de antes de este campo) no tienen
     // "turno" guardado — quedan sin esa etiqueta en vez de inventar uno
     // (ver openModalFacturado, que obliga a elegirlo recién al editarlos).
-    const turnoTexto = f.turno ? ` — ${nombreTurnoFacturado(f.turno)}` : "";
+    const turnoTexto = f.turno ? `${nombreCortoTurnoFacturado(f.turno)}, ` : "";
+
+    // "creadoEn" es la hora REAL en que se guardó el cierre (a diferencia
+    // de "fecha", que es solo el día elegido). Los cierres de antes de que
+    // existiera ese campo no lo tienen: en esos casos no se muestra hora
+    // en vez de mostrar una incorrecta.
+    const horaCarga = f.creadoEn && f.creadoEn.toDate
+      ? f.creadoEn.toDate().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })
+      : null;
 
     const li = document.createElement("li");
     li.className = "expense-item";
-    // Acá los íconos se quedan en la misma fila que el texto (a
-    // diferencia de Gastos) — el texto de un cierre es corto y no
-    // necesita el ancho extra, así que no hacía falta tocarle nada.
+    // El texto (turno, quién y a qué hora) va en su propia fila arriba, con
+    // todo el ancho de la tarjeta para él solo — "Mañana, Iara 14:08 hs ·
+    // 04 oct" en una línea en vez de dos apretadas al lado del avatar.
+    // Avatar/monto/íconos quedan abajo, mismo patrón que en Gastos (ver
+    // .expense-item-top en styles.css). Mismo formato que FRWEB.
     li.innerHTML = `
+      <div class="desc">${turnoTexto}${escapeHtml(f.registradoPor || "?")}${horaCarga ? " " + horaCarga + " hs" : ""} · ${fecha.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })}</div>
       <div class="expense-item-top">
         <div class="avatar" style="background:${payerColorVar(f.registradoPor)}">${socioInitial(f.registradoPor)}</div>
-        <div class="info">
-          <div class="desc">${fecha.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "short" })}${turnoTexto}</div>
-          <div class="meta">Cargado por ${escapeHtml(f.registradoPor || "?")}</div>
-        </div>
         <div class="amount">${money(f.importe)}</div>
         ${fotoBtn}
         ${adminBtns}

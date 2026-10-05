@@ -18,12 +18,19 @@ let editingCierreId = null;     // id del cierre que se está editando en el mod
 // único turno que ya existía para el resto de los negocios).
 const MARGEN_AVISO_TURNO_MINUTOS = 30;
 const TURNOS_FACTURADO = [
-  { id: "manana", nombre: "Turno Mañana", horaInicioMinutos: 10 * 60, horaFinMinutos: 19 * 60 + 50, crucaMedianoche: false },
-  { id: "noche", nombre: "Turno Noche", horaInicioMinutos: 19 * 60, horaFinMinutos: 3 * 60, crucaMedianoche: true },
+  { id: "manana", nombre: "Turno Mañana", nombreCorto: "Mañana", horaInicioMinutos: 10 * 60, horaFinMinutos: 19 * 60 + 50, crucaMedianoche: false },
+  { id: "noche", nombre: "Turno Noche", nombreCorto: "Noche", horaInicioMinutos: 19 * 60, horaFinMinutos: 3 * 60, crucaMedianoche: true },
 ];
 export function nombreTurnoFacturado(id) {
   const turno = TURNOS_FACTURADO.find(t => t.id === id);
   return turno ? turno.nombre : "";
+}
+// Versión sin la palabra "Turno" para la lista de cierres, donde cada
+// fila ya está bajo el título "Cierre de Turno" y cada caracter cuenta
+// (ver renderFacturado). El resto de la app sigue usando el nombre largo.
+export function nombreCortoTurnoFacturado(id) {
+  const turno = TURNOS_FACTURADO.find(t => t.id === id);
+  return turno ? turno.nombreCorto : "";
 }
 
 // Ids de los turnos del negocio, en orden — usado por Resumen mensual
