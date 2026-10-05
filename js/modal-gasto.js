@@ -3,9 +3,9 @@
 // (con el desglose Mixto), fotos, guardar/borrar y marcar abonado.
 // ============================================================
 
-import { $, $$, escapeHtml, showToast, parseMoneyInput, formatMoneyValue, fechaLocalISO, fechaDeRegistro, money, conTimeout } from "./utilidades.js";
+import { $, $$, escapeHtml, showToast, parseMoneyInput, formatMoneyValue, redondearCentavos, fechaLocalISO, fechaDeRegistro, money, conTimeout } from "./utilidades.js";
 import { fbSdk, db, storage } from "./firebase-sdk.js";
-import { gastosDelNegocio, gastos, categoriasDelNegocio, negocioTieneCajaLocal } from "./datos.js";
+import { gastosDelNegocio, gastos, categoriasDelNegocio, negocioTieneCajaLocal, usaCajaLocalAutomatica } from "./datos.js";
 import { negocioActual, usuarioActual, esAdmin } from "./sesion.js";
 import { cajaLocalCalculo, esGastoCaja } from "./caja-local.js";
 import { fotosDeGasto } from "./gastos.js";
@@ -116,11 +116,11 @@ export function calcularCampoMixtoFaltante() {
   if (mixtoUltimoEditado === "efectivo") {
     const efectivo = parseMoneyInput($("#input-mixto-efectivo").value);
     if (!Number.isFinite(efectivo)) return;
-    $("#input-mixto-digital").value = formatMoneyValue(Math.round((importe - efectivo) * 100) / 100);
+    $("#input-mixto-digital").value = formatMoneyValue(redondearCentavos(importe - efectivo));
   } else {
     const digital = parseMoneyInput($("#input-mixto-digital").value);
     if (!Number.isFinite(digital)) return;
-    $("#input-mixto-efectivo").value = formatMoneyValue(Math.round((importe - digital) * 100) / 100);
+    $("#input-mixto-efectivo").value = formatMoneyValue(redondearCentavos(importe - digital));
   }
 }
 
@@ -181,21 +181,20 @@ export function openModal(gasto, opts) {
   $("#input-mixto-efectivo").value = gasto && gasto.montoEfectivo != null ? formatMoneyValue(gasto.montoEfectivo) : "";
   $("#input-mixto-digital").value = gasto && gasto.montoDigital != null ? formatMoneyValue(gasto.montoDigital) : "";
 
-  // Kiara es la encargada de compras de Pancho: todo lo que paga sale de
-  // la Caja del local, siempre — no tiene sentido pedirle que elija la
-  // forma de pago cada vez si la respuesta es siempre la misma. A
-  // propósito es específico de ella por nombre (no "cualquier
-  // colaborador"), porque el resto del equipo podría no manejar esa
-  // caja. Para un gasto NUEVO cargado por Kiara, se fuerza "caja" solo
-  // y se esconde el selector entero (con un aviso de que quedó así). Al
+  // Quien maneja la Caja del local (marcado desde Ajustes → Socios/Otras
+  // personas, ver usaCajaLocalAutomatica en datos.js) carga todo lo que
+  // paga directo de esa caja, siempre — no tiene sentido pedirle que
+  // elija la forma de pago cada vez si la respuesta es siempre la misma.
+  // Para un gasto NUEVO cargado por esa persona, se fuerza "caja" solo y
+  // se esconde el selector entero (con un aviso de que quedó así). Al
   // EDITAR un gasto ya cargado (admin-only) el selector completo sigue
   // disponible, por si hay que corregirlo a otra forma de pago.
-  const esKiaraConCaja = !gasto
-    && usuarioActual === "Kiara"
+  const cajaAutomatica = !gasto
+    && usaCajaLocalAutomatica(usuarioActual)
     && negocioTieneCajaLocal(negocioActual);
-  $("#campo-forma-pago").classList.toggle("hidden", esKiaraConCaja);
-  $("#aviso-forma-pago-auto").classList.toggle("hidden", !esKiaraConCaja);
-  if (esKiaraConCaja) {
+  $("#campo-forma-pago").classList.toggle("hidden", cajaAutomatica);
+  $("#aviso-forma-pago-auto").classList.toggle("hidden", !cajaAutomatica);
+  if (cajaAutomatica) {
     selectFormaPago("caja");
   } else {
     // "Caja del local" es una forma de pago exclusiva de los negocios con
@@ -311,28 +310,32 @@ export async function saveGasto() {
   btn.textContent = fotosNuevas.length ? "Subiendo fotos…" : "Guardando…";
 
   try {
-    // Cada foto se sube por separado y se tolera que alguna falle — mejor
-    // guardar el gasto con las que sí subieron que perderlo entero por una
-    // sola foto que no salió (mismo criterio que antes con una sola foto).
+    // Cada foto se sube en paralelo (son independientes entre sí) y se
+    // tolera que alguna falle — mejor guardar el gasto con las que sí
+    // subieron que perderlo entero por una sola foto que no salió (mismo
+    // criterio que antes con una sola foto).
+    const resultadosSubida = await Promise.allSettled(fotosNuevas.map(async f => {
+      const path = `recibos/${negocioActual}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+      const storageRef = fbSdk.ref(storage, path);
+      const TIMEOUT_MSG = "La subida de una foto tardó demasiado.";
+      await conTimeout(
+        fbSdk.uploadBytes(storageRef, f.blob, { contentType: "image/jpeg" }),
+        25000,
+        TIMEOUT_MSG
+      );
+      const url = await conTimeout(fbSdk.getDownloadURL(storageRef), 15000, TIMEOUT_MSG);
+      return { url, path };
+    }));
     let fotosFallidas = 0;
     const fotosSubidas = [];
-    for (const f of fotosNuevas) {
-      try {
-        const path = `recibos/${negocioActual}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-        const storageRef = fbSdk.ref(storage, path);
-        const TIMEOUT_MSG = "La subida de una foto tardó demasiado.";
-        await conTimeout(
-          fbSdk.uploadBytes(storageRef, f.blob, { contentType: "image/jpeg" }),
-          25000,
-          TIMEOUT_MSG
-        );
-        const url = await conTimeout(fbSdk.getDownloadURL(storageRef), 15000, TIMEOUT_MSG);
-        fotosSubidas.push({ url, path });
-      } catch (fotoErr) {
-        console.error("No se pudo subir una foto, se guarda el gasto sin ella:", fotoErr);
+    resultadosSubida.forEach(r => {
+      if (r.status === "fulfilled") {
+        fotosSubidas.push(r.value);
+      } else {
+        console.error("No se pudo subir una foto, se guarda el gasto sin ella:", r.reason);
         fotosFallidas++;
       }
-    }
+    });
     if (fotosNuevas.length) btn.textContent = "Guardando…";
 
     const fotosExistentesConservadas = fotosGastoModal

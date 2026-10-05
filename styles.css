@@ -37,7 +37,7 @@
 }
 
 /* Paleta oscura — vive SOLO acá, sin @media, porque data-theme lo decide
-   siempre aplicarTema() (app.js): "Oscuro" fijo, o "Auto" copiando
+   siempre aplicarTema() (utilidades.js): "Oscuro" fijo, o "Auto" copiando
    matchMedia("prefers-color-scheme: dark") a mano. Si esto fuera un
    @media aparte habría que repetir toda la paleta para el caso "Oscuro
    fijo con el celular en claro", y un dato tendría dos lugares. */
@@ -127,6 +127,46 @@ body {
   width: 28px; height: 28px;
   border-radius: 8px;
   font-size: 15px;
+}
+
+/* ===== Reloj de arena (pantalla de carga) =====
+   La arena baja de la ampolla de arriba a la de abajo y, cuando se vacía,
+   el reloj se da vuelta. Es simétrico: al terminar el giro de 180° se ve
+   igual que al empezar, así el loop no tiene saltos. Vidrio y tapas usan
+   --series-1 (azul acá; violeta en las otras PWAs del dueño), la arena es
+   dorada fija en todas. */
+.loading-hourglass {
+  width: 92px; height: 92px;
+  margin: 0 auto 8px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--series-1) 12%, transparent);
+  display: flex; align-items: center; justify-content: center;
+}
+.hourglass { --hg-sand: #f5b301; width: 54px; height: 54px; overflow: visible; animation: hg-flip 3.4s linear infinite; }
+.hg-glass-fill { fill: color-mix(in srgb, var(--series-1) 10%, transparent); }
+.hg-glass, .hg-cap { fill: none; stroke: var(--series-1); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.hg-sand-top, .hg-sand-bottom { fill: var(--hg-sand); transform-box: fill-box; transform-origin: 50% 100%; }
+.hg-sand-top { animation: hg-drain 3.4s linear infinite; }
+.hg-sand-bottom { animation: hg-fill 3.4s linear infinite; }
+.hg-stream { stroke: var(--hg-sand); stroke-width: 1.4; stroke-linecap: round; animation: hg-stream 3.4s linear infinite; }
+
+@keyframes hg-flip {
+  0%, 82% { transform: rotate(0); animation-timing-function: cubic-bezier(.6, 0, .3, 1); }
+  100% { transform: rotate(180deg); }
+}
+@keyframes hg-drain { 0% { transform: scaleY(1); } 82%, 100% { transform: scaleY(0); } }
+@keyframes hg-fill { 0% { transform: scaleY(0); } 82%, 100% { transform: scaleY(1); } }
+@keyframes hg-stream { 0%, 3% { opacity: 0; } 8%, 78% { opacity: 1; } 82%, 100% { opacity: 0; } }
+
+/* Si falló la conexión (aparece "Reintentar"), el reloj se frena y se apaga. */
+.loading-wrap:has(#btn-retry-boot:not(.hidden)) .loading-hourglass { opacity: .45; }
+.loading-wrap:has(#btn-retry-boot:not(.hidden)) .hourglass,
+.loading-wrap:has(#btn-retry-boot:not(.hidden)) .hourglass * { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hourglass, .hg-sand-top, .hg-sand-bottom, .hg-stream { animation: none; }
+  .hg-sand-top, .hg-sand-bottom { transform: scaleY(.5); }
+  .hg-stream { opacity: 0; }
 }
 
 .card {
@@ -320,17 +360,6 @@ input:focus, select:focus, textarea:focus {
 .negocio-card .negocio-nombre { font-weight: 700; font-size: 16px; }
 .negocio-card .negocio-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
 
-/* La tarjeta de Ideas es un <button>, no un <div> — resetea estilos de botón
-   nativo para que se vea igual que las tarjetas de negocio. */
-.idea-negocio-card {
-  width: 100%;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--biz-color, var(--series-1));
-  font: inherit;
-  color: inherit;
-  text-align: left;
-}
-
 /* ===== App shell ===== */
 #screen-app.active { display: flex; flex-direction: column; height: 100vh; }
 
@@ -507,7 +536,11 @@ input:focus, select:focus, textarea:focus {
 .expense-item .desc { font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .expense-item .meta { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
 .expense-item .gasto-nota { font-style: italic; }
-.expense-item .amount { font-weight: 700; font-size: 15.5px; font-variant-numeric: proportional-nums; white-space: nowrap; }
+/* margin-left: auto empuja el monto (y lo que venga después) a la derecha
+   cuando no hay un .info con flex:1 al lado (ej. Cierre de Turno, que no
+   tiene columna .info) — no cambia nada donde sí está .info, porque ese
+   ya se queda con todo el espacio libre. */
+.expense-item .amount { font-weight: 700; font-size: 15.5px; font-variant-numeric: proportional-nums; white-space: nowrap; margin-left: auto; }
 
 /* Gasto con "Falta abonar" tildado — se destaca en rojo hasta que se
    destilda (ej: te traen mercadería a cuenta y la pagás unos días
@@ -568,6 +601,16 @@ input:focus, select:focus, textarea:focus {
 .socio-total-amount { font-weight: 700; font-variant-numeric: proportional-nums; }
 .bar-track { height: 8px; border-radius: 4px; background: var(--gridline); overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 4px; }
+
+/* Resumen mensual > Facturado por día: el desglose por turno debajo del
+   total del día, solo en negocios con negocioTieneTurnos() (ver resumen.js). */
+.resumen-turnos-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
 
 .settlements { display: flex; flex-direction: column; gap: 8px; }
 .settlement-item {
