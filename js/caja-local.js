@@ -85,9 +85,8 @@ export function renderCajaLocalCard() {
     return;
   }
   wrap.classList.remove("hidden");
-  const { repuesto, queda } = cajaLocalCalculo();
+  const { queda } = cajaLocalCalculo();
   pintarQueda($("#gastos-caja-local-queda"), queda);
-  $("#gastos-caja-local-repuesto").textContent = montoOCargando(repuesto);
 }
 
 // Pantalla "Caja del local — Detalle" (botón "Detalle" de la card de

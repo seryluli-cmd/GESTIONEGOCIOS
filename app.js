@@ -22,7 +22,7 @@ import {
   saveReposicion, deleteReposicion
 } from "./js/caja-local.js";
 import {
-  renderGastos, renderGastosAdmin, fotosDeGasto,
+  renderGastos, renderGastosAdmin, fotosDeGasto, wireFiltroPagadorGastos,
   abrirVisorFotos, visorFotosMover, closeModalVisorFotos, wireVisorFotosZoom,
   verDetalleGasto, closeModalDetalleGasto
 } from "./js/gastos.js";
@@ -227,6 +227,7 @@ function wireEvents() {
   $("#input-mixto-digital").addEventListener("input", recalcularMixtoDigitalDebounced);
   $("#input-importe").addEventListener("change", calcularCampoMixtoFaltante);
   $("#input-importe").addEventListener("input", recalcularMixtoImporteDebounced);
+  wireFiltroPagadorGastos();
   $("#btn-gastos-mes-anterior").addEventListener("click", () => {
     gastosMesOffset--;
     renderGastos();
@@ -433,8 +434,8 @@ function wireEvents() {
     if (cargarBtn) openModalFacturado(null, new Date(cargarBtn.dataset.fecha + "T12:00:00"), cargarBtn.dataset.turno || null);
   });
 
-  // Pantalla "Caja del local — Detalle" (botón en la card de Gastos)
-  $("#btn-ver-caja-local").addEventListener("click", () => {
+  // Pantalla "Caja del local — Detalle" (la tarjeta entera de la Caja en Gastos es el botón)
+  $("#gastos-caja-local-wrap").addEventListener("click", () => {
     renderCajaLocalDetalle();
     showScreen("screen-caja-local");
   });

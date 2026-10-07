@@ -248,24 +248,37 @@
         <button id="btn-gastos-mes-siguiente" class="month-nav-btn" aria-label="Mes siguiente">›</button>
       </div>
 
-      <!-- Filtro por persona (quién pagó) — lo arma renderFiltroPagadorGastos()
-           en js/gastos.js. Queda arriba del total porque el total cambia con él. -->
-      <div id="gastos-filtro-pagador" class="filtro-chips hidden" role="group" aria-label="Filtrar gastos por persona"></div>
+      <!-- Filtro por persona (quién pagó) — el <select> lo arma
+           renderFiltroPagadorGastos() en js/gastos.js. Queda arriba del
+           total porque el total cambia con él. -->
+      <div id="gastos-filtro-pagador" class="filtro-pagador hidden">
+        <label for="gastos-filtro-pagador-select">Quién pagó</label>
+        <select id="gastos-filtro-pagador-select"></select>
+      </div>
 
-      <div class="stat-hero">
-        <div class="stat-hero-label stat-hero-label-xl stat-hero-label-gastado">Total gastado</div>
-        <div class="stat-hero-value" id="total-mes">$0</div>
+      <!-- Las dos tarjetas de total van en UNA línea: título + importe
+           juntos, mismo tamaño (ver .stat-hero-linea en styles.css). -->
+      <div class="stat-hero stat-hero-linea">
+        <div class="stat-hero-linea-fila">
+          <span class="stat-hero-label stat-hero-label-gastado">Total Gastado</span>
+          <span class="stat-hero-value" id="total-mes">$0</span>
+        </div>
         <div class="stat-hero-sub hidden" id="total-mes-filtro"></div>
       </div>
 
       <!-- Solo visible en negocios con Caja del local (hoy, Pancho) —
-           ver negocioTieneCajaLocal() en js/datos.js. -->
-      <div class="stat-hero hidden" id="gastos-caja-local-wrap">
-        <div class="stat-hero-label stat-hero-label-xl stat-hero-label-caja">💰 Caja del local</div>
-        <div class="stat-hero-value" id="gastos-caja-local-queda">$0</div>
-        <div class="stat-hero-sub">Queda de <span id="gastos-caja-local-repuesto">$0</span> repuestos en total</div>
-        <button type="button" class="btn-secondary" id="btn-ver-caja-local" style="margin-top:10px;">Detalle</button>
-      </div>
+           ver negocioTieneCajaLocal() en js/datos.js. El "cuánto se repuso
+           en total" ya no se muestra acá (para ganar lugar): sigue en la
+           pantalla de Detalle. La tarjeta ENTERA es el botón que abre ese
+           Detalle (con la flecha "›" como pista): el botón "Detalle" de
+           texto no entraba en la misma línea en un celular de 375px. -->
+      <button type="button" class="stat-hero stat-hero-linea stat-hero-boton hidden" id="gastos-caja-local-wrap" aria-label="Caja del local: ver detalle">
+        <span class="stat-hero-linea-fila">
+          <span class="stat-hero-label stat-hero-label-caja">💰 Caja del Local</span>
+          <span class="stat-hero-value" id="gastos-caja-local-queda">$0</span>
+          <span class="stat-hero-flecha" aria-hidden="true">›</span>
+        </span>
+      </button>
 
       <div id="expenses-empty" class="empty-state hidden">
         <p>Todavía no hay gastos cargados.</p>

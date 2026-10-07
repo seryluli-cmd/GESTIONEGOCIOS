@@ -489,18 +489,52 @@ input:focus, select:focus, textarea:focus {
 .stat-hero-label-caja { color: var(--caja-local); }
 .stat-hero-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 4px; }
 
-/* Tarjetas "Total gastado" y "Caja del local" de la pestaña Gastos, a
-   pedido del dueño: título e importe a la MITAD (28.08px -> 14px y
-   32px -> 16px) y el borde casi pegado al contenido (20px -> 8px de
-   margen interno), para que las dos juntas dejen más lugar a la lista.
-   El importe a 16px queda parejo con el monto de cada fila (15.5px).
+/* Tarjetas "Total Gastado" y "Caja del Local" de la pestaña Gastos, a
+   pedido del dueño: UNA sola línea con el título y el importe juntos
+   ("Total Gastado   $970.159"), los dos del MISMO tamaño (20.8px = el
+   importe que había, 16px, +30%) y el borde casi pegado al contenido
+   (8px de margen interno), para ocupar el mínimo de alto. El título
+   queda en peso normal y el importe en negrita, como estaban.
+   El espacio entre título e importe (gap) equivale a ~3 espacios.
    Scopeado a #tab-gastos a propósito: .stat-hero-value y
-   .stat-hero-label-xl también los usan Balance, Facturado y Resumen,
-   que NO se tocan. Las leyendas de abajo (.stat-hero-sub) y el botón
-   "Detalle" quedan como están: a la mitad serían ilegibles (6px). */
+   .stat-hero-label también los usan Balance, Facturado y Resumen, que
+   NO se tocan. */
 #tab-gastos .stat-hero { padding: 8px; margin-bottom: 10px; }
-#tab-gastos .stat-hero-label-xl { font-size: 14px; margin-bottom: 2px; }
-#tab-gastos .stat-hero-value { font-size: 16px; }
+.stat-hero-linea-fila { display: flex; align-items: center; gap: 14px; flex-wrap: nowrap; }
+#tab-gastos .stat-hero-linea-fila .stat-hero-label,
+#tab-gastos .stat-hero-linea-fila .stat-hero-value {
+  font-size: 20.8px;
+  line-height: 1.2;
+  margin: 0;
+  white-space: nowrap;
+}
+/* Celulares muy angostos (320px): a 20.8px la línea de la Caja se pasa del
+   ancho de la tarjeta y la flecha "›" queda cortada. Se achica un poco
+   (título e importe siguen del mismo tamaño) en vez de dejar que se corte. */
+@media (max-width: 340px) {
+  .stat-hero-linea-fila { gap: 10px; }
+  #tab-gastos .stat-hero-linea-fila .stat-hero-label,
+  #tab-gastos .stat-hero-linea-fila .stat-hero-value { font-size: 18px; }
+}
+/* La tarjeta de la Caja es un <button> entero que abre el Detalle: se le
+   quitan los estilos de botón del navegador para que se vea igual que la
+   tarjeta de Total Gastado. La flecha "›" al final avisa que se toca. */
+.stat-hero-boton {
+  display: block;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.stat-hero-boton:active { background: var(--gridline); }
+#tab-gastos .stat-hero-linea-fila .stat-hero-flecha {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-secondary);
+}
 
 /* ===== Resumen mensual: navegador de mes ===== */
 .month-nav {
@@ -882,32 +916,19 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
   content: "✓ ";
 }
 
-/* Filtro por persona de la pestaña Gastos: botones chicos tipo píldora, en
-   vez de reusar .pagador-chip (esos ocupan un tercio del ancho cada uno y
-   con 4-6 personas le comerían media pantalla a la lista). Mismo lenguaje
-   visual que .pagador-chip.selected: el color de la persona (--chip-color,
-   el mismo de su avatar) pinta el borde y el texto al elegirla. Hacen
-   wrap en vez de scroll horizontal a propósito: la fila se redibuja entera
-   en cada cambio de Firestore y un scroll se reiniciaría solo. */
-.filtro-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
-.filtro-chip {
-  padding: 9px 14px;
-  border-radius: 999px;
-  border: 2px solid var(--baseline);
-  background: var(--page-plane);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 13.5px;
+/* Filtro por persona de la pestaña Gastos: "Quién pagó" + un menú
+   desplegable, todo en UNA línea (antes eran botones que ocupaban dos
+   filas). Hereda el estilo global de <select>; acá solo se achica para
+   que la fila quede baja. */
+.filtro-pagador { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.filtro-pagador label {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 14px;
   font-weight: 600;
-  line-height: 1.2;
-  cursor: pointer;
+  color: var(--text-secondary);
 }
-.filtro-chip.selected {
-  border-color: var(--chip-color, var(--series-1));
-  background: color-mix(in srgb, var(--chip-color, var(--series-1)) 14%, var(--page-plane));
-  color: var(--chip-color, var(--series-1));
-}
-.filtro-chip.selected::before { content: "✓ "; }
+.filtro-pagador select { flex: 1; min-width: 0; padding: 8px 10px; font-size: 15px; }
 
 /* Chips de turno (modal Cierre de Turno): son solo 2, no 3 como el resto
    de los .pagador-chip, y su texto (con horario incluido) es más largo —

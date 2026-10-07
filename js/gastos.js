@@ -27,29 +27,41 @@ function pagadoresFiltrables() {
   return allPagadores().filter(nombre => negociosPermitidos(nombre).includes(negocioActual));
 }
 
-// Dibuja la fila de botones "Todos + una persona por botón". Si la persona
-// elegida ya no está entre las opciones (ej. otro celular la sacó de
-// config/socios mientras tanto), vuelve a "Todos" en vez de dejar la lista
-// filtrada por alguien que no se puede deseleccionar.
+// Dibuja el menú desplegable "Quién pagó": "Todos" + una opción por persona
+// (value "" = Todos). Si la persona elegida ya no está entre las opciones
+// (ej. otro celular la sacó de config/socios mientras tanto), vuelve a
+// "Todos" en vez de dejar la lista filtrada por alguien que no se puede
+// deseleccionar.
+// OJO: las opciones SOLO se reconstruyen si cambió la lista de personas.
+// renderGastos() corre en cada cambio de Firestore (ver bootApp()) y
+// reconstruir las <option> con el menú abierto lo cierra en pleno uso.
 function renderFiltroPagadorGastos() {
   const wrap = $("#gastos-filtro-pagador");
+  const select = $("#gastos-filtro-pagador-select");
   const pagadores = pagadoresFiltrables();
   if (filtroPagadorGastos && !pagadores.includes(filtroPagadorGastos)) filtroPagadorGastos = null;
 
-  wrap.innerHTML = "";
   wrap.classList.toggle("hidden", !pagadores.length);
-  [null, ...pagadores].forEach(nombre => {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "filtro-chip" + (nombre === filtroPagadorGastos ? " selected" : "");
-    chip.textContent = nombre || "Todos";
-    chip.setAttribute("aria-pressed", String(nombre === filtroPagadorGastos));
-    chip.style.setProperty("--chip-color", nombre ? payerColorVar(nombre) : "var(--series-1)");
-    chip.addEventListener("click", () => {
-      filtroPagadorGastos = nombre;
-      renderGastos();
+  const firma = pagadores.join("|");
+  if (select.dataset.firma !== firma) {
+    select.innerHTML = "";
+    [null, ...pagadores].forEach(nombre => {
+      const opcion = document.createElement("option");
+      opcion.value = nombre || "";
+      opcion.textContent = nombre || "Todos";
+      select.appendChild(opcion);
     });
-    wrap.appendChild(chip);
+    select.dataset.firma = firma;
+  }
+  select.value = filtroPagadorGastos || "";
+}
+
+// Se llama una sola vez desde wireEvents() (app.js): elegir una opción del
+// menú filtra la lista y el total.
+export function wireFiltroPagadorGastos() {
+  $("#gastos-filtro-pagador-select").addEventListener("change", (e) => {
+    filtroPagadorGastos = e.target.value || null;
+    renderGastos();
   });
 }
 

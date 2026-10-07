@@ -130,7 +130,7 @@ seguridad que exigen autenticación anónima.
     muestra distinta (sin autor, siempre última) porque no la cargó nadie.
   - **Card en Gastos + pantalla de Detalle**: además de Resumen mensual,
     la pestaña Gastos muestra la misma card de "queda" (para no tener
-    que ir a otra pantalla), con un botón **"Detalle"** que abre
+    que ir a otra pantalla), que al tocarla (es toda un botón) abre
     `screen-caja-local` (`renderCajaLocalDetalle()`) — muestra los 2 lados
     del movimiento, sin importar el mes: **Reposiciones** (lo que entró,
     en verde con `+`) y **En qué se fue gastando** (los gastos "caja", en
@@ -426,13 +426,26 @@ Cambios recientes en cómo se ve y se abre el detalle de un gasto
 (`renderGastos()` en app.js) — documentados acá porque se probaron y
 ajustaron varias veces seguidas en la misma sesión:
 
-- **Filtro por persona** (pestaña Gastos, 2026-10-07): arriba del total hay
-  una fila de botones "Todos + una persona por botón" (`renderFiltroPagadorGastos()`
-  en `js/gastos.js`). Elegir a alguien deja en la lista solo los gastos con
+- **Tarjetas de total en una línea** (pestaña Gastos, 2026-10-07): "Total
+  Gastado   $970.159" y "💰 Caja del Local   $392.544" son cada una una sola
+  línea (título + importe del mismo tamaño, 20.8px; 18px en celulares de
+  340px o menos), con el borde casi pegado al contenido. Los estilos están
+  en `.stat-hero-linea*` de `styles.css`, scopeados a `#tab-gastos` (Balance,
+  Facturado y Resumen no cambian). La tarjeta de la Caja es **toda un
+  botón** que abre el Detalle (flecha "›" al final) — un botón "Detalle" de
+  texto no entraba en la misma línea en 375px — y ya no muestra "Queda de
+  $X repuestos en total" (ese dato sigue en la pantalla de Detalle).
+- **Filtro por persona** (pestaña Gastos, 2026-10-07): arriba de los totales
+  hay una línea "Quién pagó" + un menú desplegable `<select>` con "Todos" (por
+  defecto) y una opción por persona (`renderFiltroPagadorGastos()` en
+  `js/gastos.js`; las opciones solo se reconstruyen si cambia la lista de
+  personas, porque renderGastos() corre en cada cambio de Firestore y
+  reconstruirlas cerraría el menú abierto). Elegir a alguien deja en la
+  lista solo los gastos con
   `pagadoPor` igual a ese nombre (el gasto no guarda quién lo *cargó*, solo
   quién pagó — es lo que dice "Pagó Kiara" en cada fila), y el "Total
-  gastado" pasa a ser el de esa persona, con la leyenda "Solo lo que pagó X".
-  Va junto con el mes elegido. Los botones son los socios y colaboradores con
+  Gastado" pasa a ser el de esa persona, con la leyenda "Solo lo que pagó X".
+  Va junto con el mes elegido. Las opciones son los socios y colaboradores con
   acceso al negocio que se mira (`negociosPermitidos()`), así quien trabaja
   solo en Pancho no aparece en Heladería. Se aplica después de ocultar los
   gastos "Solo Admin" a quien no es admin. La Caja del local no cambia con el
