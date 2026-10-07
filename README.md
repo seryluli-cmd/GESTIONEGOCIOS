@@ -340,6 +340,22 @@ admin es el monto exacto de una categoría si tiene gastos privados mezclados
 (para no revelar, por ejemplo, el monto de un sueldo puntual), no el total
 general del mes.
 
+En **Resumen mensual**, cada tarjeta del desglose "Gastos por categoría" es
+un botón: al tocarla se despliega el detalle de los gastos que forman ese
+monto (fecha, descripción, quién pagó, forma de pago e importe, del más
+reciente al más antiguo; con "⚠️ Falta abonar" y, para el admin, "🔒 Solo
+admin"). Usa exactamente los mismos gastos que el monto de la tarjeta
+(`gastosDesglose` en `renderResumen()`), así que un socio sin admin tampoco
+ve acá los gastos privados. Es solo lectura — editar o borrar sigue siendo
+desde Gastos — y por eso no reusa `crearFilaGasto()` (esa fila trae
+foto/editar/borrar, que dependen de los listeners de las listas de Gastos);
+sí reusa `formaPagoLabel()` (exportada de js/gastos.js) para el texto de la
+forma de pago. Qué categorías están desplegadas vive en `categoriasAbiertas`
+(js/resumen.js, no en el DOM, porque `renderResumen()` redibuja todo en cada
+cambio de Firestore); se vacía al entrar a la sección
+(`reiniciarCategoriasAbiertas()`, llamado desde `selectSeccion()`) y se
+mantiene al cambiar de mes.
+
 Borrar una categoría no toca los gastos que ya la tienen cargada (queda el
 nombre guardado tal cual en cada doc de `gastos`, ver `renderCategoriaOptions()`
 en app.js) — solo deja de poder elegirse para gastos nuevos.

@@ -3,9 +3,61 @@ import { fbSdk, db, storage } from "./firebase-sdk.js";
 import { gastos, gastosDelNegocio, facturacionesDelNegocio, negocioTieneCajaLocal, negocioTieneTurnos } from "./datos.js";
 import { negocioActual, esAdmin } from "./sesion.js";
 import { pintarQueda, cajaLocalCalculo } from "./caja-local.js";
-import { fotosDeGasto } from "./gastos.js";
+import { fotosDeGasto, formaPagoLabel } from "./gastos.js";
 import { nombreTurnoFacturado, idsTurnosFacturado } from "./modal-facturado.js";
 import { resumenMesOffset } from "../app.js";
+
+// ---------- Desglose "por categoría": detalle desplegable ----------
+
+// Categorías del desglose con el detalle desplegado. Vive acá y no en el
+// DOM porque renderResumen() redibuja todo en cada cambio de Firestore y se
+// cerrarían solas. Se vacía al entrar a la sección (ver selectSeccion en
+// sesion.js) y se mantiene al cambiar de mes.
+const categoriasAbiertas = new Set();
+export function reiniciarCategoriasAbiertas() {
+  categoriasAbiertas.clear();
+}
+
+// Categoría con la que cuenta un gasto en el desglose — único lugar que lo
+// decide (un gasto sin categoría cae en "Otros"), así el monto de la
+// tarjeta y el detalle desplegado nunca se desfasan.
+function categoriaDe(g) {
+  return g.categoria || "Otros";
+}
+
+// Detalle de una categoría desplegada: los mismos gastos que suman en el
+// monto de la tarjeta, del más reciente al más antiguo. Solo lectura y
+// compacto a propósito: no reusa crearFilaGasto porque esa fila trae
+// foto/editar/borrar, que dependen de los listeners de las listas de
+// Gastos (editar o borrar sigue siendo desde esa pantalla).
+function detalleCategoriaHtml(gastosCategoria) {
+  const filas = gastosCategoria
+    .slice()
+    .sort((a, b) => fechaDeRegistro(b) - fechaDeRegistro(a))
+    .map(g => {
+      const meta = [
+        fechaDeRegistro(g).toLocaleDateString("es-AR", { day: "2-digit", month: "short" }),
+        `Pagó ${escapeHtml(g.pagadoPor || "?")}`,
+        formaPagoLabel(g),
+        g.faltaAbonar ? "⚠️ Falta abonar" : "",
+        g.soloAdmin ? "🔒 Solo admin" : ""
+      ].filter(Boolean).join(" · ");
+      return `
+        <div class="categoria-gasto">
+          <div class="categoria-gasto-top">
+            <span class="categoria-gasto-desc">${escapeHtml(g.descripcion || "Sin descripción")}</span>
+            <span class="categoria-gasto-importe">${money(g.importe)}</span>
+          </div>
+          <div class="categoria-gasto-meta">${meta}</div>
+        </div>`;
+    })
+    .join("");
+  return `
+    <div class="categoria-detalle">
+      <div class="categoria-detalle-count">${gastosCategoria.length === 1 ? "1 gasto" : `${gastosCategoria.length} gastos`}</div>
+      ${filas}
+    </div>`;
+}
 
 // ---------- Render: Resumen mensual ----------
 // Muestra, para el mes elegido (navegable con ‹ ›), el total de Facturado
@@ -149,10 +201,10 @@ export function renderResumen() {
   // TODO el mes sin excepción) — así alguien sin admin no ve el monto
   // exacto de un gasto marcado "Gasto Admin" (ej. un sueldo puntual)
   // aunque el total general del mes sí sea visible para todos.
+  const gastosDesglose = gastosMes.filter(g => esAdmin || !g.soloAdmin);
   const porCategoria = {};
-  gastosMes.forEach(g => {
-    if (!esAdmin && g.soloAdmin) return;
-    const cat = g.categoria || "Otros";
+  gastosDesglose.forEach(g => {
+    const cat = categoriaDe(g);
     porCategoria[cat] = (porCategoria[cat] || 0) + (Number(g.importe) || 0);
   });
   const categorias = Object.entries(porCategoria).sort((a, b) => b[1] - a[1]);
@@ -167,15 +219,26 @@ export function renderResumen() {
     const maxVal = Math.max(1, ...categorias.map(c => c[1]));
     categorias.forEach(([cat, val]) => {
       const pct = Math.round((val / maxVal) * 100);
+      const abierta = categoriasAbiertas.has(cat);
       const card = document.createElement("div");
       card.className = "socio-total-card";
+      // Nombre + monto + barra son un botón que despliega/pliega el detalle
+      // de gastos de esa categoría (ver detalleCategoriaHtml).
       card.innerHTML = `
-        <div class="socio-total-row">
-          <div class="socio-total-name">${escapeHtml(cat)}</div>
-          <div class="socio-total-amount">${money(val)}</div>
-        </div>
-        <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--text-muted)"></div></div>
+        <button type="button" class="categoria-toggle" aria-expanded="${abierta}">
+          <span class="socio-total-row">
+            <span class="socio-total-name"><span class="categoria-flecha" aria-hidden="true">${abierta ? "▾" : "▸"}</span>${escapeHtml(cat)}</span>
+            <span class="socio-total-amount">${money(val)}</span>
+          </span>
+          <span class="bar-track"><span class="bar-fill" style="width:${pct}%;background:var(--text-muted)"></span></span>
+        </button>
+        ${abierta ? detalleCategoriaHtml(gastosDesglose.filter(g => categoriaDe(g) === cat)) : ""}
       `;
+      card.querySelector(".categoria-toggle").addEventListener("click", () => {
+        if (categoriasAbiertas.has(cat)) categoriasAbiertas.delete(cat);
+        else categoriasAbiertas.add(cat);
+        renderResumen();
+      });
       wrap.appendChild(card);
     });
   }

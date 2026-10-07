@@ -14,7 +14,7 @@ import {
 import { renderGastos, renderGastosAdmin } from "./gastos.js";
 import { renderFacturado } from "./facturado.js";
 import { renderIdeas } from "./ideas.js";
-import { renderResumen } from "./resumen.js";
+import { renderResumen, reiniciarCategoriasAbiertas } from "./resumen.js";
 import { renderBalance } from "./balance.js";
 import { renderAjustesSocios } from "./ajustes.js";
 
@@ -395,6 +395,7 @@ function selectSeccion(id) {
     // llamar selectSeccion("resumen") directo.
     if (!esSocio()) return;
     resetResumenMesOffset();
+    reiniciarCategoriasAbiertas(); // cada visita arranca con todas las categorías cerradas
     renderResumen();
     showScreen("screen-resumen");
   } else if (id === "gastosadmin") {

@@ -321,7 +321,7 @@ export function crearFilaGasto(g) {
 
 // Gastos cargados antes de que existiera "forma de pago" no tienen el
 // campo — se muestran como Efectivo por default.
-function formaPagoLabel(g) {
+export function formaPagoLabel(g) {
   if (g.formaPago === "digital") return "💳 Digital";
   if (g.formaPago === "mixto") return `🔀 ${money(g.montoDigital)} digital · ${money(g.montoEfectivo)} efectivo`;
   if (esGastoCaja(g)) return "💰 Caja del local";
