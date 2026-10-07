@@ -186,6 +186,16 @@ seguridad que exigen autenticación anónima.
     campo no tienen `turno` guardado: se siguen viendo sin esa etiqueta,
     y no cuentan como "ya cargado" para ningún turno del aviso — al
     editarlos hay que elegirles un turno antes de poder guardarlos.
+  - **Días cerrados (`diasCerrados` en `NEGOCIOS`)**: Pancho Recreo no
+    abre los domingos, así que `turnosFacturadoFaltantes()` y
+    `cierreFaltanteHoy()` saltean esos días (se lo pregunta a
+    `negocioCierraEseDia(id, fecha)` en `datos.js`) y el aviso "Caja
+    faltante" ya no los reclama. Los días van en formato `Date.getDay()`
+    (0 = domingo); para cambiar o sumar un día cerrado, alcanza con editar
+    esa lista. La fecha que se pregunta es la del turno — el Turno Noche
+    del sábado, que termina de madrugada del domingo, sigue siendo del
+    sábado. Si igual se carga un cierre un día cerrado, se ve normal en la
+    lista (solo se evita reclamarlo).
 - **`ideas`** (colección) — un doc por idea: `{ texto, estado, votos, propuestoPor, creadoEn }`.
   **A propósito NO tiene campo `negocio`** — son compartidas entre Pancho Recreo
   y Heladería Pablo, porque los 3 socios son dueños de ambos. `estado` es

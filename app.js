@@ -78,9 +78,11 @@ export const NEUTRAL_VAR = "var(--text-muted)";
 // Los 2 negocios. Cada gasto queda etiquetado con uno de estos "id",
 // y tanto la lista de gastos como el balance se calculan por separado
 // para cada negocio (mismos 3 socios, cuentas independientes).
+// diasCerrados: días de la semana en que el negocio no abre, en el formato
+// de Date.getDay() (0 = domingo ... 6 = sábado) — ver negocioCierraEseDia().
 export const NEGOCIOS = [
-  { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)", tieneCajaLocal: true, tieneTurnos: true },
-  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false, tieneTurnos: false }
+  { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)", tieneCajaLocal: true, tieneTurnos: true, diasCerrados: [0] },
+  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false, tieneTurnos: false, diasCerrados: [] }
 ];
 
 

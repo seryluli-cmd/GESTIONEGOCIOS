@@ -108,6 +108,18 @@ export function negocioTieneTurnos(id) {
   return !!(biz && biz.tieneTurnos);
 }
 
+// Pancho Recreo no abre los domingos, así que ese día no hay cierre que
+// cargar y el aviso "Caja faltante" no tiene que reclamarlo. Mismo criterio
+// que negocioTieneTurnos(): se pregunta acá en vez de comparar días de la
+// semana sueltos. "fecha" es el día al que pertenece el cierre (para el
+// Turno Noche, el día en que arrancó — no el de la madrugada siguiente).
+// Si igual se carga un cierre un día cerrado, se muestra normal en la
+// lista: esto solo evita que se lo reclame como faltante.
+export function negocioCierraEseDia(id, fecha) {
+  const biz = NEGOCIOS.find(b => b.id === id);
+  return !!(biz && biz.diasCerrados && biz.diasCerrados.includes(fecha.getDay()));
+}
+
 // Reemplaza el hardcode viejo "usuarioActual === 'Kiara'": cualquier socio
 // o colaborador puede marcarse desde Ajustes (ver toggleCajaLocalAutomatica
 // en ajustes.js) para que sus gastos nuevos se carguen directo por la Caja

@@ -1,6 +1,6 @@
 import { $, $$, fechaLocalISO, fechaDeRegistro, parseMoneyInput, formatMoneyValue, redondearCentavos, showToast, conTimeout, esMismoDia } from "./utilidades.js";
 import { fbSdk, db, storage } from "./firebase-sdk.js";
-import { facturaciones, facturacionesDelNegocio, negocioTieneTurnos } from "./datos.js";
+import { facturaciones, facturacionesDelNegocio, negocioTieneTurnos, negocioCierraEseDia } from "./datos.js";
 import { negocioActual, usuarioActual } from "./sesion.js";
 import { allPagadores, payerColorVar } from "../app.js";
 
@@ -114,6 +114,7 @@ function cierreFaltanteHoy() {
   if (hoy.getHours() < 5) return null;
   const diaEsperado = new Date(hoy);
   diaEsperado.setDate(diaEsperado.getDate() - 1);
+  if (negocioCierraEseDia(negocioActual, diaEsperado)) return null;
   const yaCargado = facturacionesDelNegocio().some(f => esMismoDia(fechaDeRegistro(f), diaEsperado));
   return yaCargado ? null : diaEsperado;
 }
@@ -164,7 +165,9 @@ function turnosFacturadoFaltantes() {
       dia.setDate(dia.getDate() - 1);
     }
     while (dia >= FECHA_INICIO_TURNOS) {
-      if (!cargados.has(`${turno.id}|${fechaLocalISO(dia)}`)) {
+      // Los días que el negocio no abre (domingos en Pancho) no tienen
+      // turno que cargar — no se reclaman como faltantes.
+      if (!negocioCierraEseDia(negocioActual, dia) && !cargados.has(`${turno.id}|${fechaLocalISO(dia)}`)) {
         pendientes.push({ turno: turno.id, fecha: new Date(dia) });
       }
       dia.setDate(dia.getDate() - 1);
