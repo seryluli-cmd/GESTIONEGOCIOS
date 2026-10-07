@@ -11,7 +11,7 @@ import {
   NEGOCIOS, payerColorVar, socioInitial, allPagadores,
   resetResumenMesOffset, resetGastosMesOffset, resetFacturadoMesOffset, resetGastosAdminMesOffset
 } from "../app.js";
-import { renderGastos, renderGastosAdmin } from "./gastos.js";
+import { renderGastos, renderGastosAdmin, resetFiltroPagadorGastos } from "./gastos.js";
 import { renderFacturado } from "./facturado.js";
 import { renderIdeas } from "./ideas.js";
 import { renderResumen, reiniciarCategoriasAbiertas } from "./resumen.js";
@@ -102,7 +102,7 @@ export async function cargarHistorialLogins() {
 // (reparten gastos entre ambos negocios); un colaborador ve solo el que
 // tiene asignado en colaboradorNegocio — si no tiene nada asignado
 // todavía, también ve los 2 (para no dejarlo sin acceso por default).
-function negociosPermitidos(nombre) {
+export function negociosPermitidos(nombre) {
   if (socios.includes(nombre)) return NEGOCIOS.map(b => b.id);
   const asignado = colaboradorNegocio[nombre];
   return NEGOCIOS.some(b => b.id === asignado) ? [asignado] : NEGOCIOS.map(b => b.id);
@@ -381,6 +381,7 @@ function selectSeccion(id) {
   if (id === "gastos") {
     switchTab("gastos");
     resetGastosMesOffset(); // siempre arranca en el mes actual al entrar
+    resetFiltroPagadorGastos(); // y sin filtrar por persona
     renderGastos();
     renderBalance();
     showScreen("screen-app");

@@ -248,9 +248,14 @@
         <button id="btn-gastos-mes-siguiente" class="month-nav-btn" aria-label="Mes siguiente">›</button>
       </div>
 
+      <!-- Filtro por persona (quién pagó) — lo arma renderFiltroPagadorGastos()
+           en js/gastos.js. Queda arriba del total porque el total cambia con él. -->
+      <div id="gastos-filtro-pagador" class="filtro-chips hidden" role="group" aria-label="Filtrar gastos por persona"></div>
+
       <div class="stat-hero">
         <div class="stat-hero-label stat-hero-label-xl stat-hero-label-gastado">Total gastado</div>
         <div class="stat-hero-value" id="total-mes">$0</div>
+        <div class="stat-hero-sub hidden" id="total-mes-filtro"></div>
       </div>
 
       <!-- Solo visible en negocios con Caja del local (hoy, Pancho) —
@@ -265,6 +270,13 @@
       <div id="expenses-empty" class="empty-state hidden">
         <p>Todavía no hay gastos cargados.</p>
         <p class="muted small">Tocá el botón + para agregar el primero.</p>
+      </div>
+
+      <!-- Mismo caso que arriba pero con un filtro por persona activo: el
+           mes sí tiene gastos de otros, solo que no de ella. -->
+      <div id="expenses-empty-filtro" class="empty-state hidden">
+        <p id="expenses-empty-filtro-texto"></p>
+        <p class="muted small">Probá con otro mes o elegí "Todos".</p>
       </div>
 
       <ul id="expenses-list" class="expenses-list"></ul>

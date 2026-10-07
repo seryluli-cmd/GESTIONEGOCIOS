@@ -864,6 +864,33 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
   content: "✓ ";
 }
 
+/* Filtro por persona de la pestaña Gastos: botones chicos tipo píldora, en
+   vez de reusar .pagador-chip (esos ocupan un tercio del ancho cada uno y
+   con 4-6 personas le comerían media pantalla a la lista). Mismo lenguaje
+   visual que .pagador-chip.selected: el color de la persona (--chip-color,
+   el mismo de su avatar) pinta el borde y el texto al elegirla. Hacen
+   wrap en vez de scroll horizontal a propósito: la fila se redibuja entera
+   en cada cambio de Firestore y un scroll se reiniciaría solo. */
+.filtro-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.filtro-chip {
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 2px solid var(--baseline);
+  background: var(--page-plane);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.filtro-chip.selected {
+  border-color: var(--chip-color, var(--series-1));
+  background: color-mix(in srgb, var(--chip-color, var(--series-1)) 14%, var(--page-plane));
+  color: var(--chip-color, var(--series-1));
+}
+.filtro-chip.selected::before { content: "✓ "; }
+
 /* Chips de turno (modal Cierre de Turno): son solo 2, no 3 como el resto
    de los .pagador-chip, y su texto (con horario incluido) es más largo —
    con el nowrap+ellipsis de la clase base quedaba cortado. Se pisa acá,

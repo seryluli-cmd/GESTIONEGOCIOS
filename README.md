@@ -426,6 +426,20 @@ Cambios recientes en cómo se ve y se abre el detalle de un gasto
 (`renderGastos()` en app.js) — documentados acá porque se probaron y
 ajustaron varias veces seguidas en la misma sesión:
 
+- **Filtro por persona** (pestaña Gastos, 2026-10-07): arriba del total hay
+  una fila de botones "Todos + una persona por botón" (`renderFiltroPagadorGastos()`
+  en `js/gastos.js`). Elegir a alguien deja en la lista solo los gastos con
+  `pagadoPor` igual a ese nombre (el gasto no guarda quién lo *cargó*, solo
+  quién pagó — es lo que dice "Pagó Kiara" en cada fila), y el "Total
+  gastado" pasa a ser el de esa persona, con la leyenda "Solo lo que pagó X".
+  Va junto con el mes elegido. Los botones son los socios y colaboradores con
+  acceso al negocio que se mira (`negociosPermitidos()`), así quien trabaja
+  solo en Pancho no aparece en Heladería. Se aplica después de ocultar los
+  gastos "Solo Admin" a quien no es admin. La Caja del local no cambia con el
+  filtro (es de la caja, no de una persona). El filtro vive en `gastos.js`
+  (`filtroPagadorGastos`) y vuelve a "Todos" cada vez que se entra a Gastos
+  (`resetFiltroPagadorGastos()` en `selectSeccion()`). Gastos S/Admin no lo
+  tiene (se puede sumar reusando el mismo armado).
 - **Fila de cada gasto**: se divide en `.expense-item-top` (avatar +
   texto + monto) y, debajo, `.expense-item-actions` (íconos 📷 foto /
   ✏️ editar / 🗑️ borrar). Antes todo iba en una sola fila y una

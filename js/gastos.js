@@ -6,9 +6,52 @@
 
 import { $, money, mesLabel, fechaDeRegistro, fechaBaseDelMes, esMismoMes, escapeHtml } from "./utilidades.js";
 import { gastosDelNegocio, gastos } from "./datos.js";
-import { esAdmin } from "./sesion.js";
+import { esAdmin, negocioActual, negociosPermitidos } from "./sesion.js";
 import { renderCajaLocalCard, esGastoCaja } from "./caja-local.js";
-import { gastosMesOffset, gastosAdminMesOffset, payerColorVar, socioInitial } from "../app.js";
+import { gastosMesOffset, gastosAdminMesOffset, payerColorVar, socioInitial, allPagadores } from "../app.js";
+
+// ---------- Filtro por persona (pantalla Gastos) ----------
+// Persona elegida en el filtro ("quién pagó"), o null = "Todos". Es estado
+// solo de esta pantalla, por eso vive acá y no en app.js con los offsets de
+// mes. Se reinicia a "Todos" cada vez que se entra a Gastos (ver
+// selectSeccion() en sesion.js), igual que el mes — eso cubre también el
+// cambio de negocio, que siempre pasa por volver a entrar.
+let filtroPagadorGastos = null;
+export function resetFiltroPagadorGastos() { filtroPagadorGastos = null; }
+
+// Quiénes aparecen como botón: socios y colaboradores con acceso al negocio
+// que se está mirando (un colaborador atado a Pancho no es opción en
+// Heladería). Mismo criterio de acceso que el resto de la app, vía
+// negociosPermitidos().
+function pagadoresFiltrables() {
+  return allPagadores().filter(nombre => negociosPermitidos(nombre).includes(negocioActual));
+}
+
+// Dibuja la fila de botones "Todos + una persona por botón". Si la persona
+// elegida ya no está entre las opciones (ej. otro celular la sacó de
+// config/socios mientras tanto), vuelve a "Todos" en vez de dejar la lista
+// filtrada por alguien que no se puede deseleccionar.
+function renderFiltroPagadorGastos() {
+  const wrap = $("#gastos-filtro-pagador");
+  const pagadores = pagadoresFiltrables();
+  if (filtroPagadorGastos && !pagadores.includes(filtroPagadorGastos)) filtroPagadorGastos = null;
+
+  wrap.innerHTML = "";
+  wrap.classList.toggle("hidden", !pagadores.length);
+  [null, ...pagadores].forEach(nombre => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "filtro-chip" + (nombre === filtroPagadorGastos ? " selected" : "");
+    chip.textContent = nombre || "Todos";
+    chip.setAttribute("aria-pressed", String(nombre === filtroPagadorGastos));
+    chip.style.setProperty("--chip-color", nombre ? payerColorVar(nombre) : "var(--series-1)");
+    chip.addEventListener("click", () => {
+      filtroPagadorGastos = nombre;
+      renderGastos();
+    });
+    wrap.appendChild(chip);
+  });
+}
 
 // Antes mostraba TODOS los gastos del negocio sin importar el mes (solo
 // el total de arriba estaba filtrado por mes actual, lo cual era
@@ -28,17 +71,27 @@ export function renderGastos() {
   const esMesActual = esMismoMes(base, new Date());
   $("#btn-gastos-mes-siguiente").disabled = esMesActual;
 
+  // Primero se dibuja el filtro: puede corregir filtroPagadorGastos (ver
+  // arriba) y recién después se lee para filtrar la lista.
+  renderFiltroPagadorGastos();
+  const filtro = filtroPagadorGastos;
+
+  // El filtro por persona se aplica DESPUÉS de ocultar los gastos "Solo
+  // Admin" a quien no es admin, así ni la lista ni el total filtrado
+  // dejan ver (o deducir) un gasto privado.
   const gastosMes = gastosDelNegocio().filter(g => {
     if (!esAdmin && g.soloAdmin) return false;
+    if (filtro && g.pagadoPor !== filtro) return false;
     const f = fechaDeRegistro(g);
     return f.getMonth() === targetMonth && f.getFullYear() === targetYear;
   });
 
-  if (!gastosMes.length) {
-    empty.classList.remove("hidden");
-  } else {
-    empty.classList.add("hidden");
-  }
+  // Dos carteles de "vacío" distintos: el de siempre (nadie cargó nada) y
+  // el de filtro activo (el mes tiene gastos, pero no de esa persona).
+  const sinGastos = !gastosMes.length;
+  empty.classList.toggle("hidden", !sinGastos || !!filtro);
+  $("#expenses-empty-filtro").classList.toggle("hidden", !sinGastos || !filtro);
+  if (filtro) $("#expenses-empty-filtro-texto").textContent = `${filtro} no tiene gastos en ${mesLabel(base)}.`;
 
   let totalMes = 0;
 
@@ -47,7 +100,12 @@ export function renderGastos() {
     list.appendChild(crearFilaGasto(g));
   });
 
+  // Con filtro activo el total es el de esa persona; la leyenda de abajo
+  // lo aclara para que nadie lo confunda con el total del mes completo.
   $("#total-mes").textContent = money(totalMes);
+  const totalFiltroEl = $("#total-mes-filtro");
+  totalFiltroEl.classList.toggle("hidden", !filtro);
+  totalFiltroEl.textContent = filtro ? `Solo lo que pagó ${filtro}` : "";
   renderCajaLocalCard();
 }
 
