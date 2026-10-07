@@ -363,11 +363,12 @@ input:focus, select:focus, textarea:focus {
 /* ===== App shell ===== */
 #screen-app.active { display: flex; flex-direction: column; height: 100vh; }
 
-/* Alto total ~55px: se redujo a la mitad (antes ~109px) porque el header
+/* Alto total ~58px: se redujo a la mitad (antes ~109px) porque el header
    se comía media pantalla en el celular sin aportar nada. Lo que lo
-   empujaba era el círculo de la flecha; ver .topbar-back-arrow. El
-   botón entero (.topbar-title) queda igual en 44px de alto, que es el
-   mínimo cómodo para tocar con el dedo. */
+   empujaba era el círculo de la flecha; ver .topbar-back-arrow (hoy de
+   40px, como en Gestión FR; con 36px el header medía ~54px). El botón
+   entero (.topbar-title) queda en 48px de alto, por encima del mínimo
+   cómodo para tocar con el dedo. */
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 5px 18px;
@@ -422,11 +423,15 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: var(--gridline);
-  color: var(--text-primary);
+  /* Mismo estilo que el botón de volver de Gestión FR (círculo de color de
+     marca con flecha blanca), pero con el color de marca de ESTA app: el
+     azul (--series-1; en Gestión FR ese mismo token es violeta). Antes era
+     un círculo gris. Cambia en las 8 pantallas con "volver" a la vez. */
+  background: var(--series-1);
+  color: #fff;
   margin-right: 8px;
 }
 /* Los SVG inline se tratan como texto por default, con espacio
@@ -483,6 +488,19 @@ input:focus, select:focus, textarea:focus {
 .stat-hero-label-gastado { color: var(--series-1); }
 .stat-hero-label-caja { color: var(--caja-local); }
 .stat-hero-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 4px; }
+
+/* Tarjetas "Total gastado" y "Caja del local" de la pestaña Gastos, a
+   pedido del dueño: título e importe a la MITAD (28.08px -> 14px y
+   32px -> 16px) y el borde casi pegado al contenido (20px -> 8px de
+   margen interno), para que las dos juntas dejen más lugar a la lista.
+   El importe a 16px queda parejo con el monto de cada fila (15.5px).
+   Scopeado a #tab-gastos a propósito: .stat-hero-value y
+   .stat-hero-label-xl también los usan Balance, Facturado y Resumen,
+   que NO se tocan. Las leyendas de abajo (.stat-hero-sub) y el botón
+   "Detalle" quedan como están: a la mitad serían ilegibles (6px). */
+#tab-gastos .stat-hero { padding: 8px; margin-bottom: 10px; }
+#tab-gastos .stat-hero-label-xl { font-size: 14px; margin-bottom: 2px; }
+#tab-gastos .stat-hero-value { font-size: 16px; }
 
 /* ===== Resumen mensual: navegador de mes ===== */
 .month-nav {
