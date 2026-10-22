@@ -831,6 +831,8 @@ input:focus, select:focus, textarea:focus {
 .cmp-pd-1 .cmp-av { box-shadow: 0 0 0 3px var(--surface-1), 0 0 0 5px var(--oro); }
 .cmp-pd-2 .cmp-av { box-shadow: 0 0 0 2px var(--surface-1), 0 0 0 4px var(--plata); }
 .cmp-pd-3 .cmp-av { box-shadow: 0 0 0 2px var(--surface-1), 0 0 0 4px var(--bronce); }
+/* Podio de turnos: el círculo lleva el ícono del turno en lugar de la inicial. */
+.cmp-av svg { width: 54%; height: 54%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .cmp-corona { position: absolute; left: 50%; top: -25px; width: 26px; height: 26px; margin-left: -13px; fill: var(--oro); stroke: color-mix(in srgb, var(--oro) 55%, #000); stroke-width: 1; stroke-linejoin: round; }
 .cmp-pd-nombre { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
 .cmp-pd-pct { display: flex; align-items: center; justify-content: center; margin-top: 2px; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }

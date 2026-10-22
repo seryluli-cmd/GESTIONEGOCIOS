@@ -458,6 +458,13 @@ empleado" necesita cierres por turno y Heladería carga uno por día.
     "Mayor baja" no se repite si esa persona ya está en el podio.
     Oro/plata/bronce son colores de medalla (el puesto); si sube o baja
     siempre va con flecha y verde o rojo.
+  - Debajo va el **podio de turnos** (Mañana y Noche): mismo criterio que el
+    de empleados (`podioCardHtml()` + `podioDe()`, con textos propios en
+    `PODIO_TURNOS`), pero sobre el promedio de lo cerrado en cada turno de
+    todo el negocio, no solo del equipo. Hacen falta `MIN_TURNOS` cierres de
+    ese turno en los dos meses; los que cayeron y no están en el podio se
+    muestran todos ("Mayor baja" y "También bajó"). Se ve aunque no haya
+    equipo cargado.
 - **Hasta dónde se puede retroceder** lo da el registro más viejo del negocio
   (`mesesAtrasMax()`): esta app baja todo el historial, no una ventana de
   meses. La pantalla se redibuja sola con cada cambio de Firestore, pero solo

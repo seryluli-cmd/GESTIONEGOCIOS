@@ -6,7 +6,8 @@
 //   · "Por tramo": un mes partido en días 1–10, 11–20 y 21–fin, para ver en
 //     qué parte del mes entra (y sale) la plata.
 //   · "Por empleado": cuánto subió o bajó el promedio por turno de cada
-//     integrante contra el mes anterior, según los cierres de turno.
+//     integrante contra el mes anterior, según los cierres de turno. Debajo,
+//     el podio de turnos: cuál de los turnos subió más su promedio.
 // ============================================================
 import { $, $$, escapeHtml, fechaBaseDelMes, fechaDeRegistro, mesLabel, money } from "./utilidades.js";
 import { payerColorVar } from "../app.js";
@@ -440,18 +441,73 @@ function datosEquipo(offset) {
   return { base, personas, hayEquipo: equipo.size > 0, sinTurno };
 }
 
+// Cuánto subió o bajó (en %) el promedio por turno de `p` contra el del mes
+// anterior `q`. null si no hay mes anterior o si en alguno de los dos hay menos
+// de MIN_TURNOS cierres. Único lugar que lo calcula: lo usan las personas y
+// también los turnos.
+function variacionDelPromedio(p, q) {
+  const comparable = q && p.turnos >= MIN_TURNOS && q.turnos >= MIN_TURNOS && q.promedio > 0;
+  return comparable ? (p.promedio / q.promedio - 1) * 100 : null;
+}
+
+// De la que más subió a la que más bajó; al final, los que no se pueden comparar.
+function ordenarPorVariacion(filas) {
+  const clave = (f) => f.variacion === null ? -Infinity : f.variacion;
+  return filas.sort((a, b) => clave(a) === clave(b) ? b.promedio - a.promedio : clave(b) - clave(a));
+}
+
 // Cada persona del mes con su variación del promedio por turno contra el mes
 // anterior (null si no hay turnos suficientes en alguno de los dos), de la
 // que más subió a la que más bajó; al final quienes no se pueden comparar.
 function evolucionEquipo(act, ant) {
   const filas = Array.from(act.personas.values()).map(p => {
     const q = ant.personas.get(p.nombre) || null;
-    const comparable = q && p.turnos >= MIN_TURNOS && q.turnos >= MIN_TURNOS && q.promedio > 0;
-    return { ...p, previo: q, variacion: comparable ? (p.promedio / q.promedio - 1) * 100 : null };
+    return { ...p, previo: q, variacion: variacionDelPromedio(p, q) };
   });
-  const clave = (f) => f.variacion === null ? -Infinity : f.variacion;
-  filas.sort((a, b) => clave(a) === clave(b) ? b.promedio - a.promedio : clave(b) - clave(a));
-  return filas;
+  return ordenarPorVariacion(filas);
+}
+
+// ---------- Turnos ----------
+
+// Los turnos del negocio, en orden: el id que se guarda en el cierre y su nombre.
+// Único lugar que dice cuáles son; un cierre sin turno (los de antes de que se
+// cargaran por turno) no entra al podio.
+function turnosDelNegocio() {
+  return negocioTieneTurnos(negocioActual)
+    ? idsTurnosFacturado().map(id => ({ id, nombre: nombreCortoTurnoFacturado(id) }))
+    : [];
+}
+
+// Los cierres del mes de todo el negocio agrupados por turno: cuántos hubo
+// (`turnos`, igual que en las personas), cuánto se vendió y el promedio de cada
+// uno. A diferencia de datosEquipo no se limita a lo que cargó el equipo: un
+// turno rinde lo mismo lo cierre quien lo cierre.
+function datosTurnos(offset) {
+  const base = fechaBaseDelMes(offset);
+  const y = base.getFullYear();
+  const m = base.getMonth();
+  const turnos = new Map(turnosDelNegocio().map(t => [t.id, { ...t, turnos: 0, total: 0 }]));
+  facturacionesDelNegocio().forEach(f => {
+    const t = turnos.get(f.turno);
+    if (!t) return;
+    const d = fechaDeRegistro(f);
+    if (d.getFullYear() !== y || d.getMonth() !== m) return;
+    t.turnos++;
+    t.total += Number(f.importe) || 0;
+  });
+  turnos.forEach(t => { t.promedio = t.turnos ? t.total / t.turnos : 0; });
+  return { base, turnos };
+}
+
+// Cada turno del mes con su variación del promedio contra el mes anterior, del
+// que más subió al que más bajó (mismas reglas que las personas).
+function evolucionTurnos(act, ant) {
+  const filas = Array.from(act.turnos.values()).filter(t => t.turnos > 0).map(t => {
+    const q = ant.turnos.get(t.id);
+    const previo = q && q.turnos > 0 ? q : null;
+    return { ...t, previo, variacion: variacionDelPromedio(t, previo) };
+  });
+  return ordenarPorVariacion(filas);
 }
 
 // " (mañana y noche)" — los turnos del negocio, para explicar el índice sin
@@ -483,26 +539,70 @@ function podioDe(filas) {
     : { modo: "baja", top: comparables.slice(0, 3) };
 }
 
+// Un ícono por turno (sol que sale, sol que baja, luna) en el lugar de la inicial:
+// es lo que deja reconocer de un vistazo cuál es. La clave es el id sin tildes ni
+// eñe ("mañana" → "manana"). Los colores son de identidad, no de estado: el verde
+// y el rojo quedan reservados para lo que sube y lo que baja.
+const ICONOS_TURNO = {
+  manana: { color: "#d8901c", trazo: `<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>` },
+  tarde: { color: "#e5683a", trazo: `<path d="M6.5 16a5.5 5.5 0 0 1 11 0"/><path d="M3 16h18M8 20h8M12 5v2.5M4.8 8.8l1.8 1.8M19.2 8.8l-1.8 1.8"/>` },
+  noche: { color: "#4f56c9", trazo: `<path d="M20 14.2A8.5 8.5 0 0 1 9.8 4a8.5 8.5 0 1 0 10.2 10.2z"/>` },
+};
+
+function turnoAvatarHtml(id, clase = "") {
+  const icono = ICONOS_TURNO[id.normalize("NFD").replace(/[\u0300-\u036f]/g, "")];
+  if (!icono) return `<span class="cmp-av ${clase}" style="background:var(--text-secondary)" aria-hidden="true">${escapeHtml(id.charAt(0).toUpperCase())}</span>`;
+  return `<span class="cmp-av ${clase}" style="background:${icono.color}" aria-hidden="true"><svg viewBox="0 0 24 24">${icono.trazo}</svg></span>`;
+}
+
+// Lo único que cambia entre el podio de empleados y el de turnos: el círculo de
+// cada puesto y los textos. Quién entra (podioDe) y cómo se dibuja es uno solo.
+const PODIO_EMPLEADOS = {
+  clase: "",
+  avatar: (f, clase) => avatarHtml(f.nombre, clase),
+  tituloSube: "Quién más subió",
+  tituloBaja: "Quién bajó menos",
+  ariaSube: "Quienes más subieron su promedio por turno",
+  ariaBaja: "Quienes menos bajaron su promedio por turno",
+  notaBaja: "Nadie subió su promedio por turno este mes: gana quien menos bajó.",
+  sinDatos: (act, ant) => `Todavía no hay integrantes con al menos ${MIN_TURNOS} turnos en ${mesLabel(act.base)} y en ${mesLabel(ant.base)} para comparar.`,
+  todasLasBajas: false,
+};
+const PODIO_TURNOS = {
+  clase: " cmp-podio-turnos",
+  avatar: (f, clase) => turnoAvatarHtml(f.id, clase),
+  tituloSube: "Qué turno más subió",
+  tituloBaja: "Qué turno bajó menos",
+  ariaSube: "Turnos que más subieron su promedio",
+  ariaBaja: "Turnos que menos bajaron su promedio",
+  notaBaja: "Ningún turno subió su promedio este mes: gana el que menos bajó.",
+  sinDatos: (act, ant) => `Todavía no hay al menos ${MIN_TURNOS} cierres de cada turno en ${mesLabel(act.base)} y en ${mesLabel(ant.base)} para comparar.`,
+  todasLasBajas: true, // son pocos: se muestran todos los que cayeron, no solo el peor
+};
+
 // Hasta tres en el orden de un podio: 2.º, 1.º y 3.º. Lo que sube o baja cada una
 // va con flecha y porcentaje; la altura del escalón marca el puesto, no el valor.
-function podioHtml(top, modo) {
+function podioHtml(top, modo, textos) {
   const columnas = [top[1], top[0], top[2]].map((f) => {
     if (!f) return `<div></div>`;
     const puesto = top.indexOf(f) + 1;
     return `
       <div class="cmp-pd cmp-pd-${puesto}">
-        <div class="cmp-pd-av">${puesto === 1 ? CORONA : ""}${avatarHtml(f.nombre)}</div>
+        <div class="cmp-pd-av">${puesto === 1 ? CORONA : ""}${textos.avatar(f)}</div>
         <div class="cmp-pd-nombre">${escapeHtml(f.nombre)}</div>
         <div class="cmp-pd-pct">${flechaResultado(f.variacion)}${pctTexto(f.variacion)}</div>
         <div class="cmp-pd-det">${compacto(f.previo.promedio)} → ${compacto(f.promedio)}</div>
         <div class="cmp-pd-base"><span>${puesto}</span></div>
       </div>`;
   });
-  const etiqueta = modo === "sube" ? "Quienes más subieron su promedio por turno" : "Quienes menos bajaron su promedio por turno";
+  const etiqueta = modo === "sube" ? textos.ariaSube : textos.ariaBaja;
   return `<div class="cmp-podio" role="list" aria-label="${etiqueta}">${columnas.join("")}</div>`;
 }
 
-function equipoHeroHtml(act, ant, filas) {
+// La tarjeta del podio: título, podio y los que cayeron sin entrar a él. La usan
+// los empleados y los turnos; `filas` ya viene ordenado de la mejor variación a
+// la peor.
+function podioCardHtml(filas, act, ant, textos) {
   const comparables = filas.filter(f => f.variacion !== null);
   const nombreAnt = mesLabel(ant.base);
   const { modo, top } = podioDe(filas);
@@ -511,24 +611,26 @@ function equipoHeroHtml(act, ant, filas) {
 
   let cuerpo;
   if (!comparables.length) {
-    cuerpo = `<p class="cmp-hero-frase">Todavía no hay integrantes con al menos ${MIN_TURNOS} turnos en ${mesLabel(act.base)} y en ${nombreAnt} para comparar.</p>`;
+    cuerpo = `<p class="cmp-hero-frase">${textos.sinDatos(act, ant)}</p>`;
   } else {
-    const nota = modo === "baja" ? `<p class="cmp-podio-nota">Nadie subió su promedio por turno este mes: gana quien menos bajó.</p>` : "";
-    cuerpo = nota + podioHtml(top, modo);
+    const nota = modo === "baja" ? `<p class="cmp-podio-nota">${textos.notaBaja}</p>` : "";
+    cuerpo = nota + podioHtml(top, modo, textos);
   }
 
-  // "Mayor baja" solo si no es una de las que ya están en el podio.
-  const baja = peor && peor.variacion < 0 && !top.includes(peor)
-    ? `<div class="cmp-baja-fila">
-        ${avatarHtml(peor.nombre, "cmp-av-s")}
-        <div class="cmp-baja-txt"><span class="cmp-baja-rotulo">Mayor baja</span><b>${escapeHtml(peor.nombre)}</b><small>${detalle(peor)}</small></div>
-        <div class="cmp-baja-pct"><span class="cmp-flecha cmp-baja">▼</span>${pctTexto(peor.variacion)}</div>
+  // Los que cayeron y no son del podio: en empleados alcanza con el que más bajó
+  // ("Mayor baja"); los turnos son pocos, así que van todos.
+  const cayeron = comparables.filter(f => f.variacion < 0 && !top.includes(f));
+  const baja = (textos.todasLasBajas ? cayeron : cayeron.slice(-1)).map(f =>
+    `<div class="cmp-baja-fila">
+        ${textos.avatar(f, "cmp-av-s")}
+        <div class="cmp-baja-txt"><span class="cmp-baja-rotulo">${f === peor ? "Mayor baja" : "También bajó"}</span><b>${escapeHtml(f.nombre)}</b><small>${detalle(f)}</small></div>
+        <div class="cmp-baja-pct"><span class="cmp-flecha cmp-baja">▼</span>${pctTexto(f.variacion)}</div>
       </div>`
-    : "";
+  ).join("");
 
   return `
-    <section class="cmp-card cmp-podio-card${ui.animar ? " cmp-anim" : ""}">
-      <div class="cmp-podio-cab"><h3 class="cmp-podio-titulo">${comparables.length && modo === "baja" ? "Quién bajó menos" : "Quién más subió"}</h3><span class="cmp-podio-mes">contra ${nombreAnt}</span></div>
+    <section class="cmp-card cmp-podio-card${textos.clase}${ui.animar ? " cmp-anim" : ""}">
+      <div class="cmp-podio-cab"><h3 class="cmp-podio-titulo">${comparables.length && modo === "baja" ? textos.tituloBaja : textos.tituloSube}</h3><span class="cmp-podio-mes">contra ${nombreAnt}</span></div>
       ${cuerpo}
       ${baja}
     </section>`;
@@ -617,17 +719,28 @@ function equipoTablaHtml(act, ant, filas) {
     </details>`;
 }
 
+// El podio de turnos va debajo del de empleados. Sale de los cierres de todo el
+// negocio, así que se muestra aunque no haya equipo cargado; sin ningún cierre en
+// el mes no se dibuja (el aviso de que no hay cierres ya lo da la vista).
+function turnosPodioHtml() {
+  const act = datosTurnos(ui.offset);
+  if (!Array.from(act.turnos.values()).some(t => t.turnos > 0)) return "";
+  const ant = datosTurnos(ui.offset - 1);
+  return podioCardHtml(evolucionTurnos(act, ant), act, ant, PODIO_TURNOS);
+}
+
 function renderEquipo() {
   const act = datosEquipo(ui.offset);
   const ant = datosEquipo(ui.offset - 1);
   actualizarNavMes(act.base);
   const cont = $("#cmp-equipo-contenido");
+  const turnos = turnosPodioHtml();
   if (!act.hayEquipo) {
-    cont.innerHTML = `<div class="cmp-card"><p class="cmp-vacio-chico">No hay integrantes del equipo cargados. Se agregan en Ajustes → Otras personas.</p></div>`;
+    cont.innerHTML = `<div class="cmp-card"><p class="cmp-vacio-chico">No hay integrantes del equipo cargados. Se agregan en Ajustes → Otras personas.</p></div>${turnos}`;
     return;
   }
   if (!act.personas.size) {
-    cont.innerHTML = `<div class="cmp-card"><p class="cmp-vacio-chico">No hay cierres de turno del equipo en ${mesLabel(act.base)}.</p></div>`;
+    cont.innerHTML = `<div class="cmp-card"><p class="cmp-vacio-chico">No hay cierres de turno del equipo en ${mesLabel(act.base)}.</p></div>${turnos}`;
     return;
   }
   const filas = evolucionEquipo(act, ant);
@@ -638,7 +751,7 @@ function renderEquipo() {
   const sinTurnoNota = omitidos
     ? `<p class="cmp-nota-mes">No se cuentan ${omitidos} ${omitidos === 1 ? "cierre" : "cierres"} de antes de que se cargaran por turno.</p>`
     : "";
-  cont.innerHTML = equipoHeroHtml(act, ant, filas) + enCurso + sinTurnoNota + equipoVariacionHtml(ant, filas, podioDe(filas).top) + equipoPromedioHtml(act, ant, filas) + equipoTablaHtml(act, ant, filas);
+  cont.innerHTML = podioCardHtml(filas, act, ant, PODIO_EMPLEADOS) + turnos + enCurso + sinTurnoNota + equipoVariacionHtml(ant, filas, podioDe(filas).top) + equipoPromedioHtml(act, ant, filas) + equipoTablaHtml(act, ant, filas);
 }
 
 // ---------- Render ----------
