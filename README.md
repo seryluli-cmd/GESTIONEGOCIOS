@@ -452,8 +452,12 @@ empleado" necesita cierres por turno y Heladería carga uno por día.
     el promedio del equipo en ese mismo turno: corrige por trabajar turnos
     más fuertes (noche) o más flojos (mañana).
   - Arriba va el podio de quienes más subieron (hasta 3, solo con variación
-    positiva) y la tarjeta de "Mayor baja". Oro/plata/bronce son colores de
-    medalla (el puesto); si sube o baja siempre va con flecha y verde o rojo.
+    positiva) y la tarjeta de "Mayor baja". **Si nadie subió, el podio pasa a
+    ser "Quién bajó menos"** (gana quien menos bajó), para que en un mes a la
+    baja no quede vacío; `podioDe()` es el único lugar que decide quién entra.
+    "Mayor baja" no se repite si esa persona ya está en el podio.
+    Oro/plata/bronce son colores de medalla (el puesto); si sube o baja
+    siempre va con flecha y verde o rojo.
 - **Hasta dónde se puede retroceder** lo da el registro más viejo del negocio
   (`mesesAtrasMax()`): esta app baja todo el historial, no una ventana de
   meses. La pantalla se redibuja sola con cada cambio de Firestore, pero solo

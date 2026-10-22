@@ -471,10 +471,21 @@ function avatarHtml(nombre, clase = "") {
   return `<span class="cmp-av ${clase}" style="background:${payerColorVar(nombre)}" aria-hidden="true">${escapeHtml(nombre.trim().charAt(0).toUpperCase())}</span>`;
 }
 
-// Hasta tres quienes más subieron, en el orden de un podio: 2.º, 1.º y 3.º. Lo
-// que sube cada una va con flecha y porcentaje; la altura del escalón marca el
-// puesto, no el valor.
-function podioHtml(top) {
+// Quiénes van al podio: los que más subieron y, si nadie subió, los que menos
+// bajaron — así en un mes a la baja el podio no queda vacío. `filas` ya viene
+// ordenado de la mejor variación a la peor. Único lugar que lo decide: lo usan
+// el podio, la tarjeta de "Mayor baja" y las medallas del ranking.
+function podioDe(filas) {
+  const comparables = filas.filter(f => f.variacion !== null);
+  const subieron = comparables.filter(f => f.variacion > 0);
+  return subieron.length
+    ? { modo: "sube", top: subieron.slice(0, 3) }
+    : { modo: "baja", top: comparables.slice(0, 3) };
+}
+
+// Hasta tres en el orden de un podio: 2.º, 1.º y 3.º. Lo que sube o baja cada una
+// va con flecha y porcentaje; la altura del escalón marca el puesto, no el valor.
+function podioHtml(top, modo) {
   const columnas = [top[1], top[0], top[2]].map((f) => {
     if (!f) return `<div></div>`;
     const puesto = top.indexOf(f) + 1;
@@ -482,31 +493,32 @@ function podioHtml(top) {
       <div class="cmp-pd cmp-pd-${puesto}">
         <div class="cmp-pd-av">${puesto === 1 ? CORONA : ""}${avatarHtml(f.nombre)}</div>
         <div class="cmp-pd-nombre">${escapeHtml(f.nombre)}</div>
-        <div class="cmp-pd-pct"><span class="cmp-flecha cmp-sube">▲</span>${pctTexto(f.variacion)}</div>
+        <div class="cmp-pd-pct">${flechaResultado(f.variacion)}${pctTexto(f.variacion)}</div>
         <div class="cmp-pd-det">${compacto(f.previo.promedio)} → ${compacto(f.promedio)}</div>
         <div class="cmp-pd-base"><span>${puesto}</span></div>
       </div>`;
   });
-  return `<div class="cmp-podio" role="list" aria-label="Quienes más subieron su promedio por turno">${columnas.join("")}</div>`;
+  const etiqueta = modo === "sube" ? "Quienes más subieron su promedio por turno" : "Quienes menos bajaron su promedio por turno";
+  return `<div class="cmp-podio" role="list" aria-label="${etiqueta}">${columnas.join("")}</div>`;
 }
 
 function equipoHeroHtml(act, ant, filas) {
   const comparables = filas.filter(f => f.variacion !== null);
   const nombreAnt = mesLabel(ant.base);
-  const top = comparables.filter(f => f.variacion > 0).slice(0, 3);
+  const { modo, top } = podioDe(filas);
   const peor = comparables[comparables.length - 1];
   const detalle = (f) => `${money(Math.round(f.previo.promedio))} → ${money(Math.round(f.promedio))} por turno`;
 
   let cuerpo;
   if (!comparables.length) {
     cuerpo = `<p class="cmp-hero-frase">Todavía no hay integrantes con al menos ${MIN_TURNOS} turnos en ${mesLabel(act.base)} y en ${nombreAnt} para comparar.</p>`;
-  } else if (top.length) {
-    cuerpo = podioHtml(top);
   } else {
-    cuerpo = `<p class="cmp-hero-frase">Ninguna integrante mejoró su promedio por turno respecto de ${nombreAnt}.</p>`;
+    const nota = modo === "baja" ? `<p class="cmp-podio-nota">Nadie subió su promedio por turno este mes: gana quien menos bajó.</p>` : "";
+    cuerpo = nota + podioHtml(top, modo);
   }
 
-  const baja = peor && peor.variacion < 0
+  // "Mayor baja" solo si no es una de las que ya están en el podio.
+  const baja = peor && peor.variacion < 0 && !top.includes(peor)
     ? `<div class="cmp-baja-fila">
         ${avatarHtml(peor.nombre, "cmp-av-s")}
         <div class="cmp-baja-txt"><span class="cmp-baja-rotulo">Mayor baja</span><b>${escapeHtml(peor.nombre)}</b><small>${detalle(peor)}</small></div>
@@ -516,7 +528,7 @@ function equipoHeroHtml(act, ant, filas) {
 
   return `
     <section class="cmp-card cmp-podio-card${ui.animar ? " cmp-anim" : ""}">
-      <div class="cmp-podio-cab"><h3 class="cmp-podio-titulo">Quién más subió</h3><span class="cmp-podio-mes">contra ${nombreAnt}</span></div>
+      <div class="cmp-podio-cab"><h3 class="cmp-podio-titulo">${comparables.length && modo === "baja" ? "Quién bajó menos" : "Quién más subió"}</h3><span class="cmp-podio-mes">contra ${nombreAnt}</span></div>
       ${cuerpo}
       ${baja}
     </section>`;
@@ -525,10 +537,11 @@ function equipoHeroHtml(act, ant, filas) {
 // Barras que salen del centro: a la derecha (verde) lo que subió, a la
 // izquierda (rojo) lo que bajó. Cada una con su flecha y su porcentaje, así el
 // estado no depende solo del color.
-function equipoVariacionHtml(ant, filas) {
+function equipoVariacionHtml(ant, filas, top) {
   const maxAbs = Math.max(10, ...filas.map(f => Math.abs(f.variacion || 0)));
-  const items = filas.map((f, i) => {
-    const medalla = f.variacion > 0 && i < 3 ? ` cmp-m${i + 1}` : "";
+  const items = filas.map((f) => {
+    const puesto = top.indexOf(f);
+    const medalla = puesto >= 0 ? ` cmp-m${puesto + 1}` : "";
     const nombre = `<div class="cmp-eq-nombre">${avatarHtml(f.nombre, "cmp-av-s" + medalla)}<span>${escapeHtml(f.nombre)}<small>${f.turnos} ${f.turnos === 1 ? "turno" : "turnos"}</small></span></div>`;
     if (f.variacion === null) {
       const motivo = !f.previo ? `sin turnos en ${mesLabel(ant.base)}` : `menos de ${MIN_TURNOS} turnos`;
@@ -625,7 +638,7 @@ function renderEquipo() {
   const sinTurnoNota = omitidos
     ? `<p class="cmp-nota-mes">No se cuentan ${omitidos} ${omitidos === 1 ? "cierre" : "cierres"} de antes de que se cargaran por turno.</p>`
     : "";
-  cont.innerHTML = equipoHeroHtml(act, ant, filas) + enCurso + sinTurnoNota + equipoVariacionHtml(ant, filas) + equipoPromedioHtml(act, ant, filas) + equipoTablaHtml(act, ant, filas);
+  cont.innerHTML = equipoHeroHtml(act, ant, filas) + enCurso + sinTurnoNota + equipoVariacionHtml(ant, filas, podioDe(filas).top) + equipoPromedioHtml(act, ant, filas) + equipoTablaHtml(act, ant, filas);
 }
 
 // ---------- Render ----------
