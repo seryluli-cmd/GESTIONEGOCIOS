@@ -403,11 +403,11 @@ en app.js oculta todas y muestra una. Jerarquía:
 
 ```
 screen-negocio (elegir Pancho / Heladería)
-  └─ screen-seccion (elegir Gastos / Facturado / Resumen mensual / Análisis avanzado** / Gastos S/Admin*)
+  └─ screen-seccion (elegir Gastos / Facturado / Resumen mensual / Estadísticas** / Gastos S/Admin*)
        ├─ screen-app       (tabs: Gastos, Balance, Ajustes)
        ├─ screen-facturado
        ├─ screen-gastos-admin (Gastos S/Admin*)
-       ├─ screen-comparar  (Análisis avanzado**)
+       ├─ screen-comparar  (Estadísticas**)
        └─ screen-resumen
 screen-ajustes → screen-fotos (fotos guardadas, solo alcanzable desde Ajustes)
 ```
@@ -415,15 +415,15 @@ screen-ajustes → screen-fotos (fotos guardadas, solo alcanzable desde Ajustes)
 tarjeta para quien no sea admin (ver "Categorías de gastos y gastos
 privados" más arriba).
 
-\*\* "Análisis avanzado" es `soloAdmin` **y** solo aparece en los negocios con
-`tieneAnalisis` (hoy Pancho Recreo) — ver la sección de abajo.
+\*\* "Estadísticas" es `soloAdmin` **y** solo aparece en los negocios con
+`tieneEstadisticas` (hoy Pancho Recreo) — ver la sección de abajo.
 
-## Análisis avanzado (solo admin, solo Pancho Recreo)
+## Estadísticas (solo admin, solo Pancho Recreo)
 
 Pantalla `screen-comparar`, dibujada por [js/comparar.js](js/comparar.js). Son
 tres vistas calculadas sobre los gastos y cierres que ya están guardados — no
 escribe nada en Firestore. Solo la ve un admin (`esAdmin`) y solo dentro de un
-negocio con `tieneAnalisis: true` en `NEGOCIOS` (`negocioTieneAnalisis(id)`,
+negocio con `tieneEstadisticas: true` en `NEGOCIOS` (`negocioTieneEstadisticas(id)`,
 `js/datos.js`); sumar Heladería sería poner ese flag, pero ojo que "Por
 empleado" necesita cierres por turno y Heladería carga uno por día.
 

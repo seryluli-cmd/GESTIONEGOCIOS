@@ -121,15 +121,15 @@ export function negocioCierraEseDia(id, fecha) {
   return !!(biz && biz.diasCerrados && biz.diasCerrados.includes(fecha.getDay()));
 }
 
-// "Análisis avanzado" (js/comparar.js) hoy existe solo para Pancho Recreo: su
+// "Estadísticas" (js/comparar.js) hoy existe solo para Pancho Recreo: su
 // vista "Por empleado" compara el promedio por turno de cada integrante, y eso
 // necesita los cierres por turno. Mismo criterio que negocioTieneTurnos(): se
 // pregunta acá en vez de comparar contra "pancho" en cada lugar. Para sumarlo
-// a Heladería alcanza con poner tieneAnalisis:true en su entrada de NEGOCIOS
+// a Heladería alcanza con poner tieneEstadisticas:true en su entrada de NEGOCIOS
 // (pero ojo: sin turnos, "Por empleado" tendría que contar cierres por día).
-export function negocioTieneAnalisis(id) {
+export function negocioTieneEstadisticas(id) {
   const biz = NEGOCIOS.find(b => b.id === id);
-  return !!(biz && biz.tieneAnalisis);
+  return !!(biz && biz.tieneEstadisticas);
 }
 
 // Reemplaza el hardcode viejo "usuarioActual === 'Kiara'": cualquier socio

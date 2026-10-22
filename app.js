@@ -81,11 +81,11 @@ export const NEUTRAL_VAR = "var(--text-muted)";
 // para cada negocio (mismos 3 socios, cuentas independientes).
 // diasCerrados: días de la semana en que el negocio no abre, en el formato
 // de Date.getDay() (0 = domingo ... 6 = sábado) — ver negocioCierraEseDia().
-// tieneAnalisis: el negocio tiene la sección "Análisis avanzado" (solo admin)
-// — ver negocioTieneAnalisis().
+// tieneEstadisticas: el negocio tiene la sección "Estadísticas" (solo admin)
+// — ver negocioTieneEstadisticas().
 export const NEGOCIOS = [
-  { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)", tieneCajaLocal: true, tieneTurnos: true, tieneAnalisis: true, diasCerrados: [0] },
-  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false, tieneTurnos: false, tieneAnalisis: false, diasCerrados: [] }
+  { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)", tieneCajaLocal: true, tieneTurnos: true, tieneEstadisticas: true, diasCerrados: [0] },
+  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false, tieneTurnos: false, tieneEstadisticas: false, diasCerrados: [] }
 ];
 
 
