@@ -6,7 +6,7 @@
 
 import { $, showScreen, switchTab, escapeHtml } from "./utilidades.js";
 import { fbSdk, db } from "./firebase-sdk.js";
-import { socios, colaboradorNegocio, admins, pins, claveMaestraAdmin } from "./datos.js";
+import { socios, colaboradorNegocio, admins, pins, claveMaestraAdmin, negocioTieneAnalisis } from "./datos.js";
 import {
   NEGOCIOS, payerColorVar, socioInitial, allPagadores,
   resetResumenMesOffset, resetGastosMesOffset, resetFacturadoMesOffset, resetGastosAdminMesOffset
@@ -15,6 +15,7 @@ import { renderGastos, renderGastosAdmin, resetFiltroPagadorGastos } from "./gas
 import { renderFacturado } from "./facturado.js";
 import { renderIdeas } from "./ideas.js";
 import { renderResumen, reiniciarCategoriasAbiertas } from "./resumen.js";
+import { abrirComparar } from "./comparar.js";
 import { renderBalance } from "./balance.js";
 import { renderAjustesSocios } from "./ajustes.js";
 
@@ -320,6 +321,11 @@ function selectNegocio(id) {
   $("#resumen-icon-badge").textContent = biz.emoji;
   $("#resumen-icon-badge").style.background = biz.color;
 
+  // Pantalla "Análisis avanzado" — mismo criterio que Resumen mensual.
+  $("#comparar-titulo").textContent = biz.nombre;
+  $("#comparar-icon-badge").textContent = biz.emoji;
+  $("#comparar-icon-badge").style.background = biz.color;
+
   // Pantalla "Gastos S/Admin" — badge del topbar (mismo criterio que
   // Facturado/Resumen: negocio arriba, sección fija abajo en el HTML).
   $("#gastos-admin-titulo").textContent = biz.nombre;
@@ -350,6 +356,7 @@ function renderSeccionCards(biz) {
       sub: esSocio() ? "Cargar gastos y ver el balance entre socios" : "Cargar y ver los gastos del negocio" },
     { id: "facturado", emoji: "💰", nombre: "Cierre de Turno", sub: "Anotar lo que se facturó cada día" },
     { id: "resumen", emoji: "📊", nombre: "Resumen mensual", sub: "Ver los totales de cada mes" },
+    { id: "comparar", emoji: "⚖️", nombre: "Análisis avanzado", sub: "Meses, tramos del mes y rendimiento por empleado", soloAdmin: true },
     { id: "gastosadmin", emoji: "🔒", nombre: "Gastos S/Admin", sub: "Sueldos y otros gastos privados", soloAdmin: true },
     { id: "ideas", emoji: "💡", nombre: "Ideas/Metas", sub: "Para mejorar este negocio" }
   ];
@@ -360,7 +367,13 @@ function renderSeccionCards(biz) {
   // negocio) es solo para los socios. El colaborador no pierde nada de
   // lo que necesita: la caja del local la ve en la pestaña Gastos.
   // Gastos S/Admin es solo para admin (ver "Gastos privados" en README).
-  SECCIONES.filter(s => (s.id !== "resumen" || esSocio()) && (!s.soloAdmin || esAdmin)).forEach(s => {
+  // Análisis avanzado es solo para admin y solo en los negocios que lo tienen
+  // (ver negocioTieneAnalisis()).
+  SECCIONES.filter(s =>
+    (s.id !== "resumen" || esSocio())
+    && (s.id !== "comparar" || negocioTieneAnalisis(biz.id))
+    && (!s.soloAdmin || esAdmin)
+  ).forEach(s => {
     const card = document.createElement("div");
     card.className = "negocio-card";
     card.style.setProperty("--biz-color", biz.color);
@@ -399,6 +412,14 @@ function selectSeccion(id) {
     reiniciarCategoriasAbiertas(); // cada visita arranca con todas las categorías cerradas
     renderResumen();
     showScreen("screen-resumen");
+  } else if (id === "comparar") {
+    // Segunda puerta por si algo llega a llamar selectSeccion("comparar")
+    // directo — la tarjeta ya no aparece para quien no sea admin ni en un
+    // negocio sin análisis (ver renderSeccionCards), mismo criterio que
+    // "gastosadmin" más abajo.
+    if (!esAdmin || !negocioTieneAnalisis(negocioActual)) return;
+    showScreen("screen-comparar"); // antes que abrirComparar(): solo dibuja si la pantalla está activa
+    abrirComparar();
   } else if (id === "gastosadmin") {
     // Segunda puerta por si algo llega a llamar selectSeccion("gastosadmin")
     // directo — la tarjeta ya está escondida para quien no sea admin (ver

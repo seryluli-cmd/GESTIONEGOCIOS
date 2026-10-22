@@ -42,6 +42,7 @@ import {
   openModalIdea, closeModalIdea, saveIdea
 } from "./js/ideas.js";
 import { renderResumen, renderFotosGuardadas } from "./js/resumen.js";
+import { initComparar } from "./js/comparar.js";
 import {
   renderAjustesSocios, agregarCategoriaDesdeAjustes, quitarCategoria,
   openModalColaborador, closeModalColaborador, saveColaborador, toggleAdmin,
@@ -80,9 +81,11 @@ export const NEUTRAL_VAR = "var(--text-muted)";
 // para cada negocio (mismos 3 socios, cuentas independientes).
 // diasCerrados: días de la semana en que el negocio no abre, en el formato
 // de Date.getDay() (0 = domingo ... 6 = sábado) — ver negocioCierraEseDia().
+// tieneAnalisis: el negocio tiene la sección "Análisis avanzado" (solo admin)
+// — ver negocioTieneAnalisis().
 export const NEGOCIOS = [
-  { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)", tieneCajaLocal: true, tieneTurnos: true, diasCerrados: [0] },
-  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false, tieneTurnos: false, diasCerrados: [] }
+  { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)", tieneCajaLocal: true, tieneTurnos: true, tieneAnalisis: true, diasCerrados: [0] },
+  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false, tieneTurnos: false, tieneAnalisis: false, diasCerrados: [] }
 ];
 
 
@@ -263,6 +266,8 @@ function wireEvents() {
     resumenMesOffset++;
     renderResumen();
   });
+  $("#btn-back-to-seccion-comparar").addEventListener("click", volverASeccion);
+  initComparar();
   $("#btn-back-to-seccion-gastosadmin").addEventListener("click", volverASeccion);
   $("#btn-gastos-admin-mes-anterior").addEventListener("click", () => {
     gastosAdminMesOffset--;

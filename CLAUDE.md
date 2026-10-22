@@ -73,6 +73,7 @@ cambiás una regla de negocio, actualizá el README.
 | `negocioTieneCajaLocal(id)` | se pregunta si un negocio tiene caja del local |
 | `negocioTieneTurnos(id)` | se pregunta si un negocio cierra la caja 2 veces por día (hoy: solo Pancho) |
 | `negocioCierraEseDia(id, fecha)` | se pregunta si un negocio no abre ese día de la semana (hoy: Pancho cierra los domingos) — el aviso "Caja faltante" lo usa para no reclamar esos días |
+| `negocioTieneAnalisis(id)` | se pregunta si un negocio tiene la sección "Análisis avanzado" (solo admin; hoy: solo Pancho) |
 | `usaCajaLocalAutomatica(nombre)` | se pregunta si a esa persona se le fuerza sola la forma de pago "Caja del local" en un gasto nuevo |
 | `cierresFaltantes()` | se decide qué avisos "Caja faltante" mostrar (1 cierre diario o los turnos de Pancho) |
 | `escapeHtml(str)` | pasa todo texto de Firestore antes de ir a `innerHTML` |

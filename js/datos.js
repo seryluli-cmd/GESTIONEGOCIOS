@@ -16,6 +16,7 @@ import { renderGastos, renderGastosAdmin } from "./gastos.js";
 import { renderPagadorChips } from "./modal-gasto.js";
 import { renderFacturado } from "./facturado.js";
 import { renderResumen, limpiarFotosVencidas } from "./resumen.js";
+import { renderComparar } from "./comparar.js";
 import { renderPagadorChipsFacturado } from "./modal-facturado.js";
 import { renderIdeas } from "./ideas.js";
 import { renderBalance } from "./balance.js";
@@ -118,6 +119,17 @@ export function negocioTieneTurnos(id) {
 export function negocioCierraEseDia(id, fecha) {
   const biz = NEGOCIOS.find(b => b.id === id);
   return !!(biz && biz.diasCerrados && biz.diasCerrados.includes(fecha.getDay()));
+}
+
+// "Análisis avanzado" (js/comparar.js) hoy existe solo para Pancho Recreo: su
+// vista "Por empleado" compara el promedio por turno de cada integrante, y eso
+// necesita los cierres por turno. Mismo criterio que negocioTieneTurnos(): se
+// pregunta acá en vez de comparar contra "pancho" en cada lugar. Para sumarlo
+// a Heladería alcanza con poner tieneAnalisis:true en su entrada de NEGOCIOS
+// (pero ojo: sin turnos, "Por empleado" tendría que contar cierres por día).
+export function negocioTieneAnalisis(id) {
+  const biz = NEGOCIOS.find(b => b.id === id);
+  return !!(biz && biz.tieneAnalisis);
 }
 
 // Reemplaza el hardcode viejo "usuarioActual === 'Kiara'": cualquier socio
@@ -260,6 +272,7 @@ export function listenSocios() {
       renderFacturado();
       renderIdeas();
       if (negocioActual) renderResumen();
+      renderComparar(); // "Por empleado" depende de quiénes son colaboradores
     }
   });
 }
@@ -277,6 +290,7 @@ export function listenGastos() {
     // cambiara algo de reposiciones (bug real que hubo).
     renderCajaLocalDetalle();
     if (negocioActual) renderResumen();
+    renderComparar();
     setSyncOffline(false);
     if (!fotosLimpiezaHecha) {
       fotosLimpiezaHecha = true;
@@ -294,6 +308,7 @@ export function listenFacturacion() {
     facturaciones = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     renderFacturado();
     if (negocioActual) renderResumen();
+    renderComparar();
     setSyncOffline(false);
   }, (err) => {
     console.error(err);

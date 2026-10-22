@@ -677,6 +677,200 @@ input:focus, select:focus, textarea:focus {
 
 /* Resumen mensual > Facturado por día: el desglose por turno debajo del
    total del día, solo en negocios con negocioTieneTurnos() (ver resumen.js). */
+/* Comparar meses (solo admin): un bloque por mes con Efectivo / Digital /
+   suma / Gastos totales. */
+.comparar-fila { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 3px 0; font-size: 14px; }
+.comparar-fila b { font-weight: 700; font-variant-numeric: proportional-nums; text-align: right; }
+.comparar-fila-total { margin-top: 4px; padding: 7px 0 8px; border-top: 1px solid var(--border); font-weight: 600; }
+.comparar-fila-gastos { margin-top: 10px; padding-bottom: 6px; font-weight: 600; }
+.comparar-var { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.comparar-nota { margin-bottom: 8px; font-size: 12px; color: var(--text-secondary); }
+
+/* ---- Comparar meses → "Por tramo" (comparar.js) ----
+   Colores por medida, iguales en todos los gráficos y en Resumen mensual:
+   Efectivo verde, Digital azul, Gastos naranja. El resto es tinta neutra, para que la plata sea lo
+   único con color. */
+.cmp-seg { display: flex; gap: 2px; padding: 3px; margin-bottom: 14px; background: var(--gridline); border-radius: 12px; }
+.cmp-seg button {
+  flex: 1; min-height: 38px; border: 0; border-radius: 9px;
+  background: transparent; color: var(--text-secondary);
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.cmp-seg button[aria-pressed="true"] { background: var(--surface-1); color: var(--text-primary); box-shadow: 0 0 0 1px var(--border); }
+.cmp-seg-sm { margin: 4px 0 16px; }
+.cmp-seg-sm button { min-height: 34px; font-size: 13px; }
+
+.cmp-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px; padding: 16px 14px 14px; margin-bottom: 14px; }
+.cmp-card-titulo { margin: 0 0 2px; font-size: 15px; font-weight: 700; }
+.cmp-card-sub { margin: 0 0 12px; font-size: 12.5px; color: var(--text-secondary); }
+.cmp-vacio-chico { margin: 0; padding: 6px 0; font-size: 14px; color: var(--text-secondary); text-align: center; }
+
+.cmp-hero-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; }
+.cmp-hero-valor { font-size: 38px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05; }
+.cmp-hero-frase { margin: 8px 0 16px; font-size: 14px; color: var(--text-secondary); line-height: 1.4; }
+.cmp-cinta { display: flex; gap: 2px; height: 10px; }
+.cmp-cinta span { min-width: 4px; }
+.cmp-cinta span:first-child { border-radius: 5px 0 0 5px; }
+.cmp-cinta span:last-child { border-radius: 0 5px 5px 0; }
+.cmp-cinta span:only-child { border-radius: 5px; }
+.cmp-t0 { background: var(--text-primary); }
+.cmp-t1 { background: var(--text-primary); opacity: 0.55; }
+.cmp-t2 { background: var(--text-primary); opacity: 0.25; }
+.cmp-cinta-leyenda { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--text-secondary); }
+.cmp-cinta-leyenda span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.cmp-cinta-leyenda i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
+.cmp-cinta-leyenda b { color: var(--text-primary); font-weight: 600; }
+.cmp-hero-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.cmp-hero-stats > div { display: flex; flex-direction: column; gap: 3px; }
+.cmp-hero-stats b { font-size: 18px; font-weight: 700; }
+.cmp-stat-label { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); }
+
+/* Marcas: la clase de color va en la marca (rect/path/punto), nunca en el texto. */
+.cmp-ef { fill: var(--good); background: var(--good); }
+.cmp-di { fill: var(--series-1); background: var(--series-1); }
+.cmp-ga { fill: var(--series-2); background: var(--series-2); }
+.cmp-sd { fill: var(--text-muted); background: var(--text-muted); opacity: 0.55; }
+.cmp-pt { display: inline-block; width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.cmp-pt.cmp-vs-act { background: var(--text-primary); }
+.cmp-pt.cmp-vs-ant { background: var(--text-muted); opacity: 0.55; }
+.cmp-leyenda { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 6px; font-size: 12.5px; color: var(--text-secondary); }
+.cmp-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+
+.cmp-chart { position: relative; }
+.cmp-svg { display: block; width: 100%; height: auto; overflow: visible; }
+.cmp-grid { stroke: var(--gridline); stroke-width: 1; }
+.cmp-base { stroke: var(--baseline); stroke-width: 1; }
+.cmp-tick { fill: var(--text-muted); font-size: 10px; }
+.cmp-val { fill: var(--text-primary); font-size: 10px; font-weight: 600; }
+.cmp-x1 { fill: var(--text-primary); font-size: 12px; font-weight: 600; }
+.cmp-x2 { fill: var(--text-muted); font-size: 10.5px; }
+.cmp-hit { fill: transparent; cursor: pointer; outline: none; }
+.cmp-grupo:hover .cmp-hit, .cmp-hit:focus-visible { fill: var(--gridline); fill-opacity: 0.45; }
+.cmp-hit:focus-visible { stroke: var(--series-1); stroke-width: 1.5; }
+.cmp-col { pointer-events: none; }
+
+.cmp-tip {
+  position: absolute; top: 4px; z-index: 5; min-width: 176px; padding: 10px 12px;
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18); pointer-events: none; font-size: 13px;
+}
+.cmp-tip-titulo { margin-bottom: 6px; font-weight: 700; }
+.cmp-tip-titulo small { margin-left: 6px; font-weight: 400; color: var(--text-muted); }
+.cmp-tip-fila { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 2px 0; color: var(--text-secondary); }
+.cmp-tip-fila span { display: inline-flex; align-items: center; gap: 6px; }
+.cmp-tip-fila b { color: var(--text-primary); font-weight: 700; }
+
+.cmp-res-titulo { margin: 14px 0 6px; font-size: 12px; color: var(--text-secondary); }
+/* Alineada con las 3 columnas del gráfico (el eje Y ocupa 34/340 a la izquierda). */
+.cmp-res-fila { display: grid; grid-template-columns: repeat(3, 1fr); margin-left: 10%; margin-right: 1.8%; }
+.cmp-res-celda { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.cmp-res-celda b { font-weight: 700; }
+.cmp-res-nada { color: var(--text-muted); }
+.cmp-flecha { font-size: 10px; margin-right: 4px; color: var(--text-muted); }
+.cmp-sube { color: var(--good); }
+.cmp-baja { color: var(--critical); }
+
+.cmp-vs-fila { display: grid; grid-template-columns: 74px 1fr auto; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); }
+.cmp-vs-tramo { font-size: 13px; font-weight: 600; }
+.cmp-vs-barras { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cmp-vs-linea { display: flex; align-items: center; gap: 6px; height: 12px; }
+.cmp-vs-linea em { font-style: normal; font-size: 10.5px; color: var(--text-secondary); white-space: nowrap; }
+.cmp-vs-barra { display: block; height: 10px; max-width: 72%; border-radius: 0 4px 4px 0; }
+.cmp-vs-act { background: var(--text-primary); }
+.cmp-vs-ant { background: var(--text-muted); opacity: 0.55; }
+.cmp-delta { min-width: 62px; text-align: right; font-size: 13px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
+
+.cmp-tabla { padding: 0; }
+.cmp-tabla summary { padding: 14px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.cmp-tabla-scroll { overflow-x: auto; padding: 0 14px 14px; }
+.cmp-tabla table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.cmp-tabla caption { padding-bottom: 8px; text-align: left; font-size: 12px; color: var(--text-secondary); }
+.cmp-tabla th, .cmp-tabla td { padding: 7px 8px 7px 0; text-align: right; white-space: nowrap; border-top: 1px solid var(--border); }
+.cmp-tabla thead th { border-top: 0; font-weight: 600; color: var(--text-secondary); }
+.cmp-tabla th[scope="row"], .cmp-tabla thead th:first-child { text-align: left; }
+.cmp-tabla th[scope="row"] { font-weight: 600; }
+.cmp-tabla tfoot th, .cmp-tabla tfoot td { font-weight: 700; border-top: 1px solid var(--baseline); }
+
+/* "Por empleado": quién subió o bajó su promedio por turno. */
+.cmp-nota-mes, .cmp-nota-tabla { margin: 0 0 14px; font-size: 12px; line-height: 1.45; color: var(--text-secondary); }
+.cmp-nota-tabla { margin: 0; padding: 0 14px 14px; }
+.cmp-eq-detalle { margin: 2px 0 0; font-size: 12.5px; color: var(--text-secondary); }
+
+.cmp-eq-fila { display: grid; grid-template-columns: 116px 1fr 62px; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--border); }
+.cmp-eq-nombre { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 13px; font-weight: 600; }
+.cmp-eq-nombre > span:last-child { display: flex; flex-direction: column; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-eq-nombre small { font-size: 11px; font-weight: 400; color: var(--text-muted); }
+.cmp-eq-div { position: relative; height: 12px; }
+.cmp-eq-eje { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--baseline); }
+.cmp-eq-barra { position: absolute; top: 1px; height: 10px; }
+.cmp-eq-sube { left: 50%; background: var(--good); border-radius: 0 4px 4px 0; }
+.cmp-eq-baja-b { right: 50%; background: var(--critical); border-radius: 4px 0 0 4px; }
+.cmp-eq-pct { display: flex; align-items: center; justify-content: flex-end; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.cmp-eq-pocos { grid-column: 2 / 4; font-size: 12px; color: var(--text-muted); text-align: right; }
+.cmp-vs-persona { grid-template-columns: 74px 1fr auto; }
+.cmp-vs-persona .cmp-vs-tramo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* "Por empleado": podio de quienes más subieron. Oro, plata y bronce son colores
+   de medalla (el puesto); sube o baja sigue yendo con flecha y verde o rojo. */
+.cmp-podio-card {
+  --oro: #e8c35a; --plata: #c3c7d0; --bronce: #d49a74;
+  background: color-mix(in srgb, var(--oro) 9%, var(--surface-1));
+  border-color: color-mix(in srgb, var(--oro) 30%, var(--border));
+}
+.cmp-podio-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 18px; }
+.cmp-podio-titulo { margin: 0; font-size: 15px; font-weight: 700; }
+.cmp-podio-mes { font-size: 12px; color: var(--text-secondary); text-align: right; }
+
+.cmp-podio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end; }
+.cmp-pd { display: flex; flex-direction: column; align-items: center; min-width: 0; text-align: center; }
+.cmp-pd-1 { padding-top: 22px; }
+.cmp-pd-av { position: relative; margin-bottom: 8px; }
+.cmp-av { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 46px; height: 46px; border-radius: 50%; color: #fff; font-size: 19px; font-weight: 700; }
+.cmp-pd-1 .cmp-av { width: 64px; height: 64px; font-size: 27px; }
+.cmp-pd-1 .cmp-av { box-shadow: 0 0 0 3px var(--surface-1), 0 0 0 5px var(--oro); }
+.cmp-pd-2 .cmp-av { box-shadow: 0 0 0 2px var(--surface-1), 0 0 0 4px var(--plata); }
+.cmp-pd-3 .cmp-av { box-shadow: 0 0 0 2px var(--surface-1), 0 0 0 4px var(--bronce); }
+.cmp-corona { position: absolute; left: 50%; top: -25px; width: 26px; height: 26px; margin-left: -13px; fill: var(--oro); stroke: color-mix(in srgb, var(--oro) 55%, #000); stroke-width: 1; stroke-linejoin: round; }
+.cmp-pd-nombre { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.cmp-pd-pct { display: flex; align-items: center; justify-content: center; margin-top: 2px; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.cmp-pd-1 .cmp-pd-pct { font-size: 28px; }
+.cmp-pd-pct .cmp-flecha { margin-right: 3px; font-size: 11px; }
+.cmp-pd-det { margin-top: 1px; font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; }
+.cmp-pd-base { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 10px; border-radius: 10px 10px 0 0; color: #3a2d08; font-size: 22px; font-weight: 700; }
+.cmp-pd-1 .cmp-pd-base { height: 70px; background: var(--oro); }
+.cmp-pd-2 .cmp-pd-base { height: 50px; background: var(--plata); }
+.cmp-pd-3 .cmp-pd-base { height: 36px; background: var(--bronce); }
+
+.cmp-baja-fila { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--critical) 9%, var(--surface-1)); }
+.cmp-baja-txt { display: flex; flex-direction: column; flex: 1; min-width: 0; font-size: 13px; }
+.cmp-baja-rotulo { font-size: 11.5px; color: var(--text-secondary); }
+.cmp-baja-txt b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.cmp-baja-txt small { font-size: 11.5px; color: var(--text-secondary); }
+.cmp-baja-pct { display: flex; align-items: center; font-size: 17px; font-weight: 700; white-space: nowrap; }
+
+.cmp-av-s { width: 28px; height: 28px; font-size: 13px; }
+.cmp-av-s.cmp-m1 { box-shadow: 0 0 0 2px var(--surface-1), 0 0 0 3.5px #e8c35a; }
+.cmp-av-s.cmp-m2 { box-shadow: 0 0 0 2px var(--surface-1), 0 0 0 3.5px #c3c7d0; }
+.cmp-av-s.cmp-m3 { box-shadow: 0 0 0 2px var(--surface-1), 0 0 0 3.5px #d49a74; }
+
+/* Un solo momento de movimiento al entrar: los escalones suben y después aparecen los nombres. */
+@media (prefers-reduced-motion: no-preference) {
+  .cmp-anim .cmp-pd-base { transform-origin: center bottom; animation: cmpCrece 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .cmp-anim .cmp-pd-3 .cmp-pd-base { animation-delay: 0.07s; }
+  .cmp-anim .cmp-pd-1 .cmp-pd-base { animation-delay: 0.14s; }
+  .cmp-anim .cmp-pd-av, .cmp-anim .cmp-pd-nombre, .cmp-anim .cmp-pd-pct, .cmp-anim .cmp-pd-det { animation: cmpAparece 0.45s ease-out 0.35s both; }
+}
+@keyframes cmpAparece { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* Las columnas crecen una vez al abrir o cambiar de vista; sin movimiento si el
+   dispositivo lo pide. */
+@media (prefers-reduced-motion: no-preference) {
+  .cmp-anim .cmp-col { transform-box: fill-box; transform-origin: center bottom; animation: cmpCrece 0.65s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .cmp-anim .cmp-grupo:nth-of-type(2) .cmp-col { animation-delay: 0.07s; }
+  .cmp-anim .cmp-grupo:nth-of-type(3) .cmp-col { animation-delay: 0.14s; }
+}
+@keyframes cmpCrece { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
 .resumen-turnos-row {
   display: flex;
   gap: 12px;

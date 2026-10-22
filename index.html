@@ -602,6 +602,62 @@
 
   </div>
 
+  <!-- ===== PANTALLA: ANÁLISIS AVANZADO (solo admin, solo Pancho) ===== -->
+  <!-- Se dibuja desde js/comparar.js. Tres vistas sobre los gastos y cierres
+       ya guardados: no toca ningún dato. -->
+  <div id="screen-comparar" class="screen">
+
+    <header class="topbar">
+      <button id="btn-back-to-seccion-comparar" class="topbar-title" aria-label="Volver a la sección">
+        <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
+        <span class="logo-badge small" id="comparar-icon-badge">$</span>
+        <!-- Mismo criterio que Resumen mensual: negocio arriba, sección
+             abajo. #comparar-titulo lo pisa selectNegocio(). -->
+        <span class="topbar-stack">
+          <span id="comparar-titulo">Análisis</span>
+          <span class="topbar-subtitulo">Análisis avanzado</span>
+        </span>
+      </button>
+    </header>
+
+    <section class="tab active">
+      <div class="cmp-seg" id="cmp-vista" role="group" aria-label="Tipo de comparación">
+        <button type="button" data-vista="mes" aria-pressed="true">Por mes</button>
+        <button type="button" data-vista="tramo" aria-pressed="false">Por tramo</button>
+        <button type="button" data-vista="equipo" aria-pressed="false">Por empleado</button>
+      </div>
+
+      <!-- Vista "Por mes": un bloque por mes con Efectivo, Digital, suma y Gastos -->
+      <div id="cmp-vista-mes">
+        <p class="muted small" style="margin-bottom:16px;">Facturado (Efectivo, Digital y la suma de los dos) y Gastos totales de cada mes, del más reciente al más antiguo.</p>
+        <div id="comparar-meses" class="socios-totales"></div>
+        <p id="comparar-empty" class="muted small hidden">Todavía no hay cierres ni gastos cargados.</p>
+      </div>
+
+      <!-- Mes elegido: lo comparten "Por tramo" y "Por empleado" -->
+      <div class="month-nav hidden" id="cmp-nav">
+        <button id="cmp-mes-anterior" class="month-nav-btn" aria-label="Mes anterior">‹</button>
+        <div class="month-nav-label" id="cmp-mes-label">Mes</div>
+        <button id="cmp-mes-siguiente" class="month-nav-btn" aria-label="Mes siguiente">›</button>
+      </div>
+
+      <!-- Vista "Por tramo": el mes partido en días 1–10, 11–20 y 21–fin -->
+      <div id="cmp-vista-tramo" class="hidden">
+        <div class="cmp-seg cmp-seg-sm" id="cmp-modo" role="group" aria-label="Qué mostrar">
+          <button type="button" data-modo="total" aria-pressed="true">Total del tramo</button>
+          <button type="button" data-modo="dia" aria-pressed="false">Promedio por día</button>
+        </div>
+        <div id="cmp-tramo-contenido"></div>
+      </div>
+
+      <!-- Vista "Por empleado": cuánto subió o bajó cada integrante contra el mes anterior -->
+      <div id="cmp-vista-equipo" class="hidden">
+        <div id="cmp-equipo-contenido"></div>
+      </div>
+    </section>
+
+  </div>
+
   <!-- ===== PANTALLA: DETALLE CAJA DEL LOCAL ===== -->
   <!-- Se abre con el botón "Detalle" de la card de Caja del local en
        Gastos. Muestra los 2 lados del movimiento de la caja, sin

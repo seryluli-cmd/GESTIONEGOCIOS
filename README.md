@@ -403,16 +403,61 @@ en app.js oculta todas y muestra una. Jerarquía:
 
 ```
 screen-negocio (elegir Pancho / Heladería)
-  └─ screen-seccion (elegir Gastos / Facturado / Resumen mensual / Gastos S/Admin*)
+  └─ screen-seccion (elegir Gastos / Facturado / Resumen mensual / Análisis avanzado** / Gastos S/Admin*)
        ├─ screen-app       (tabs: Gastos, Balance, Ajustes)
        ├─ screen-facturado
        ├─ screen-gastos-admin (Gastos S/Admin*)
+       ├─ screen-comparar  (Análisis avanzado**)
        └─ screen-resumen
 screen-ajustes → screen-fotos (fotos guardadas, solo alcanzable desde Ajustes)
 ```
 \* "Gastos S/Admin" es `soloAdmin` en `SECCIONES` — no aparece como
 tarjeta para quien no sea admin (ver "Categorías de gastos y gastos
 privados" más arriba).
+
+\*\* "Análisis avanzado" es `soloAdmin` **y** solo aparece en los negocios con
+`tieneAnalisis` (hoy Pancho Recreo) — ver la sección de abajo.
+
+## Análisis avanzado (solo admin, solo Pancho Recreo)
+
+Pantalla `screen-comparar`, dibujada por [js/comparar.js](js/comparar.js). Son
+tres vistas calculadas sobre los gastos y cierres que ya están guardados — no
+escribe nada en Firestore. Solo la ve un admin (`esAdmin`) y solo dentro de un
+negocio con `tieneAnalisis: true` en `NEGOCIOS` (`negocioTieneAnalisis(id)`,
+`js/datos.js`); sumar Heladería sería poner ese flag, pero ojo que "Por
+empleado" necesita cierres por turno y Heladería carga uno por día.
+
+- **Por mes** — un bloque por mes con Efectivo, Digital, la suma de los dos y
+  Gastos totales, con la variación contra el mes anterior. Usa las mismas
+  cuentas que Resumen mensual (el total facturado es la suma de los `importe`
+  de los cierres), así que las dos pantallas muestran el mismo número.
+- **Por tramo** — un mes partido en días 1–10, 11–20 y 21–fin, en total o como
+  promedio por día (el promedio se calcula sobre los días que ya pasaron, no
+  sobre 10 completos), con gráfico, comparación tramo por tramo contra el mes
+  anterior y tabla.
+- **Por empleado** — cuánto subió o bajó el **promedio por turno** de cada
+  integrante contra el mes anterior. Detalles que no son obvios:
+  - **"Integrantes" son los `colaboradores`** (Ajustes → Otras personas) que
+    figuran como `registradoPor` en un cierre; los socios no entran.
+  - **Promedio por turno** = lo cerrado ÷ cantidad de cierres (turnos), no por
+    día: quien hizo 20 turnos y quien hizo 30 se comparan parejo. Hacen falta
+    al menos `MIN_TURNOS` (4) turnos en los dos meses para comparar; con
+    menos, un solo turno bueno o malo movería el porcentaje al azar.
+  - **Los cierres sin `turno` no cuentan** (los de antes del 17/9/2026, ver
+    `FECHA_INICIO_TURNOS`): eran el total de TODO el día, y mezclados con los
+    de medio día inflarían el promedio de ese mes y harían parecer una baja lo
+    que no lo es. La pantalla avisa cuántos dejó afuera.
+  - El **índice** (en la tabla) es lo cerrado ÷ lo esperado × 100, donde
+    "esperado" es lo que habría cerrado si en cada turno suyo hubiera vendido
+    el promedio del equipo en ese mismo turno: corrige por trabajar turnos
+    más fuertes (noche) o más flojos (mañana).
+  - Arriba va el podio de quienes más subieron (hasta 3, solo con variación
+    positiva) y la tarjeta de "Mayor baja". Oro/plata/bronce son colores de
+    medalla (el puesto); si sube o baja siempre va con flecha y verde o rojo.
+- **Hasta dónde se puede retroceder** lo da el registro más viejo del negocio
+  (`mesesAtrasMax()`): esta app baja todo el historial, no una ventana de
+  meses. La pantalla se redibuja sola con cada cambio de Firestore, pero solo
+  si está abierta.
 
 ⚠️ Dentro de `screen-app` hay tabs (`.tab` + `.tabbtn`) manejadas por
 `switchTab()`. Las pantallas de Facturado/Resumen/Fotos **también** usan la
