@@ -1,13 +1,15 @@
 // ============================================================
 // Estadísticas (solo admin, y solo en los negocios con
-// negocioTieneEstadisticas(): hoy Pancho Recreo) — tres vistas calculadas sobre los
-// gastos y cierres ya guardados, no tocan ni mueven ningún dato:
+// negocioTieneEstadisticas(): hoy Pancho Recreo y Heladería Pablo) — tres vistas
+// calculadas sobre los gastos y cierres ya guardados, no tocan ni mueven ningún dato:
 //   · "Por mes":   un bloque por mes con Efectivo, Digital, suma y Gastos.
 //   · "Por tramo": un mes partido en días 1–10, 11–20 y 21–fin, para ver en
 //     qué parte del mes entra (y sale) la plata.
 //   · "Por empleado": cuánto subió o bajó el promedio por turno de cada
-//     integrante contra el mes anterior, según los cierres de turno. Debajo,
-//     el podio de turnos: cuál de los turnos subió más su promedio.
+//     integrante contra el mes anterior, según los cierres de turno (en un
+//     negocio sin turnos, como Heladería, cada cierre diario cuenta como uno).
+//     Debajo, el podio de turnos: cuál de los turnos subió más su promedio
+//     (solo en los negocios que trabajan por turnos).
 // ============================================================
 import { $, $$, escapeHtml, fechaBaseDelMes, fechaDeRegistro, mesLabel, money } from "./utilidades.js";
 import { payerColorVar } from "../app.js";

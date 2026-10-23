@@ -373,8 +373,8 @@ function renderSeccionCards(biz) {
     { id: "gastos", nombre: "Gastos", grande: true,
       sub: esSocio() ? "Cargar gastos y ver el balance entre socios" : "Cargar y ver los gastos del negocio" },
     { id: "facturado", nombre: "Cierre de Turno", sub: "Anotar lo que se facturó cada día", grande: true, viva: true },
-    { id: "resumen", nombre: "Resumen mensual", sub: "Ver los totales de cada mes" },
     { id: "comparar", nombre: "Estadísticas", sub: "Meses, tramos y empleados", soloAdmin: true, podio: true },
+    { id: "resumen", nombre: "Resumen mensual", sub: "Ver los totales de cada mes" },
     { id: "gastosadmin", nombre: "Gastos S/Admin", sub: "Sueldos y otros gastos privados", soloAdmin: true },
     { id: "ideas", nombre: "Ideas/Metas", sub: "Para mejorar este negocio" }
   ];

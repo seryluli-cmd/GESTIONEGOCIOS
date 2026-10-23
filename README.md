@@ -403,7 +403,7 @@ en app.js oculta todas y muestra una. Jerarquía:
 
 ```
 screen-negocio (elegir Pancho / Heladería)
-  └─ screen-seccion (elegir Gastos / Facturado / Resumen mensual / Estadísticas** / Gastos S/Admin*)
+  └─ screen-seccion (elegir Gastos / Facturado / Estadísticas** / Resumen mensual / Gastos S/Admin*)
        ├─ screen-app       (tabs: Gastos, Balance, Ajustes)
        ├─ screen-facturado
        ├─ screen-gastos-admin (Gastos S/Admin*)
@@ -416,7 +416,8 @@ tarjeta para quien no sea admin (ver "Categorías de gastos y gastos
 privados" más arriba).
 
 \*\* "Estadísticas" es `soloAdmin` **y** solo aparece en los negocios con
-`tieneEstadisticas` (hoy Pancho Recreo) — ver la sección de abajo.
+`tieneEstadisticas` (hoy Pancho Recreo y Heladería Pablo) — ver la sección de
+abajo.
 
 `screen-seccion` usa el mismo diseño de "teclado" que Gestión FR: cada
 sección es una tecla (`renderSeccionCards()` en js/sesion.js, estilos
@@ -425,14 +426,15 @@ resto, largas. La tecla de Cierre de Turno lleva el color del negocio
 (naranja Pancho, magenta Heladería). Es solo presentación: qué secciones
 aparecen y para quién sigue decidiéndolo `SECCIONES` con sus filtros.
 
-## Estadísticas (solo admin, solo Pancho Recreo)
+## Estadísticas (solo admin, Pancho Recreo y Heladería Pablo)
 
 Pantalla `screen-comparar`, dibujada por [js/comparar.js](js/comparar.js). Son
 tres vistas calculadas sobre los gastos y cierres que ya están guardados — no
 escribe nada en Firestore. Solo la ve un admin (`esAdmin`) y solo dentro de un
 negocio con `tieneEstadisticas: true` en `NEGOCIOS` (`negocioTieneEstadisticas(id)`,
-`js/datos.js`); sumar Heladería sería poner ese flag, pero ojo que "Por
-empleado" necesita cierres por turno y Heladería carga uno por día.
+`js/datos.js`), hoy los dos. Heladería no trabaja por turnos y carga un cierre
+por día: en "Por empleado" cada cierre diario cuenta como un "turno", no hay
+cierres sin turno que dejar afuera y el podio de turnos no aparece.
 
 - **Por mes** — un bloque por mes con Efectivo, Digital, la suma de los dos y
   Gastos totales, con la variación contra el mes anterior. Usa las mismas
@@ -450,7 +452,7 @@ empleado" necesita cierres por turno y Heladería carga uno por día.
     día: quien hizo 20 turnos y quien hizo 30 se comparan parejo. Hacen falta
     al menos `MIN_TURNOS` (4) turnos en los dos meses para comparar; con
     menos, un solo turno bueno o malo movería el porcentaje al azar.
-  - **Los cierres sin `turno` no cuentan** (los de antes del 17/9/2026, ver
+  - **En Pancho, los cierres sin `turno` no cuentan** (los de antes del 17/9/2026, ver
     `FECHA_INICIO_TURNOS`): eran el total de TODO el día, y mezclados con los
     de medio día inflarían el promedio de ese mes y harían parecer una baja lo
     que no lo es. La pantalla avisa cuántos dejó afuera.
@@ -465,7 +467,7 @@ empleado" necesita cierres por turno y Heladería carga uno por día.
     "Mayor baja" no se repite si esa persona ya está en el podio.
     Oro/plata/bronce son colores de medalla (el puesto); si sube o baja
     siempre va con flecha y verde o rojo.
-  - Debajo va el **podio de turnos** (Mañana y Noche): mismo criterio que el
+  - Debajo va el **podio de turnos** (Mañana y Noche, solo en Pancho): mismo criterio que el
     de empleados (`podioCardHtml()` + `podioDe()`, con textos propios en
     `PODIO_TURNOS`), pero sobre el promedio de lo cerrado en cada turno de
     todo el negocio, no solo del equipo. Hacen falta `MIN_TURNOS` cierres de

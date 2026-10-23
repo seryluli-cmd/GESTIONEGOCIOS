@@ -85,7 +85,7 @@ export const NEUTRAL_VAR = "var(--text-muted)";
 // — ver negocioTieneEstadisticas().
 export const NEGOCIOS = [
   { id: "pancho", nombre: "Pancho Recreo", emoji: "🌭", color: "var(--biz-pancho)", tieneCajaLocal: true, tieneTurnos: true, tieneEstadisticas: true, diasCerrados: [0] },
-  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false, tieneTurnos: false, tieneEstadisticas: false, diasCerrados: [] }
+  { id: "heladeria", nombre: "Heladería Pablo", emoji: "🍦", color: "var(--biz-heladeria)", tieneCajaLocal: false, tieneTurnos: false, tieneEstadisticas: true, diasCerrados: [] }
 ];
 
 
