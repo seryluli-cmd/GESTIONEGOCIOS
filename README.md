@@ -418,6 +418,13 @@ privados" más arriba).
 \*\* "Estadísticas" es `soloAdmin` **y** solo aparece en los negocios con
 `tieneEstadisticas` (hoy Pancho Recreo) — ver la sección de abajo.
 
+`screen-seccion` usa el mismo diseño de "teclado" que Gestión FR: cada
+sección es una tecla (`renderSeccionCards()` en js/sesion.js, estilos
+`.tecla*` en styles.css). Gastos y Cierre de Turno son teclas grandes; el
+resto, largas. La tecla de Cierre de Turno lleva el color del negocio
+(naranja Pancho, magenta Heladería). Es solo presentación: qué secciones
+aparecen y para quién sigue decidiéndolo `SECCIONES` con sus filtros.
+
 ## Estadísticas (solo admin, solo Pancho Recreo)
 
 Pantalla `screen-comparar`, dibujada por [js/comparar.js](js/comparar.js). Son

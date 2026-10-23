@@ -26,11 +26,24 @@
   --biz-pancho:     #eb6834; /* naranja — Panchería */
   --biz-heladeria:  #e87ba4; /* magenta — Heladería */
 
+  /* Medallas: podio de "Por empleado" / "Por turno" y tecla Estadísticas.
+     Iguales en claro y oscuro (son el color del puesto, no del tema). */
+  --oro: #e8c35a; --plata: #c3c7d0; --bronce: #d49a74;
+
   --good: #0ca30c;
   --critical: #d03b3b;
   --critical-bg: #fbe9e9;
   --caja-local: #a8790a;
   --caja-local-bg: #fbf1da;
+
+  /* Pantalla "Elegir sección" (teclas): base del teclado, cara y pared de
+     cada tecla. La tinta de la tecla "viva" es oscura en los dos temas a
+     propósito: los colores de negocio (naranja, magenta) son medios y el
+     blanco no llega a contraste legible sobre ellos. */
+  --deck: #ebeae4;
+  --tecla-cara: var(--surface-1);
+  --tecla-pared: #9b9a8e;
+  --tecla-viva-tinta: #0d0d0d;
 
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
@@ -62,6 +75,10 @@
 
   --biz-pancho:     #d95926;
   --biz-heladeria:  #d55181;
+
+  --deck: #141415;
+  --tecla-cara: #2a2a2d;
+  --tecla-pared: #050506;
 
   --good: #0ca30c;
   --critical: #e66767;
@@ -314,10 +331,6 @@ input:focus, select:focus, textarea:focus {
   padding: 56px 20px 40px;
   text-align: center;
 }
-/* screen-seccion es la única pantalla con .negocio-wrap que además tiene
-   un topbar arriba (el resto abre directo, sin "volver") — con los dos
-   paddings sumados quedaba un hueco enorme antes de la primera tarjeta. */
-.topbar + .negocio-wrap { padding-top: 24px; }
 .negocio-wrap h1 { font-size: 21px; margin: 16px 0 4px; }
 .negocio-wrap > .muted { margin-bottom: 24px; }
 
@@ -359,6 +372,98 @@ input:focus, select:focus, textarea:focus {
 .negocio-card .negocio-info { flex: 1; }
 .negocio-card .negocio-nombre { font-weight: 700; font-size: 16px; }
 .negocio-card .negocio-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
+
+/* ===== Pantalla "Elegir sección": un teclado =====
+   Mismo diseño que Gestión FR. Cada sección es una tecla: pared dura abajo
+   (sombra sin desenfoque) y al tocarla baja de verdad — es la única
+   animación de la pantalla. La jerarquía va por tamaño: las dos de todos
+   los días (Gastos y Cierre de Turno) son teclas grandes y el resto,
+   largas. El color del negocio (naranja Pancho, magenta Heladería) aparece
+   una sola vez, en la tecla "viva" (Cierre de Turno). Los colores salen de
+   --deck / --tecla-* (ver :root arriba). */
+
+/* La base del teclado cubre toda la pantalla, también la franja segura de
+   arriba (el body tiene padding-top), por eso se pinta en html y body. */
+:root:has(#screen-seccion.active), body:has(#screen-seccion.active) { background: var(--deck); }
+
+.seccion-wrap {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 12px 20px calc(44px + var(--safe-bottom));
+}
+.seccion-barra { display: flex; align-items: center; min-height: 44px; }
+.back-link {
+  display: inline-block;
+  border: none;
+  background: none;
+  color: var(--series-1);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 0;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+/* El ícono del negocio (🌭 / 🍦) acompaña al nombre: acá es lo que dice de
+   qué negocio es el teclado, y el título solo ya no lo dejaba claro. */
+.seccion-titulo { display: flex; align-items: center; gap: 12px; margin: 14px 0 4px; }
+.seccion-titulo .logo-badge { width: 44px; height: 44px; border-radius: 12px; font-size: 24px; margin: 0; flex: none; }
+.seccion-wrap h1 { margin: 0; font-size: 34px; line-height: 1.05; font-weight: 800; letter-spacing: 0.01em; }
+.seccion-lema { margin: 0 0 30px; font-size: 15px; color: var(--text-secondary); }
+
+.teclas { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 14px; }
+
+.tecla {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: var(--tinta, var(--text-primary));
+  background: var(--cara, var(--tecla-cara));
+  border: 0;
+  border-radius: 14px;
+  box-shadow: 0 4px 0 var(--pared, var(--tecla-pared));
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 70ms ease-out, box-shadow 70ms ease-out;
+}
+.tecla:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--pared, var(--tecla-pared)); }
+.tecla:focus-visible { outline: 3px solid var(--series-1); outline-offset: 4px; }
+
+.tecla-grande { flex-direction: column; justify-content: space-between; min-height: 142px; padding: 16px; border-radius: 20px; }
+.tecla-larga { grid-column: 1 / -1; align-items: center; min-height: 68px; padding: 12px 16px; }
+.tecla-viva {
+  --cara: var(--biz-color, var(--series-1));
+  --pared: color-mix(in srgb, var(--biz-color, var(--series-1)) 55%, #000);
+  --tinta: var(--tecla-viva-tinta);
+  --tinta-suave: color-mix(in srgb, var(--tecla-viva-tinta) 92%, transparent);
+}
+
+.tecla-icono { display: block; width: 28px; height: 28px; flex: none; }
+.tecla svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.tecla-texto { display: block; min-width: 0; }
+.tecla-nombre { display: block; font-size: 20px; font-weight: 800; line-height: 1.12; overflow-wrap: anywhere; }
+.tecla-larga .tecla-nombre { font-size: 16.5px; font-weight: 700; }
+.tecla-sub { display: block; margin-top: 4px; font-size: 13px; line-height: 1.3; color: var(--tinta-suave, var(--text-secondary)); }
+
+/* Atajo a Ajustes: una tecla chica en la esquina. margin-left:auto la deja
+   a la derecha aunque "Cambiar negocio" esté oculto, que es lo que pasa
+   cuando la persona solo puede ver un negocio. */
+.tecla-ajustes { width: 44px; height: 44px; margin-left: auto; align-items: center; justify-content: center; border-radius: 12px; }
+.tecla-ajustes svg { width: 22px; height: 22px; }
+
+@media (prefers-reduced-motion: reduce) { .tecla { transition: none; } }
+
+/* Estadísticas: la tecla lleva un mini podio, el mismo de "Por empleado". */
+.tecla-podio { display: flex; align-items: flex-end; gap: 3px; margin-left: auto; flex: none; }
+.tecla-podio span { display: block; width: 13px; border-radius: 3px 3px 0 0; }
+.tecla-podio span:nth-child(1) { height: 24px; background: var(--plata); }
+.tecla-podio span:nth-child(2) { height: 36px; background: var(--oro); }
+.tecla-podio span:nth-child(3) { height: 17px; background: var(--bronce); }
 
 /* ===== App shell ===== */
 #screen-app.active { display: flex; flex-direction: column; height: 100vh; }
@@ -813,7 +918,6 @@ input:focus, select:focus, textarea:focus {
 /* "Por empleado": podio de quienes más subieron. Oro, plata y bronce son colores
    de medalla (el puesto); sube o baja sigue yendo con flecha y verde o rojo. */
 .cmp-podio-card {
-  --oro: #e8c35a; --plata: #c3c7d0; --bronce: #d49a74;
   background: color-mix(in srgb, var(--oro) 9%, var(--surface-1));
   border-color: color-mix(in srgb, var(--oro) 30%, var(--border));
 }
@@ -936,30 +1040,6 @@ select.colaborador-negocio-tag { width: auto; padding: 5px 8px; }
   line-height: 1;
 }
 .fab:active { opacity: 0.9; }
-
-/* Atajo a Ajustes desde "Elegir sección" — mismo criterio que .fab
-   (position: fixed dentro de su pantalla, así solo existe mientras
-   #screen-seccion está activa) pero arriba a la derecha, a la mitad del
-   tamaño y con fondo blanco fijo a propósito: tiene que distinguirse como
-   atajo y no mimetizarse con el resto de la tarjeta, ni en tema oscuro. */
-.fab-ajustes {
-  position: fixed;
-  top: calc(14px + var(--safe-top));
-  right: 18px;
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  background: #fff;
-  color: #333;
-  font-size: 15px;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-  cursor: pointer;
-  z-index: 10;
-}
-.fab-ajustes:active { opacity: 0.85; }
 
 /* ===== Modal ===== */
 .modal-overlay {

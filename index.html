@@ -210,22 +210,20 @@
 
   <!-- ===== PANTALLA: ELEGIR SECCIÓN (Gastos / Facturado) ===== -->
   <div id="screen-seccion" class="screen">
-
-    <header class="topbar">
-      <button id="btn-back-to-negocio" class="topbar-title" aria-label="Volver">
-        <span class="topbar-back-arrow"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg></span>
-        <span>Cambiar negocio</span>
-      </button>
-    </header>
-
-    <div class="negocio-wrap">
-      <div class="logo-badge" id="seccion-icon-badge">$</div>
-      <h1 id="seccion-negocio-nombre">Negocio</h1>
-      <p class="muted">¿Qué querés ver?</p>
-      <div id="seccion-cards" class="negocio-cards"></div>
+    <div class="seccion-wrap">
+      <div class="seccion-barra">
+        <button id="btn-back-to-negocio" class="back-link" aria-label="Volver">← Cambiar negocio</button>
+        <button id="btn-atajo-ajustes" class="tecla tecla-ajustes" aria-label="Ir a Ajustes">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg>
+        </button>
+      </div>
+      <div class="seccion-titulo">
+        <div class="logo-badge" id="seccion-icon-badge">$</div>
+        <h1 id="seccion-negocio-nombre">Negocio</h1>
+      </div>
+      <p class="seccion-lema">¿Qué querés ver?</p>
+      <div id="seccion-cards" class="teclas"></div>
     </div>
-
-    <button id="btn-atajo-ajustes" class="fab-ajustes" aria-label="Ajustes">⚙️</button>
   </div>
 
   <!-- ===== APP PRINCIPAL (Gastos / Balance / Ajustes) ===== -->

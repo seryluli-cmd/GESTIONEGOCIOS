@@ -340,6 +340,24 @@ function selectNegocio(id) {
 }
 
 // ---------- Selector de sección (Gastos / Facturado) ----------
+// Íconos de línea (24×24) de cada sección. Van como SVG propio y no como
+// emoji porque cada Android dibuja los emojis distinto.
+const ICONOS_SECCION = {
+  gastos: '<path d="M6 3.5h12v17l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4z"/><path d="M9.5 8h5M9.5 11.5h5"/>',
+  facturado: '<rect x="3" y="6.5" width="18" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 12h.01M17.5 12h.01"/>',
+  resumen: '<rect x="4" y="12" width="4" height="8" rx="1"/><rect x="10" y="5" width="4" height="15" rx="1"/><rect x="16" y="9" width="4" height="11" rx="1"/>',
+  comparar: '<path d="M2.5 13l3 3 4-10H21"/><path d="M12.5 11l5 6M17.5 11l-5 6"/>',
+  gastosadmin: '<rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3M12 15v2"/>',
+  ideas: '<path d="M9.5 18.5h5M10.5 21h3"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.4 1.1 2.2v.5h5v-.5c0-.8.4-1.6 1.1-2.2A6 6 0 0 0 12 3z"/>'
+};
+
+// Mini podio de la tecla Estadísticas (ver .tecla-podio en styles.css).
+const PODIO_MINI = '<span class="tecla-podio" aria-hidden="true"><span></span><span></span><span></span></span>';
+
+// Cada sección es una "tecla" (ver "Elegir sección" en styles.css). Las dos
+// de todos los días (Gastos y Cierre de Turno) son teclas grandes, una al
+// lado de la otra, y el resto son largas. La tecla "viva" (color del
+// negocio) es la de Cierre de Turno, la que se usa en cada turno.
 function renderSeccionCards(biz) {
   $("#seccion-negocio-nombre").textContent = biz.nombre;
   $("#seccion-icon-badge").textContent = biz.emoji;
@@ -352,13 +370,13 @@ function renderSeccionCards(biz) {
   const SECCIONES = [
     // El colaborador no ve la pestaña Balance (ver aplicarPermisosDeVista),
     // así que a él no se le promete "el balance entre socios".
-    { id: "gastos", emoji: "🧾", nombre: "Gastos",
+    { id: "gastos", nombre: "Gastos", grande: true,
       sub: esSocio() ? "Cargar gastos y ver el balance entre socios" : "Cargar y ver los gastos del negocio" },
-    { id: "facturado", emoji: "💰", nombre: "Cierre de Turno", sub: "Anotar lo que se facturó cada día" },
-    { id: "resumen", emoji: "📊", nombre: "Resumen mensual", sub: "Ver los totales de cada mes" },
-    { id: "comparar", emoji: "√x", nombre: "Estadísticas", sub: "Meses, tramos y empleados", soloAdmin: true },
-    { id: "gastosadmin", emoji: "🔒", nombre: "Gastos S/Admin", sub: "Sueldos y otros gastos privados", soloAdmin: true },
-    { id: "ideas", emoji: "💡", nombre: "Ideas/Metas", sub: "Para mejorar este negocio" }
+    { id: "facturado", nombre: "Cierre de Turno", sub: "Anotar lo que se facturó cada día", grande: true, viva: true },
+    { id: "resumen", nombre: "Resumen mensual", sub: "Ver los totales de cada mes" },
+    { id: "comparar", nombre: "Estadísticas", sub: "Meses, tramos y empleados", soloAdmin: true, podio: true },
+    { id: "gastosadmin", nombre: "Gastos S/Admin", sub: "Sueldos y otros gastos privados", soloAdmin: true },
+    { id: "ideas", nombre: "Ideas/Metas", sub: "Para mejorar este negocio" }
   ];
 
   const wrap = $("#seccion-cards");
@@ -374,18 +392,20 @@ function renderSeccionCards(biz) {
     && (s.id !== "comparar" || negocioTieneEstadisticas(biz.id))
     && (!s.soloAdmin || esAdmin)
   ).forEach(s => {
-    const card = document.createElement("div");
-    card.className = "negocio-card";
-    card.style.setProperty("--biz-color", biz.color);
-    card.innerHTML = `
-      <div class="negocio-emoji">${s.emoji}</div>
-      <div class="negocio-info">
-        <div class="negocio-nombre">${s.nombre}</div>
-        <div class="negocio-sub">${s.sub}</div>
-      </div>
+    const tecla = document.createElement("button");
+    tecla.type = "button";
+    tecla.className = "tecla " + (s.grande ? "tecla-grande" : "tecla-larga") + (s.viva ? " tecla-viva" : "");
+    tecla.style.setProperty("--biz-color", biz.color);
+    tecla.innerHTML = `
+      <span class="tecla-icono"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONOS_SECCION[s.id]}</svg></span>
+      <span class="tecla-texto">
+        <span class="tecla-nombre">${s.nombre}</span>
+        <span class="tecla-sub">${s.sub}</span>
+      </span>
+      ${s.podio ? PODIO_MINI : ""}
     `;
-    card.addEventListener("click", () => selectSeccion(s.id));
-    wrap.appendChild(card);
+    tecla.addEventListener("click", () => selectSeccion(s.id));
+    wrap.appendChild(tecla);
   });
 }
 
