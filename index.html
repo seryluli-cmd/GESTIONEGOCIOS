@@ -188,10 +188,10 @@
        pantalla de carga: oscura, con el cubo chico girando de membrete (el
        mismo .holo-3d, con --holo-u más chico). Las tarjetas de personas las
        arma renderQuienSosCards() en sesion.js. -->
-  <div id="screen-quien-sos" class="screen">
-    <div class="quien-wrap">
-      <div class="quien-holo" aria-hidden="true">
-        <svg class="quien-base" viewBox="0 0 390 170" preserveAspectRatio="xMidYMid slice" focusable="false">
+  <div id="screen-quien-sos" class="screen holo-pantalla">
+    <div class="holo-wrap">
+      <div class="holo-membrete" aria-hidden="true">
+        <svg class="holo-membrete-base" viewBox="0 0 390 170" preserveAspectRatio="xMidYMid slice" focusable="false">
           <defs>
             <radialGradient id="quien-glow" cx="195" cy="48" r="110" gradientUnits="userSpaceOnUse"><stop class="holo-p1" offset="0" stop-opacity=".22"/><stop class="holo-p2" offset=".6" stop-opacity=".1"/><stop class="holo-p2" offset="1" stop-opacity="0"/></radialGradient>
             <linearGradient id="quien-haz-g" x1="0" y1="1" x2="0" y2="0"><stop class="holo-p1" offset="0" stop-opacity=".26"/><stop class="holo-p1" offset="1" stop-opacity="0"/></linearGradient>
@@ -224,9 +224,38 @@
   </div>
 
   <!-- ===== PANTALLA: ELEGIR NEGOCIO ===== -->
-  <div id="screen-negocio" class="screen">
-    <div class="negocio-wrap">
-      <div class="logo-badge">$</div>
+  <!-- Misma estética que "¿Quién sos?" (ver ese bloque): oscura, con el cubo
+       chico de membrete. Las tarjetas las arma renderNegocioCards() en
+       js/sesion.js. -->
+  <div id="screen-negocio" class="screen holo-pantalla">
+    <div class="holo-wrap">
+      <div class="holo-membrete" aria-hidden="true">
+        <svg class="holo-membrete-base" viewBox="0 0 390 170" preserveAspectRatio="xMidYMid slice" focusable="false">
+          <defs>
+            <radialGradient id="negocio-glow" cx="195" cy="48" r="110" gradientUnits="userSpaceOnUse"><stop class="holo-p1" offset="0" stop-opacity=".22"/><stop class="holo-p2" offset=".6" stop-opacity=".1"/><stop class="holo-p2" offset="1" stop-opacity="0"/></radialGradient>
+            <linearGradient id="negocio-haz-g" x1="0" y1="1" x2="0" y2="0"><stop class="holo-p1" offset="0" stop-opacity=".26"/><stop class="holo-p1" offset="1" stop-opacity="0"/></linearGradient>
+            <radialGradient id="negocio-base-g" cx=".5" cy=".5" r=".5"><stop class="holo-p1" offset="0" stop-opacity=".85"/><stop class="holo-p1" offset="1" stop-opacity="0"/></radialGradient>
+          </defs>
+          <circle cx="195" cy="48" r="110" fill="url(#negocio-glow)"/>
+          <polygon class="holo-haz" points="153,132 237,132 222,0 168,0" fill="url(#negocio-haz-g)"/>
+          <g class="holo-base">
+            <ellipse cx="195" cy="132" rx="60" ry="12" fill="url(#negocio-base-g)"/>
+            <ellipse class="holo-anillo" cx="195" cy="132" rx="53" ry="10" fill="none" stroke-width="1.2" opacity=".85"/>
+            <ellipse class="holo-anillo" cx="195" cy="132" rx="38" ry="7.2" fill="none" stroke-width="1" opacity=".5"/>
+            <ellipse class="holo-anillo" cx="195" cy="132" rx="24" ry="4.4" fill="none" stroke-width="1" opacity=".3"/>
+          </g>
+        </svg>
+        <div class="holo-3d">
+          <div class="holo-cubo3d">
+            <div class="holo-cara holo-cara-frente"><svg viewBox="0 0 100 100"><rect class="holo-b1" x="20" y="54" width="14" height="30" rx="2"/><rect class="holo-b2" x="43" y="39" width="14" height="45" rx="2"/><rect class="holo-b3" x="66" y="24" width="14" height="60" rx="2"/></svg></div>
+            <div class="holo-cara holo-cara-atras"><svg viewBox="0 0 100 100"><rect class="holo-b1" x="20" y="54" width="14" height="30" rx="2"/><rect class="holo-b2" x="43" y="39" width="14" height="45" rx="2"/><rect class="holo-b3" x="66" y="24" width="14" height="60" rx="2"/></svg></div>
+            <div class="holo-cara holo-cara-der"><svg viewBox="0 0 100 100"><path d="M14 76L34 56L50 62L68 36L86 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="86" cy="24" r="5" fill="#fff"/></svg></div>
+            <div class="holo-cara holo-cara-izq"><svg viewBox="0 0 100 100"><path d="M14 76L34 56L50 62L68 36L86 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="86" cy="24" r="5" fill="#fff"/></svg></div>
+            <div class="holo-cara holo-cara-arriba"></div>
+            <div class="holo-cara holo-cara-abajo"></div>
+          </div>
+        </div>
+      </div>
       <h1>¿Qué negocio querés ver?</h1>
       <p class="muted">Los gastos y el balance se llevan por separado para cada uno.</p>
 

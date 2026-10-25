@@ -259,13 +259,15 @@ body {
   .loading-barra-fill { width: 100%; opacity: .5; }
 }
 
-/* ===== ¿Quién sos?: misma estética que la pantalla de carga =====
+/* ===== Pantallas de entrada (.holo-pantalla): misma estética que la carga =====
+   La lleva #screen-quien-sos en todas las apps y, donde hay más de un
+   negocio (Gestión RP), también #screen-negocio.
    Oscura en cualquier tema, con el cubo chico girando de membrete (el mismo
    .holo-3d, con --holo-u más chico: 0.4px por unidad del dibujo) y las
    tarjetas de personas como vidrio con el color de cada una. La ventanita
    del PIN se oscurece solo mientras esta pantalla está activa, que es la
    única que la abre. */
-#screen-quien-sos {
+.holo-pantalla {
   background: #020814;
   color: #fff;
   margin-top: calc(-1 * var(--safe-top));
@@ -273,32 +275,34 @@ body {
   min-height: calc(100vh - var(--safe-top));
   min-height: calc(100dvh - var(--safe-top));
 }
-.quien-wrap { max-width: 480px; margin: 0 auto; padding: 28px 20px 40px; text-align: center; }
+.holo-wrap { max-width: 480px; margin: 0 auto; padding: 28px 20px 40px; text-align: center; }
 /* ancho fijo de 390 (el del dibujo) para que el cubo caiga siempre sobre la
    base; en celulares más angostos el SVG se recorta a los costados (slice) */
-.quien-holo { position: relative; width: 390px; max-width: 100%; height: 170px; margin: 0 auto; --holo-u: .4px; }
-.quien-base { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.quien-base .holo-base, .quien-base .holo-haz { transform-origin: 195px 132px; }
-#screen-quien-sos h1 { margin: 6px 0 4px; font-size: 30px; font-weight: 600; letter-spacing: -0.02em; }
-#screen-quien-sos .muted { color: #a3adc2; margin: 0 0 24px; }
-#screen-quien-sos .negocio-card {
+.holo-membrete { position: relative; width: 390px; max-width: 100%; height: 170px; margin: 0 auto; --holo-u: .4px; }
+.holo-membrete-base { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.holo-membrete-base .holo-base, .holo-membrete-base .holo-haz { transform-origin: 195px 132px; }
+.holo-pantalla h1 { margin: 6px 0 4px; font-size: 30px; font-weight: 600; letter-spacing: -0.02em; }
+.holo-pantalla .muted { color: #a3adc2; margin: 0 0 24px; }
+.holo-pantalla .negocio-card {
   background: rgba(255,255,255,.05);
   border: 1px solid rgba(255,255,255,.12);
   border-left: 4px solid var(--biz-color, var(--holo-1));
   color: #fff;
   box-shadow: 0 0 18px color-mix(in srgb, var(--biz-color, var(--holo-1)) 14%, transparent);
 }
-#screen-quien-sos .negocio-card .negocio-emoji {
+.holo-pantalla .negocio-card .negocio-emoji {
   background: color-mix(in srgb, var(--biz-color, var(--holo-1)) 22%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--biz-color, var(--holo-1)) 50%, transparent);
   font-size: 22px; font-weight: 700;
 }
-#screen-quien-sos .negocio-card .negocio-sub { color: #a3adc2; }
+.holo-pantalla .negocio-card .negocio-sub { color: #a3adc2; }
 /* flechita a la derecha, para que se note que la tarjeta se toca */
-#screen-quien-sos .negocio-card::after {
+.holo-pantalla .negocio-card::after {
   content: ""; width: 9px; height: 9px; margin-right: 4px; flex-shrink: 0;
   border-right: 2px solid #6b7a94; border-top: 2px solid #6b7a94; transform: rotate(45deg);
 }
+/* la frase manuscrita de Gestión RP, en el acento de la app sobre el fondo oscuro */
+.holo-pantalla .negocio-tagline { color: var(--holo-3); }
 #app:has(#screen-quien-sos.active) #modal-pin .modal-sheet,
 #app:has(#screen-quien-sos.active) #modal-pin .modal-actions { background: #0b1326; color: #fff; }
 #app:has(#screen-quien-sos.active) #modal-pin .modal-handle { background: rgba(255,255,255,.2); }
