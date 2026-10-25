@@ -170,6 +170,7 @@ function renderQuienSosCards() {
       <div class="negocio-emoji">${socioInitial(nombre)}</div>
       <div class="negocio-info">
         <div class="negocio-nombre">${escapeHtml(nombre)}</div>
+        <div class="negocio-sub">${admins.includes(nombre) ? "Admin" : socios.includes(nombre) ? "Socio" : "Equipo"}</div>
       </div>
     `;
     card.addEventListener("click", () => openPinModal(nombre));
