@@ -326,6 +326,7 @@ function selectNegocio(id) {
   $("#comparar-titulo").textContent = biz.nombre;
   $("#comparar-icon-badge").textContent = biz.emoji;
   $("#comparar-icon-badge").style.background = biz.color;
+  $("#cmp-vista").style.setProperty("--biz-color", biz.color);
 
   // Pantalla "Gastos S/Admin" — badge del topbar (mismo criterio que
   // Facturado/Resumen: negocio arriba, sección fija abajo en el HTML).

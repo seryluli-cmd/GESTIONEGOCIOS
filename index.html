@@ -696,7 +696,7 @@
   </div>
 
   <!-- ===== PANTALLA: ESTADÍSTICAS (solo admin, negocios con tieneEstadisticas) ===== -->
-  <!-- Se dibuja desde js/comparar.js. Tres vistas sobre los gastos y cierres
+  <!-- Se dibuja desde js/comparar.js. Cuatro vistas sobre los gastos y cierres
        ya guardados: no toca ningún dato. -->
   <div id="screen-comparar" class="screen">
 
@@ -714,10 +714,40 @@
     </header>
 
     <section class="tab active">
-      <div class="cmp-seg" id="cmp-vista" role="group" aria-label="Tipo de comparación">
-        <button type="button" data-vista="mes" aria-pressed="true">Por mes</button>
-        <button type="button" data-vista="tramo" aria-pressed="false">Por tramo</button>
-        <button type="button" data-vista="equipo" aria-pressed="false">Por empleado</button>
+      <!-- Las vistas son fichas de vidrio sobre un halo con el color del negocio.
+           Cada una adelanta el dato clave de su vista para el mes elegido (lo
+           rellena js/comparar.js en .cmp-ficha-dato); la elegida se enciende. X TURNO
+           se oculta en los negocios sin turnos (clase .cmp-sin-turnos) -->
+      <div class="cmp-fichas" id="cmp-vista" role="group" aria-label="Tipo de comparación">
+        <span class="cmp-halo" aria-hidden="true"></span>
+        <button type="button" class="cmp-ficha" data-vista="mes" aria-pressed="true">
+          <span class="cmp-ficha-cab">
+            <span class="cmp-ficha-icono"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span>
+            <span class="cmp-ficha-nombre">X MES</span>
+          </span>
+          <span class="cmp-ficha-dato" data-dato="mes"></span>
+        </button>
+        <button type="button" class="cmp-ficha" data-vista="turno" aria-pressed="false">
+          <span class="cmp-ficha-cab">
+            <span class="cmp-ficha-icono"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/></svg></span>
+            <span class="cmp-ficha-nombre">X TURNO</span>
+          </span>
+          <span class="cmp-ficha-dato" data-dato="turno"></span>
+        </button>
+        <button type="button" class="cmp-ficha" data-vista="tramo" aria-pressed="false">
+          <span class="cmp-ficha-cab">
+            <span class="cmp-ficha-icono"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="4.5" height="9" rx="1"/><rect x="9.75" y="4" width="4.5" height="16" rx="1"/><rect x="16.5" y="13" width="4.5" height="7" rx="1"/></svg></span>
+            <span class="cmp-ficha-nombre">X TRAMO</span>
+          </span>
+          <span class="cmp-ficha-dato" data-dato="tramo"></span>
+        </button>
+        <button type="button" class="cmp-ficha" data-vista="equipo" aria-pressed="false">
+          <span class="cmp-ficha-cab">
+            <span class="cmp-ficha-icono"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.5a5 5 0 0 1 5.5 5"/></svg></span>
+            <span class="cmp-ficha-nombre">X EMPLEADO</span>
+          </span>
+          <span class="cmp-ficha-dato" data-dato="equipo"></span>
+        </button>
       </div>
 
       <!-- Vista "Por mes": un bloque por mes con Efectivo, Digital, suma y Gastos -->
@@ -727,7 +757,7 @@
         <p id="comparar-empty" class="muted small hidden">Todavía no hay cierres ni gastos cargados.</p>
       </div>
 
-      <!-- Mes elegido: lo comparten "Por tramo" y "Por empleado" -->
+      <!-- Mes elegido: lo comparten "Por tramo", "Por turno" y "Por empleado" -->
       <div class="month-nav hidden" id="cmp-nav">
         <button id="cmp-mes-anterior" class="month-nav-btn" aria-label="Mes anterior">‹</button>
         <div class="month-nav-label" id="cmp-mes-label">Mes</div>
@@ -741,6 +771,11 @@
           <button type="button" data-modo="dia" aria-pressed="false">Promedio por día</button>
         </div>
         <div id="cmp-tramo-contenido"></div>
+      </div>
+
+      <!-- Vista "Por turno" (solo negocios con turnos): el total de cada turno contra el mes anterior -->
+      <div id="cmp-vista-turno" class="hidden">
+        <div id="cmp-turno-contenido"></div>
       </div>
 
       <!-- Vista "Por empleado": cuánto subió o bajó cada integrante contra el mes anterior -->

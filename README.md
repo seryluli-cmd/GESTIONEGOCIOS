@@ -429,12 +429,23 @@ aparecen y para quién sigue decidiéndolo `SECCIONES` con sus filtros.
 ## Estadísticas (solo admin, Pancho Recreo y Heladería Pablo)
 
 Pantalla `screen-comparar`, dibujada por [js/comparar.js](js/comparar.js). Son
-tres vistas calculadas sobre los gastos y cierres que ya están guardados — no
+cuatro vistas calculadas sobre los gastos y cierres que ya están guardados — no
 escribe nada en Firestore. Solo la ve un admin (`esAdmin`) y solo dentro de un
 negocio con `tieneEstadisticas: true` en `NEGOCIOS` (`negocioTieneEstadisticas(id)`,
 `js/datos.js`), hoy los dos. Heladería no trabaja por turnos y carga un cierre
-por día: en "Por empleado" cada cierre diario cuenta como un "turno", no hay
-cierres sin turno que dejar afuera y el podio de turnos no aparece.
+por día: no tiene la vista "Por turno", en "Por empleado" cada cierre diario
+cuenta como un "turno", no hay cierres sin turno que dejar afuera y el podio de
+turnos no aparece.
+
+Las vistas se eligen con **fichas de vidrio** (X MES, X TURNO, X TRAMO y
+X EMPLEADO, mismo diseño que Gestión FR) sobre un halo con el color del negocio
+(`--biz-color` en `#cmp-vista`, lo pone `selectNegocio()`); la elegida se
+enciende con ese color. Cada ficha adelanta el dato de su vista para el mes
+elegido, con las mismas cuentas de la vista: total facturado y variación,
+barras de los turnos, columnas de los tramos y podio de empleados. En un negocio
+sin turnos `renderComparar()` le pone `.cmp-sin-turnos` al grupo: la ficha
+X TURNO se oculta y X MES ocupa todo el ancho (y si se venía de "Por turno" en
+Pancho, vuelve a "Por mes").
 
 - **Por mes** — un bloque por mes con Efectivo, Digital, la suma de los dos y
   Gastos totales, con la variación contra el mes anterior. Usa las mismas
@@ -444,6 +455,14 @@ cierres sin turno que dejar afuera y el podio de turnos no aparece.
   promedio por día (el promedio se calcula sobre los días que ya pasaron, no
   sobre 10 completos), con gráfico, comparación tramo por tramo contra el mes
   anterior y tabla.
+- **Por turno** (solo Pancho) — lo facturado en Mañana y Noche del mes elegido,
+  con cantidad de cierres, parte del total, variación contra el mes anterior,
+  total y tabla. En el mes en curso los dos meses se cortan en el día de hoy,
+  para no poner un mes a medias contra uno entero. Los cierres sin `turno` (los
+  de antes de `FECHA_INICIO_TURNOS`) no entran en ningún turno: la pantalla dice
+  cuántos dejó afuera, y **si el mes anterior tiene alguno no se compara** contra
+  él (sus turnos están incompletos y se vería una suba que no existe) — por eso
+  octubre 2026 todavía no muestra variación contra septiembre.
 - **Por empleado** — cuánto subió o bajó el **promedio por turno** de cada
   integrante contra el mes anterior. Detalles que no son obvios:
   - **"Integrantes" son los `colaboradores`** (Ajustes → Otras personas) que

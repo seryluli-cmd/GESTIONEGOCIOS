@@ -587,7 +587,7 @@ input:focus, select:focus, textarea:focus {
 .tecla-ajustes { width: 44px; height: 44px; margin-left: auto; align-items: center; justify-content: center; border-radius: 12px; }
 .tecla-ajustes svg { width: 22px; height: 22px; }
 
-@media (prefers-reduced-motion: reduce) { .tecla { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .tecla, .cmp-ficha { transition: none; } }
 
 /* Estadísticas: la tecla lleva un mini podio, el mismo de "Por empleado". */
 .tecla-podio { display: flex; align-items: flex-end; gap: 3px; margin-left: auto; flex: none; }
@@ -936,6 +936,86 @@ input:focus, select:focus, textarea:focus {
 .cmp-seg-sm { margin: 4px 0 16px; }
 .cmp-seg-sm button { min-height: 34px; font-size: 13px; }
 
+/* Las vistas de Estadísticas son fichas de vidrio: translúcidas, con el fondo
+   desenfocado, sobre un halo con el color del negocio (--biz-color, lo pone
+   selectNegocio()) y rosa, que queda detrás del grupo. Cada ficha adelanta el
+   dato clave de su vista (lo pone comparar.js); la elegida se enciende con el
+   color del negocio y un borde de luz degradada. */
+.cmp-fichas { --ficha-color: var(--biz-color, var(--series-1)); position: relative; isolation: isolate; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 2px 0 20px; }
+/* Sin turnos (Heladería) quedan tres fichas: X MES ocupa todo el ancho arriba. */
+.cmp-sin-turnos .cmp-ficha[data-vista="turno"] { display: none; }
+.cmp-sin-turnos .cmp-ficha[data-vista="mes"] { grid-column: 1 / -1; }
+/* El halo no se pasa de los 16px de margen de .tab a los costados: ese contenedor
+   recorta el desborde y, si el halo sobresaliera, aparecería scroll horizontal. */
+.cmp-halo {
+  position: absolute; inset: -26px -14px -22px; z-index: -1; pointer-events: none; filter: blur(16px);
+  background:
+    radial-gradient(55% 60% at 22% 28%, color-mix(in srgb, var(--ficha-color) 42%, transparent), transparent 70%),
+    radial-gradient(45% 50% at 86% 82%, color-mix(in srgb, #ec4899 24%, transparent), transparent 70%);
+}
+.cmp-ficha {
+  position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 10px;
+  min-height: 98px; margin: 0; padding: 12px 12px 11px; border-radius: 18px;
+  font: inherit; text-align: left; color: var(--text-primary); cursor: pointer;
+  user-select: none; -webkit-user-select: none;
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  background: color-mix(in srgb, var(--surface-1) 62%, transparent);
+  backdrop-filter: blur(16px) saturate(1.3); -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent), 0 10px 24px rgba(0,0,0,0.14);
+  transition: transform 0.18s, box-shadow 0.18s, background 0.25s;
+}
+.cmp-ficha:active { transform: scale(0.97); }
+.cmp-ficha:focus-visible { outline: 3px solid var(--ficha-color); outline-offset: 3px; }
+.cmp-ficha-cab { display: flex; align-items: center; gap: 8px; }
+.cmp-ficha-icono { display: block; flex: none; width: 20px; height: 20px; color: var(--text-secondary); }
+.cmp-ficha-icono svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.cmp-ficha-nombre { font-size: 14px; font-weight: 800; letter-spacing: 0.05em; white-space: nowrap; }
+.cmp-ficha-dato { display: flex; align-items: baseline; gap: 8px; min-height: 26px; }
+.cmp-ficha-dato b { font-size: 21px; font-weight: 800; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.cmp-ficha-dato .cmp-delta { min-width: 0; font-size: 12px; }
+.cmp-ficha-nada { align-self: flex-end; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+/* Las miniaturas: barras de los turnos (con su color de identidad), columnas de
+   los tramos y el podio de empleados. Sin datos en el mes quedan apagadas. */
+.cmp-mini { display: flex; gap: 4px; height: 26px; }
+.cmp-mini-vacio { opacity: 0.35; }
+/* Las barras miden en % del ancho de la ficha: la miniatura tiene que ocupar todo el ancho para que ese % exista. */
+.cmp-mini-turnos { flex-direction: column; justify-content: flex-end; gap: 3px; width: 100%; }
+.cmp-mini-turnos i { display: block; height: 6px; width: var(--w); border-radius: 3px; background: var(--c, var(--text-secondary)); }
+.cmp-mini-tramos { align-items: flex-end; }
+.cmp-mini-tramos i { display: block; width: 14px; height: var(--h); border-radius: 3px 3px 0 0; background: var(--text-primary); }
+.cmp-mini-tramos i:nth-child(2) { opacity: 0.55; }
+.cmp-mini-tramos i:nth-child(3) { opacity: 0.3; }
+.cmp-mini-podio { align-items: flex-end; gap: 7px; }
+.cmp-mini-podio i { display: block; width: 13px; border-radius: 3px 3px 0 0; }
+.cmp-mini-podio i:nth-child(1) { height: 17px; background: var(--plata); }
+.cmp-mini-podio i:nth-child(2) { height: 26px; background: var(--oro); }
+.cmp-mini-podio i:nth-child(3) { height: 12px; background: var(--bronce); }
+.cmp-mini-podio .cmp-av { width: 20px; height: 20px; font-size: 10px; }
+.cmp-mini-podio .cmp-av.cmp-m1 { width: 24px; height: 24px; font-size: 12px; box-shadow: 0 0 0 1.5px var(--surface-1), 0 0 0 3px var(--oro); }
+.cmp-mini-podio .cmp-av.cmp-m2 { box-shadow: 0 0 0 1.5px var(--surface-1), 0 0 0 3px var(--plata); }
+.cmp-mini-podio .cmp-av.cmp-m3 { box-shadow: 0 0 0 1.5px var(--surface-1), 0 0 0 3px var(--bronce); }
+.cmp-ficha[aria-pressed="true"] {
+  border-color: transparent;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--ficha-color) 42%, var(--surface-1)), color-mix(in srgb, var(--ficha-color) 14%, var(--surface-1)));
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--ficha-color) 40%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
+}
+/* Borde de luz: un anillo degradado (color del negocio → rosa → ámbar) recortado
+   con máscara para que solo quede el filete de 1,5px. */
+.cmp-ficha[aria-pressed="true"]::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from 200deg, var(--ficha-color), #ec4899, #f59e0b, var(--ficha-color));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+/* El ícono de la elegida toma el color del negocio, oscurecido con la tinta para que se lea sobre su fondo. */
+.cmp-ficha[aria-pressed="true"] .cmp-ficha-icono { color: color-mix(in srgb, var(--ficha-color) 78%, var(--text-primary)); }
+@media (max-width: 340px) {
+  .cmp-fichas { gap: 8px; }
+  .cmp-ficha { padding: 11px 10px 10px; }
+  .cmp-ficha-nombre { font-size: 13px; }
+  .cmp-ficha-dato b { font-size: 19px; }
+}
+
 .cmp-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 16px; padding: 16px 14px 14px; margin-bottom: 14px; }
 .cmp-card-titulo { margin: 0 0 2px; font-size: 15px; font-weight: 700; }
 .cmp-card-sub { margin: 0 0 12px; font-size: 12.5px; color: var(--text-secondary); }
@@ -1045,6 +1125,20 @@ input:focus, select:focus, textarea:focus {
 .cmp-eq-pocos { grid-column: 2 / 4; font-size: 12px; color: var(--text-muted); text-align: right; }
 .cmp-vs-persona { grid-template-columns: 74px 1fr auto; }
 .cmp-vs-persona .cmp-vs-tramo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* "Por turno": el total de cada turno contra el mes anterior. Las barras son las
+   mismas de "Por tramo" (mes elegido en tinta, mes anterior apagado). */
+.cmp-tu-fila { padding: 12px 0; border-top: 1px solid var(--border); }
+.cmp-tu-cab { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.cmp-tu-fila .cmp-vs-barras { margin-top: 8px; }
+.cmp-tu-nom { display: flex; flex-direction: column; min-width: 0; font-size: 14px; }
+.cmp-tu-nom small { font-size: 11.5px; color: var(--text-muted); }
+.cmp-tu-val { display: flex; flex-direction: column; align-items: flex-end; }
+.cmp-tu-val b { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cmp-tu-val .cmp-delta { min-width: 0; font-size: 12.5px; }
+.cmp-tu-suma { border-top-color: var(--baseline); }
+.cmp-tu-suma .cmp-tu-cab { grid-template-columns: minmax(0, 1fr) auto; }
+.cmp-tu-suma ~ .cmp-nota-mes { margin: 6px 0 0; }
 
 /* "Por empleado": podio de quienes más subieron. Oro, plata y bronce son colores
    de medalla (el puesto); sube o baja sigue yendo con flecha y verde o rojo. */
