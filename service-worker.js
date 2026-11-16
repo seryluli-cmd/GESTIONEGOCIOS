@@ -5,7 +5,7 @@
 // service worker en js/pwa.js. Se subió a v4 al terminar de partir
 // app.js en los módulos de js/ (mismo motivo: que ningún celular quede
 // con una mezcla vieja de archivos cacheados).
-const CACHE_NAME = "gastos-negocio-v4";
+const CACHE_NAME = "gastos-negocio-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
