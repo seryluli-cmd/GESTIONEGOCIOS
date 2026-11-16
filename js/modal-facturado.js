@@ -125,6 +125,14 @@ function cierreFaltanteHoy() {
 // reclama para más atrás de este día.
 const FECHA_INICIO_TURNOS = new Date(2026, 8, 17);
 
+// ¿Ese día ya regía el esquema de 2 turnos? Lo usa la lista de Cierre de
+// Turno (facturado.js): los días anteriores a FECHA_INICIO_TURNOS tienen un
+// solo cierre sin turno, así que ahí no se dibujan las columnas Mañana/Noche
+// ni se reclama nada. Se pregunta acá para que la fecha siga en un solo lugar.
+export function diaUsaTurnosFacturado(fecha) {
+  return fecha >= FECHA_INICIO_TURNOS;
+}
+
 // Misma idea que cierreFaltanteHoy() (avisar recién pasado un margen,
 // nunca antes) pero para negocios con negocioTieneTurnos(), donde cada
 // turno tiene su propio horario y hay que chequearlos por separado — acá
@@ -202,6 +210,25 @@ function turnoFacturadoSugerido() {
   const manana = TURNOS_FACTURADO.find(t => t.id === "manana");
   const dentroDeManana = minutosAhora >= manana.horaInicioMinutos && !turnoVencido(manana, minutosAhora);
   return dentroDeManana ? "manana" : "noche";
+}
+
+// Día calendario al que pertenece el turno que se está trabajando AHORA — el
+// que la lista de Cierre de Turno deja abierto de entrada. El Turno Noche
+// arranca un día y termina de madrugada al otro, así que a las 2 de la
+// mañana el turno en curso es el de AYER; en cambio pasadas las 19 ya es el de
+// hoy. Usa turnoFacturadoSugerido() (la misma definición de "turno actual" que
+// precarga el modal) y el horario de inicio de TURNOS_FACTURADO: no inventa
+// otra hora de corte. A propósito no es fechaSugeridaCierre(): esa corta al
+// mediodía y entre las 10 y las 12 diría "ayer" con el Turno Mañana ya en curso.
+export function diaDelTurnoEnCurso() {
+  const ahora = new Date();
+  const minutosAhora = ahora.getHours() * 60 + ahora.getMinutes();
+  const turno = TURNOS_FACTURADO.find(t => t.id === turnoFacturadoSugerido());
+  const dia = new Date(ahora);
+  if (turno.crucaMedianoche && minutosAhora < turno.horaInicioMinutos) {
+    dia.setDate(dia.getDate() - 1);
+  }
+  return dia;
 }
 
 export function selectTurnoFacturado(turno) {

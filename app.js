@@ -31,7 +31,7 @@ import {
   registrarEdicionMixto, calcularCampoMixtoFaltante, openModal, closeModal,
   saveGasto, deleteGasto, marcarAbonado, fotosGastoModal, fotosGastoABorrar
 } from "./js/modal-gasto.js";
-import { renderFacturado } from "./js/facturado.js";
+import { renderFacturado, alternarDiaCierres } from "./js/facturado.js";
 import {
   renderPagadorChipsFacturado, resetFotoFieldFact, registrarEdicionManualFacturado,
   openModalFacturado, closeModalFacturado, saveCierre, deleteCierre,
@@ -425,6 +425,9 @@ function wireEvents() {
 
   // Editar y borrar de un cierre ya cargado (delegado, admin)
   $("#facturado-list").addEventListener("click", (e) => {
+    // La fila de un día (Pancho) abre o cierra las tarjetas de sus turnos.
+    const diaBtn = e.target.closest(".cierre-dia-head");
+    if (diaBtn) { alternarDiaCierres(diaBtn); return; }
     const fotoBtn = e.target.closest(".foto-link");
     if (fotoBtn) { window.open(fotoBtn.dataset.url, "_blank", "noopener"); return; }
     const editBtn = e.target.closest(".cierre-edit-btn");

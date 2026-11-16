@@ -75,7 +75,8 @@ cambiás una regla de negocio, actualizá el README.
 | `negocioCierraEseDia(id, fecha)` | se pregunta si un negocio no abre ese día de la semana (hoy: Pancho cierra los domingos) — el aviso "Caja faltante" lo usa para no reclamar esos días |
 | `negocioTieneEstadisticas(id)` | se pregunta si un negocio tiene la sección "Estadísticas" (solo admin; hoy: solo Pancho) |
 | `usaCajaLocalAutomatica(nombre)` | se pregunta si a esa persona se le fuerza sola la forma de pago "Caja del local" en un gasto nuevo |
-| `cierresFaltantes()` | se decide qué avisos "Caja faltante" mostrar (1 cierre diario o los turnos de Pancho) |
+| `cierresFaltantes()` | se decide qué avisos "Caja faltante" mostrar (1 cierre diario o los turnos de Pancho); la lista por día de Pancho también le pregunta a ella qué turno "falta" |
+| `diaDelTurnoEnCurso()` / `diaUsaTurnosFacturado(fecha)` | se decide qué día es el del turno que se está trabajando (a las 2am, ayer) y si un día ya regía el esquema de 2 turnos (`FECHA_INICIO_TURNOS`) |
 | `escapeHtml(str)` | pasa todo texto de Firestore antes de ir a `innerHTML` |
 | `fechaLocalISO(date)` | se arma una fecha `AAAA-MM-DD` local |
 | `fotosDeGasto(g)` | se leen las fotos de un gasto (entiende el formato viejo de una sola foto y el nuevo, hasta 5) |

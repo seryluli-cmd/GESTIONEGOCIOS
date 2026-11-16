@@ -26,6 +26,13 @@
   --biz-pancho:     #eb6834; /* naranja — Panchería */
   --biz-heladeria:  #e87ba4; /* magenta — Heladería */
 
+  /* Cierre de Turno agrupado por día (Pancho): el día en violeta y los
+     turnos en celeste. Son los mismos colores que en Cierre de Turno de
+     FrCruce, para que se vea igual — no salen de --series-* porque acá
+     --series-1 es el azul del socio 1. */
+  --cierre-dia:   #7c3aed;
+  --cierre-turno: #0284c7;
+
   /* Medallas: podio de "Por empleado" / "Por turno" y tecla Estadísticas.
      Iguales en claro y oscuro (son el color del puesto, no del tema). */
   --oro: #e8c35a; --plata: #c3c7d0; --bronce: #d49a74;
@@ -75,6 +82,9 @@
 
   --biz-pancho:     #d95926;
   --biz-heladeria:  #d55181;
+
+  --cierre-dia:   #9d7cf5;
+  --cierre-turno: #5ec4f0;
 
   --deck: #141415;
   --tecla-cara: #2a2a2d;
@@ -849,6 +859,72 @@ input:focus, select:focus, textarea:focus {
 /* Aviso "Caja faltante" en Cierre de Turno (ver cierreFaltanteHoy) —
    reusa el mismo rojo de falta-abonar, solo agrega el tamaño del botón. */
 .expense-item.falta-abonar .btn-cargar-faltante { width: auto; flex-shrink: 0; padding: 8px 14px; font-size: 14px; }
+
+/* Tarjeta "CAJA NO CARGADA" dentro de un día de Cierre de Turno (Pancho, ver
+   crearTarjetaFaltante en facturado.js). La Heladería sigue con el aviso rojo
+   de arriba (.falta-abonar). */
+.expense-item-faltante {
+  border-color: var(--critical);
+  background: color-mix(in srgb, var(--critical) 8%, var(--surface-1));
+}
+.expense-item-faltante .falta-desc { color: var(--critical); font-weight: 700; white-space: normal; }
+.expense-item-faltante .btn-cargar-faltante { width: auto; flex-shrink: 0; padding: 8px 14px; font-size: 14px; }
+
+/* Cierre de Turno agrupado por día (ver crearFilaDia en facturado.js): la fila
+   del día es la de "Facturado por día" de Resumen mensual, un 20% más grande
+   (letra, relleno y separaciones), con el día en violeta y los turnos en
+   celeste, en mayúscula y otro 20% más grandes, para ubicarlos rápido; al
+   tocarla se abren abajo las tarjetas de sus turnos, colgadas de una línea
+   violeta. Es el mismo diseño que en FrCruce. */
+.cierre-dia { margin-bottom: 12px; }
+.cierre-dia-head {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 17px;
+  cursor: pointer;
+}
+.cierre-dia.abierto .cierre-dia-head { border-color: color-mix(in srgb, var(--cierre-dia) 55%, var(--border)); }
+.cierre-dia-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+/* Los días de antes de los 2 turnos no tienen columnas debajo: sin esto
+   quedaría un hueco de 10px abajo. */
+.cierre-dia-sin-turnos .cierre-dia-row { margin-bottom: 0; }
+.cierre-dia-nombre { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17.5px; color: var(--cierre-dia); }
+.cierre-dia-flecha { color: var(--text-muted); font-size: 20px; line-height: 1; transition: transform 0.15s ease; }
+.cierre-dia.abierto .cierre-dia-flecha { transform: rotate(90deg); }
+.cierre-dia-total { font-weight: 700; font-size: 19px; font-variant-numeric: proportional-nums; white-space: nowrap; }
+/* Columnas parejas, una por turno (--cierre-turnos lo pone facturado.js: 2 en
+   Pancho): así cada turno parte "Mañana:" / "$197.000" en su columna en vez
+   de mandar el último solo a otra fila. */
+.cierre-dia-turnos { display: grid; grid-template-columns: repeat(var(--cierre-turnos, 2), minmax(0, 1fr)); gap: 6px 12px; font-size: 18px; color: var(--text-primary); }
+/* Siempre el turno arriba y el monto abajo, así las columnas quedan parejas
+   aunque una entre en un renglón y otra no ("NOCHE: $0" vs "MAÑANA: $500.000"). */
+.cierre-dia-turnos > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cierre-dia-turno { color: var(--cierre-turno); font-weight: 700; text-transform: uppercase; }
+/* Turno vencido sin cargar: nombre y "falta" en rojo. */
+.cierre-dia-turno.vencido,
+.cierre-dia-falta { color: var(--critical); font-weight: 700; }
+.cierre-dia-lista {
+  list-style: none;
+  margin: 10px 0 0 10px;
+  padding: 0 0 0 12px;
+  border-left: 2px solid color-mix(in srgb, var(--cierre-dia) 45%, transparent);
+}
+.cierre-dia:not(.abierto) .cierre-dia-lista { display: none; }
+.cierre-dia-lista > li:last-child { margin-bottom: 0; }
+.cierre-dia-vacio { color: var(--text-secondary); font-size: 14px; padding: 6px 0; }
+/* El turno dentro de cada tarjeta, igual que en la fila del día: celeste, en
+   mayúscula y un 20% más grande que el resto del texto. */
+.cierre-turno-nombre { color: var(--cierre-turno); font-weight: 700; text-transform: uppercase; font-size: 1.2em; }
+.cierre-turno-mayus { text-transform: uppercase; font-weight: 700; font-size: 1.2em; }
+/* Con el turno más grande, "NOCHE, Maximiliano 06:00 hs · 04-nov 🖥️" no entra
+   en un celular: en vez de cortarse con "…" pasa a un segundo renglón. */
+.cierre-dia-lista .expense-item .desc { white-space: normal; }
 .expense-item .meta-falta-abonar {
   color: var(--critical);
   font-weight: 600;

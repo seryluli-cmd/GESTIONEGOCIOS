@@ -186,6 +186,31 @@ seguridad que exigen autenticación anónima.
     campo no tienen `turno` guardado: se siguen viendo sin esa etiqueta,
     y no cuentan como "ya cargado" para ningún turno del aviso — al
     editarlos hay que elegirles un turno antes de poder guardarlos.
+  - **Lista de Cierre de Turno por día (solo negocios con
+    `negocioTieneTurnos()`, hoy Pancho)**: en vez de una tarjeta por cierre,
+    `renderFacturado()` dibuja una fila por día (`renderListaPorDia()` en
+    `js/facturado.js`) con el día en violeta, el total del día y, abajo, una
+    columna por turno ("MAÑANA: $… / NOCHE: $…", en celeste y mayúscula); al
+    tocarla se abren las tarjetas de ese día. Es el mismo diseño que Cierre de
+    Turno de FrCruce (los estilos son los mismos, con 2 columnas en vez de 3;
+    el número lo pone `--cierre-turnos` desde `idsTurnosFacturado()`). Cada
+    turno muestra lo cargado, **"falta"** en rojo (con su tarjeta "⚠️ CAJA NO
+    CARGADA" y el botón Cargar adentro) o `$0` si todavía está en curso. Qué
+    turno falta lo decide solo `cierresFaltantes()`: la lista arma un set
+    con su resultado y no recalcula horarios, domingos ni
+    `FECHA_INICIO_TURNOS`. Por eso en esta lista no va el aviso suelto de
+    arriba (quedaría duplicado), y los faltantes también se ven navegando
+    meses anteriores. Detalles: los domingos (`negocioCierraEseDia()`) solo
+    aparecen si se cargó algo ese día; los días anteriores a
+    `FECHA_INICIO_TURNOS` (`diaUsaTurnosFacturado()`) salen sin columnas de
+    turno y solo si tienen cierres; de entrada queda abierto el día del turno
+    en curso (`diaDelTurnoEnCurso()`: a las 2 de la mañana es el de ayer) y
+    lo que cada uno abre o cierra a mano se respeta en cada redibujo
+    (`diasAbiertos`, en memoria). Los colores `--cierre-dia` (violeta) y
+    `--cierre-turno` (celeste) son propios a propósito: `--series-1` es el
+    azul del socio 1. La Heladería (un cierre por día) sigue con la lista de
+    tarjetas y el aviso rojo de arriba (`renderListaPlana()`); la tarjeta de
+    un cierre la arma `crearFilaCierre()` para las dos.
   - **Días cerrados (`diasCerrados` en `NEGOCIOS`)**: Pancho Recreo no
     abre los domingos, así que `turnosFacturadoFaltantes()` y
     `cierreFaltanteHoy()` saltean esos días (se lo pregunta a
