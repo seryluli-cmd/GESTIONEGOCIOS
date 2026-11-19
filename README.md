@@ -472,6 +472,14 @@ sin turnos `renderComparar()` le pone `.cmp-sin-turnos` al grupo: la ficha
 X TURNO se oculta y X MES ocupa todo el ancho (y si se venía de "Por turno" en
 Pancho, vuelve a "Por mes").
 
+Arriba de las fichas, una **etiqueta** compara lo facturado en el mes en curso
+contra el mes anterior cortados en el mismo punto (`corteMesEnCurso()`): en
+Pancho, el mismo día y turno (el último turno con cierre cargado, no la hora);
+en Heladería, el mismo día. Si el mes anterior es más corto, se compara contra
+ese mes entero. El mismo corte lo usan la ficha X MES, el % del bloque del mes
+en curso en "Por mes" (los gastos, que no tienen turno, se cortan en el día de
+hoy) y "Por turno", así todas dicen lo mismo.
+
 - **Por mes** — un bloque por mes con Efectivo, Digital, la suma de los dos y
   Gastos totales, con la variación contra el mes anterior. Usa las mismas
   cuentas que Resumen mensual (el total facturado es la suma de los `importe`
@@ -482,8 +490,8 @@ Pancho, vuelve a "Por mes").
   anterior y tabla.
 - **Por turno** (solo Pancho) — lo facturado en Mañana y Noche del mes elegido,
   con cantidad de cierres, parte del total, variación contra el mes anterior,
-  total y tabla. En el mes en curso los dos meses se cortan en el día de hoy,
-  para no poner un mes a medias contra uno entero. Los cierres sin `turno` (los
+  total y tabla. En el mes en curso los dos meses se cortan en el mismo día y
+  turno (`corteMesEnCurso()`), para no poner un mes a medias contra uno entero. Los cierres sin `turno` (los
   de antes de `FECHA_INICIO_TURNOS`) no entran en ningún turno: la pantalla dice
   cuántos dejó afuera, y **si el mes anterior tiene alguno no se compara** contra
   él (sus turnos están incompletos y se vería una suba que no existe) — por eso

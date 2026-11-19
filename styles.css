@@ -1012,6 +1012,26 @@ input:focus, select:focus, textarea:focus {
 .cmp-seg-sm { margin: 4px 0 16px; }
 .cmp-seg-sm button { min-height: 34px; font-size: 13px; }
 
+/* Etiqueta de arriba de Estadísticas: el mes en curso contra el anterior, los dos
+   cortados en el mismo día (y turno, en los negocios con turnos). Va por encima
+   del halo de las fichas (position + z-index) para que el brillo no la tiña. */
+.cmp-corte { position: relative; z-index: 1; margin: 2px 0 28px; padding: 12px 14px 6px; border-radius: 16px; background: var(--surface-1); border: 1px solid var(--border); }
+.cmp-corte-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 26px; margin-bottom: 4px; }
+.cmp-corte-titulo { font-size: 11.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
+.cmp-corte-pct { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-secondary); background: color-mix(in srgb, var(--text-primary) 8%, transparent); }
+.cmp-corte-pct.cmp-sube { color: var(--good); background: color-mix(in srgb, var(--good) 15%, transparent); }
+.cmp-corte-pct.cmp-baja { color: var(--critical); background: color-mix(in srgb, var(--critical) 13%, transparent); }
+.cmp-corte-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; }
+.cmp-corte-fila + .cmp-corte-fila { border-top: 1px solid var(--border); }
+.cmp-corte-mes { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.cmp-corte-mes b { font-size: 15px; font-weight: 700; }
+.cmp-corte-mes small { font-size: 12px; color: var(--text-secondary); }
+.cmp-corte-n { white-space: nowrap; }
+.cmp-corte-monto { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cmp-corte-act .cmp-corte-monto { font-size: 21px; font-weight: 800; }
+.cmp-corte-ant .cmp-corte-mes b, .cmp-corte-ant .cmp-corte-monto { color: var(--text-secondary); }
+.cmp-corte-nada { margin: 0 0 8px; font-size: 14px; color: var(--text-secondary); }
+
 /* Las vistas de Estadísticas son fichas de vidrio: translúcidas, con el fondo
    desenfocado, sobre un halo con el color del negocio (--biz-color, lo pone
    selectNegocio()) y rosa, que queda detrás del grupo. Cada ficha adelanta el

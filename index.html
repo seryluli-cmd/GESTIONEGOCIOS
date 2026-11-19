@@ -714,6 +714,11 @@
     </header>
 
     <section class="tab active">
+      <!-- Etiqueta del mes en curso contra el anterior, cortados en el mismo día
+           (y turno, en los negocios con turnos). La rellena js/comparar.js; se ve
+           en cualquier vista -->
+      <section class="cmp-corte" id="cmp-corte" aria-label="Mes en curso contra el anterior, hasta el mismo día"></section>
+
       <!-- Las vistas son fichas de vidrio sobre un halo con el color del negocio.
            Cada una adelanta el dato clave de su vista para el mes elegido (lo
            rellena js/comparar.js en .cmp-ficha-dato); la elegida se enciende. X TURNO

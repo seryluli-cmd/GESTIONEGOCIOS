@@ -2,12 +2,14 @@
 // Estadísticas (solo admin, y solo en los negocios con
 // negocioTieneEstadisticas(): hoy Pancho Recreo y Heladería Pablo) — vistas
 // calculadas sobre los gastos y cierres ya guardados, no tocan ni mueven ningún dato.
+// Arriba de todo, una etiqueta con el mes en curso contra el anterior, cortados
+// en el mismo día (y turno, en los negocios con turnos) — ver datosCorte.
 // Se eligen con fichas (X MES, X TURNO, X TRAMO, X EMPLEADO) que adelantan el
 // dato clave de cada vista para el mes elegido; X TURNO solo existe en los
 // negocios que trabajan por turnos (Pancho: Mañana y Noche):
 //   · "Por mes":   un bloque por mes con Efectivo, Digital, suma y Gastos.
 //   · "Por turno": lo facturado en cada turno del mes elegido contra el mes
-//     anterior (en el mes en curso, hasta el mismo día en los dos).
+//     anterior (en el mes en curso, hasta el mismo día y turno en los dos).
 //   · "Por tramo": un mes partido en días 1–10, 11–20 y 21–fin, para ver en
 //     qué parte del mes entra (y sale) la plata.
 //   · "Por empleado": cuánto subió o bajó el promedio por turno de cada
@@ -16,7 +18,7 @@
 //     Debajo, el podio de turnos: cuál de los turnos subió más su promedio
 //     (solo en los negocios que trabajan por turnos).
 // ============================================================
-import { $, $$, escapeHtml, fechaBaseDelMes, fechaDeRegistro, mesLabel, money } from "./utilidades.js";
+import { $, $$, escapeHtml, fechaBaseDelMes, fechaDeRegistro, mesLabel, MESES, money } from "./utilidades.js";
 import { payerColorVar } from "../app.js";
 import { colaboradores, gastosDelNegocio, facturacionesDelNegocio, negocioTieneTurnos } from "./datos.js";
 import { negocioActual, esAdmin } from "./sesion.js";
@@ -492,11 +494,12 @@ function turnosDelNegocio() {
 // Los cierres del mes de todo el negocio agrupados por turno: cuántos hubo
 // (`turnos`, igual que en las personas), cuánto se vendió y el promedio de cada
 // uno. A diferencia de datosEquipo no se limita a lo que cargó el equipo: un
-// turno rinde lo mismo lo cierre quien lo cierre. `hastaDia` corta el mes en ese
-// día (inclusive): sirve para comparar el mes en curso con el anterior hasta el
-// mismo día, sin poner un mes entero contra uno a medias. `sinTurno` cuenta los
-// cierres del mes que no son de ningún turno (los de antes de FECHA_INICIO_TURNOS).
-function datosTurnos(offset, hastaDia = Infinity) {
+// turno rinde lo mismo lo cierre quien lo cierre. `entra` deja afuera los cierres
+// que pasan el corte (ver corteMesEnCurso): sirve para comparar el mes en curso
+// con el anterior hasta el mismo día y turno, sin poner un mes entero contra uno
+// a medias. `sinTurno` cuenta los cierres del mes que no son de ningún turno (los
+// de antes de FECHA_INICIO_TURNOS).
+function datosTurnos(offset, entra = () => true) {
   const base = fechaBaseDelMes(offset);
   const y = base.getFullYear();
   const m = base.getMonth();
@@ -504,7 +507,7 @@ function datosTurnos(offset, hastaDia = Infinity) {
   let sinTurno = 0;
   facturacionesDelNegocio().forEach(f => {
     const d = fechaDeRegistro(f);
-    if (d.getFullYear() !== y || d.getMonth() !== m || d.getDate() > hastaDia) return;
+    if (d.getFullYear() !== y || d.getMonth() !== m || !entra(f)) return;
     const t = turnos.get(f.turno);
     if (!t) { sinTurno++; return; }
     t.turnos++;
@@ -776,14 +779,18 @@ function renderEquipo() {
 const cierresTxt = (n) => `${n} ${n === 1 ? "cierre" : "cierres"}`;
 
 // Lo facturado en cada turno del mes elegido contra el mes anterior. En el mes en
-// curso los dos se cortan en el día de hoy: poner 26 días contra 30 haría ver una
-// caída que no existe. En un mes ya cerrado se comparan los dos meses enteros.
+// curso los dos se cortan en el mismo día y turno (el corte `c` de la etiqueta de
+// arriba): poner 26 días contra 30, o la Noche de hoy que todavía no cerró contra
+// la del mes pasado que sí, haría ver una caída que no existe. Sin ningún turno
+// cerrado en el mes no entra nada. En un mes ya terminado se comparan los dos
+// meses enteros.
 // Si el mes anterior tiene cierres de antes de que se cargaran por turno, sus
 // turnos están incompletos: no se compara contra él (haría ver una suba que no existe).
-function datosPorTurno() {
-  const corte = ui.offset === 0 ? new Date().getDate() : Infinity;
-  const act = datosTurnos(ui.offset, corte);
-  const ant = datosTurnos(ui.offset - 1, corte);
+function datosPorTurno(c) {
+  const corte = ui.offset === 0 ? c.corte : null;
+  const nada = () => false;
+  const act = datosTurnos(ui.offset, ui.offset !== 0 ? undefined : corte ? corte.entra : nada);
+  const ant = datosTurnos(ui.offset - 1, ui.offset !== 0 ? undefined : corte ? corte.entraAnt : nada);
   const filas = turnosDelNegocio().map(t => ({ ...t, a: act.turnos.get(t.id), p: ant.turnos.get(t.id) }));
   const suma = (k, campo) => filas.reduce((s, f) => s + f[k][campo], 0);
   return {
@@ -793,7 +800,9 @@ function datosPorTurno() {
   };
 }
 
-const textoCorte = (d) => d.corte === Infinity ? "" : `, hasta el día ${d.corte} en los dos meses`;
+const textoCorte = (d) => !d.corte ? ""
+  : d.corte.antCompleto ? `, ${d.corte.texto} — ${MESES[d.ant.base.getMonth()]} entero, porque tiene menos días`
+  : `, ${d.corte.texto} en los dos meses`;
 
 function turnoTotalesHtml(d) {
   const nombreAct = mesLabel(d.act.base);
@@ -874,9 +883,7 @@ function turnoTablaHtml(d) {
 // empleados. Son las mismas cuentas de cada vista, así los números coinciden.
 // Sin datos en el mes la miniatura queda apagada, en vez de dibujar nada.
 
-function fichaMesHtml(act, ant) {
-  const total = act.tramos.reduce((s, t) => s + t.total, 0);
-  const previo = ant.tramos.reduce((s, t) => s + t.total, 0);
+function fichaMesHtml(total, previo) {
   if (!total) return `<small class="cmp-ficha-nada">Sin cierres</small>`;
   return `<b>$${compacto(total)}</b>${deltaHtml(total, previo)}`;
 }
@@ -907,14 +914,135 @@ function fichaEquipoHtml(act, ant) {
   return `<span class="cmp-mini cmp-mini-podio">${top.map((f, i) => avatarHtml(f.nombre, `cmp-m${i + 1}`)).join("")}</span>`;
 }
 
-function renderFichas(conTurnos) {
+// `c` es el corte del mes en curso (datosCorte): en el mes en curso la ficha del
+// mes compara igual que la etiqueta de arriba, hasta el mismo día (y turno);
+// poner lo que va del mes contra el mes anterior entero marcaba una baja que no
+// era. En un mes ya terminado se comparan los dos meses enteros.
+function renderFichas(conTurnos, c) {
   const act = datosTramos(ui.offset);
   const ant = datosTramos(ui.offset - 1);
   const dato = (k, html) => { $(`#cmp-vista [data-dato="${k}"]`).innerHTML = html; };
-  dato("mes", fichaMesHtml(act, ant));
+  const sumaMes = (d) => d.tramos.reduce((s, t) => s + t.total, 0);
+  dato("mes", ui.offset === 0 ? fichaMesHtml(c.act.total, c.ant.total) : fichaMesHtml(sumaMes(act), sumaMes(ant)));
   dato("turno", conTurnos ? fichaTurnosHtml(datosTurnos(ui.offset)) : "");
   dato("tramo", fichaTramosHtml(act));
   dato("equipo", fichaEquipoHtml(datosEquipo(ui.offset), datosEquipo(ui.offset - 1)));
+}
+
+// ---------- Etiqueta "hasta el mismo día (y turno)" ----------
+
+// Día y turno de un cierre en un solo número, para saber cuál es el más reciente
+// y cortar los dos meses ahí. `ids` son los turnos del negocio en orden (Mañana →
+// Noche en Pancho): cuenta el día y el lugar del turno dentro del día. Sin `ids`
+// (un negocio sin turnos, como Heladería: un solo cierre por día) alcanza con el
+// día. null si el negocio trabaja por turnos y el cierre no tiene uno (los de
+// antes de FECHA_INICIO_TURNOS).
+function posicionTurno(dia, turno, ids) {
+  if (!ids) return dia;
+  const i = ids.indexOf(turno);
+  return i < 0 ? null : dia * ids.length + i;
+}
+
+function cierresDelMes(base) {
+  return facturacionesDelNegocio().filter(f => {
+    const d = fechaDeRegistro(f);
+    return d.getFullYear() === base.getFullYear() && d.getMonth() === base.getMonth();
+  });
+}
+
+// Hasta dónde llegó el mes en curso: el último turno cerrado (o el último día
+// con cierre, en un negocio sin turnos). Con eso se lo compara contra el mes
+// anterior cortado en el mismo punto. Lo usan la etiqueta de arriba, la ficha
+// "X MES", el bloque del mes en curso y la vista "Por turno", así los cuatro dicen
+// lo mismo. null si este mes todavía no hay ningún cierre.
+// El corte sale del último cierre cargado, no de la hora: si la Mañana ya terminó
+// pero nadie la cargó, el corte queda en el día anterior, así no se pone un turno
+// que este mes todavía falta contra uno que el mes pasado sí está.
+// La Noche cuenta en el día en que arrancó (así se guarda el cierre).
+function corteMesEnCurso(conTurnos) {
+  const ids = conTurnos ? idsTurnosFacturado() : null;
+  const posicion = (f) => posicionTurno(fechaDeRegistro(f).getDate(), f.turno, ids);
+  const hoy = new Date();
+  // Un cierre con fecha más adelante que hoy (cargado con el día mal elegido)
+  // no puede mover el corte hacia el futuro.
+  let corte = null;
+  cierresDelMes(fechaBaseDelMes(0)).forEach(f => {
+    if (fechaDeRegistro(f).getDate() > hoy.getDate()) return;
+    const p = posicion(f);
+    if (p !== null && (corte === null || p > corte)) corte = p;
+  });
+  if (corte === null) return null;
+
+  const dia = ids ? Math.floor(corte / ids.length) : corte;
+  const texto = ids ? `hasta el ${dia} (${nombreCortoTurnoFacturado(ids[corte % ids.length])})` : `hasta el ${dia}`;
+  // Mes anterior más corto que el día del corte (ej. 31 de marzo contra
+  // febrero): se compara contra ese mes entero.
+  const ant = fechaBaseDelMes(-1);
+  const antCompleto = dia > new Date(ant.getFullYear(), ant.getMonth() + 1, 0).getDate();
+
+  // Los días anteriores al del corte entran enteros; el día del corte, solo
+  // hasta su turno. La misma regla para los dos meses. Quien la usa ya filtró
+  // los cierres de cada mes: acá solo se mira el día y el turno.
+  const entra = (f) => {
+    if (fechaDeRegistro(f).getDate() < dia) return true;
+    const p = posicion(f);
+    return p !== null && p <= corte;
+  };
+  return {
+    texto, antCompleto, entra, posicion,
+    entraAnt: antCompleto ? () => true : entra,
+    textoAnt: antCompleto ? "mes completo" : texto
+  };
+}
+
+// Lo facturado en el mes en curso hasta el corte y lo del mes anterior hasta el
+// mismo día (y turno). Siempre habla del mes en curso, sin importar qué mes se
+// esté navegando.
+function datosCorte() {
+  const conTurnos = negocioTieneTurnos(negocioActual);
+  const corte = corteMesEnCurso(conTurnos);
+  const lado = (offset, entra) => {
+    const base = fechaBaseDelMes(offset);
+    const dentro = corte ? cierresDelMes(base).filter(entra) : [];
+    return {
+      base,
+      total: dentro.reduce((s, f) => s + (Number(f.importe) || 0), 0),
+      // Turnos (o días, sin turnos) distintos con cierre — dos cierres del mismo
+      // turno son uno: si los dos lados no tienen los mismos, falta cargar alguno.
+      turnos: corte ? new Set(dentro.map(corte.posicion).filter(p => p !== null)).size : 0
+    };
+  };
+  return { conTurnos, corte, act: lado(0, corte && corte.entra), ant: lado(-1, corte && corte.entraAnt) };
+}
+
+function corteHtml(c) {
+  const mesDe = (base) => MESES[base.getMonth()];
+  const titulo = `<span class="cmp-corte-titulo">${c.conTurnos ? "Hasta el mismo día y turno" : "Hasta el mismo día"}</span>`;
+  if (!c.corte) {
+    return `<div class="cmp-corte-cab">${titulo}</div>
+      <p class="cmp-corte-nada">${c.conTurnos ? "Todavía no se cerró ningún turno" : "Todavía no hay cierres"} en ${mesDe(c.act.base)}.</p>`;
+  }
+
+  const unidad = c.conTurnos ? ["turno", "turnos"] : ["día", "días"];
+  const turnosTxt = (n) => `<span class="cmp-corte-n">${n} ${n === 1 ? unidad[0] : unidad[1]}</span>`;
+  let pct = "";
+  if (c.ant.total > 0) {
+    const v = Math.round(((c.act.total - c.ant.total) / c.ant.total) * 100);
+    pct = v === 0
+      ? `<span class="cmp-corte-pct">= 0%</span>`
+      : `<span class="cmp-corte-pct ${v > 0 ? "cmp-sube" : "cmp-baja"}">${v > 0 ? "▲" : "▼"} ${Math.abs(v)}%</span>`;
+  }
+  const fila = (clase, nombre, detalle, monto) => `
+      <div class="cmp-corte-fila ${clase}">
+        <div class="cmp-corte-mes"><b>${nombre}</b><small>${detalle}</small></div>
+        <b class="cmp-corte-monto">${monto}</b>
+      </div>`;
+  return `
+      <div class="cmp-corte-cab">${titulo}${pct}</div>
+      ${fila("cmp-corte-act", mesDe(c.act.base), `${c.corte.texto} · ${turnosTxt(c.act.turnos)}`, money(Math.round(c.act.total)))}
+      ${fila("cmp-corte-ant", mesDe(c.ant.base),
+        `${c.corte.textoAnt} · ${turnosTxt(c.ant.turnos)}`,
+        c.ant.total > 0 ? money(Math.round(c.ant.total)) : "sin cierres")}`;
 }
 
 // ---------- Render ----------
@@ -940,8 +1068,8 @@ function renderTramo() {
   conectarTip(act);
 }
 
-function renderTurno() {
-  const d = datosPorTurno();
+function renderTurno(c) {
+  const d = datosPorTurno(c);
   actualizarNavMes(d.act.base);
   const cont = $("#cmp-turno-contenido");
   if (!d.cierresAct) {
@@ -966,8 +1094,22 @@ function variacionHtml(actual, anterior, subeEsBueno) {
 // cargado de Firestore), del más reciente al más antiguo. Usa las mismas
 // cuentas que Resumen mensual — el total facturado es la suma de los
 // importes de los cierres, así que ambas pantallas muestran el mismo número.
-function renderMeses() {
+// En el bloque del mes en curso los % no comparan contra el mes anterior
+// entero (eso marcaba una baja que no era): lo facturado usa el corte `c` de la
+// etiqueta de arriba (mismo día y turno) y los gastos, que no tienen turno, se
+// cortan en el día de hoy en los dos meses.
+function renderMeses(c) {
   const wrap = $("#comparar-meses");
+  const hoy = new Date();
+  const claveActual = hoy.getFullYear() * 12 + hoy.getMonth();
+  const gastosHastaHoy = (offset) => {
+    const base = fechaBaseDelMes(offset);
+    return gastosDelNegocio().reduce((s, g) => {
+      const d = fechaDeRegistro(g);
+      const entra = d.getFullYear() === base.getFullYear() && d.getMonth() === base.getMonth() && d.getDate() <= hoy.getDate();
+      return entra ? s + (Number(g.importe) || 0) : s;
+    }, 0);
+  };
   const meses = new Map();
   const mesDe = (item) => {
     const d = fechaDeRegistro(item);
@@ -995,6 +1137,17 @@ function renderMeses() {
     // Cierres cargados antes del desglose Efectivo/Digital no tienen esos
     // campos: el total sí los cuenta, pero Efectivo+Digital queda más bajo.
     const sinDesglose = m.total - (m.efectivo + m.digital) > 0.5;
+    const enCurso = key === claveActual;
+    const mesAnt = MESES[(m.fecha.getMonth() + 11) % 12];
+    const varTotal = enCurso
+      ? (c.corte ? variacionHtml(c.act.total, c.ant.total, true) : "")
+      : variacionHtml(m.total, prev && prev.total, true);
+    const varGastos = enCurso
+      ? variacionHtml(gastosHastaHoy(0), gastosHastaHoy(-1), false)
+      : variacionHtml(m.gastos, prev && prev.gastos, false);
+    const notaEnCurso = !enCurso ? "" : c.corte
+      ? `Mes en curso: lo facturado se compara contra ${mesAnt} ${c.corte.antCompleto ? "completo" : c.corte.texto} y los gastos, hasta el día ${hoy.getDate()}.`
+      : `Mes en curso: los gastos se comparan contra ${mesAnt} hasta el día ${hoy.getDate()}.`;
     const card = document.createElement("div");
     card.className = "socio-total-card";
     card.innerHTML = `
@@ -1003,11 +1156,12 @@ function renderMeses() {
       </div>
       <div class="comparar-fila"><span><span class="socio-dot" style="background:var(--good)"></span> Efectivo</span><b>${money(m.efectivo)}</b></div>
       <div class="comparar-fila"><span><span class="socio-dot" style="background:var(--series-1)"></span> Digital</span><b>${money(m.digital)}</b></div>
-      <div class="comparar-fila comparar-fila-total"><span>Efectivo + Digital</span><b>${money(m.total)}${variacionHtml(m.total, prev && prev.total, true)}</b></div>
+      <div class="comparar-fila comparar-fila-total"><span>Efectivo + Digital</span><b>${money(m.total)}${varTotal}</b></div>
       ${sinDesglose ? `<div class="comparar-nota">Hay cierres viejos sin desglose Efectivo/Digital.</div>` : ""}
       <div class="bar-track"><div class="bar-fill" style="width:${Math.round((m.total / maxVal) * 100)}%;background:var(--good)"></div></div>
-      <div class="comparar-fila comparar-fila-gastos"><span>🧾 Gastos totales</span><b>${money(m.gastos)}${variacionHtml(m.gastos, prev && prev.gastos, false)}</b></div>
+      <div class="comparar-fila comparar-fila-gastos"><span>🧾 Gastos totales</span><b>${money(m.gastos)}${varGastos}</b></div>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.round((m.gastos / maxVal) * 100)}%;background:var(--text-muted)"></div></div>
+      ${notaEnCurso ? `<div class="comparar-nota">${notaEnCurso}</div>` : ""}
     `;
     wrap.appendChild(card);
   });
@@ -1024,16 +1178,18 @@ export function renderComparar() {
   const conTurnos = negocioTieneTurnos(negocioActual);
   if (!conTurnos && ui.vista === "turno") ui.vista = "mes";
   $("#cmp-vista").classList.toggle("cmp-sin-turnos", !conTurnos);
+  const corte = datosCorte();
+  $("#cmp-corte").innerHTML = corteHtml(corte);
   $$("#cmp-vista button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.vista === ui.vista)));
-  renderFichas(conTurnos);
+  renderFichas(conTurnos, corte);
   $("#cmp-vista-mes").classList.toggle("hidden", ui.vista !== "mes");
   $("#cmp-nav").classList.toggle("hidden", ui.vista === "mes");
   $("#cmp-vista-tramo").classList.toggle("hidden", ui.vista !== "tramo");
   $("#cmp-vista-turno").classList.toggle("hidden", ui.vista !== "turno");
   $("#cmp-vista-equipo").classList.toggle("hidden", ui.vista !== "equipo");
-  if (ui.vista === "mes") renderMeses();
+  if (ui.vista === "mes") renderMeses(corte);
   else if (ui.vista === "tramo") renderTramo();
-  else if (ui.vista === "turno") renderTurno();
+  else if (ui.vista === "turno") renderTurno(corte);
   else renderEquipo();
   ui.animar = false;
 }
